@@ -1,0 +1,37 @@
+[
+  {
+    "id": "seraphine", "name": "เซราฟิน", "role": "นางเอกตัวจริงของนิยาย",
+    "x": 27, "y": 28, "romanceable": true,
+    "portrait": { "skin": "#f3d2b3", "hair": "#f2d16b", "eye": "#4aa3ff", "outfit": "#ffd9e6" }
+  },
+  {
+    "id": "aric", "name": "เจ้าชายอาริค", "role": "รัชทายาทแห่งอเล็กเทียร์",
+    "x": 30, "y": 14, "romanceable": true,
+    "portrait": { "skin": "#e9c39b", "hair": "#8a6bd1", "eye": "#c9a227", "outfit": "#3a2f6b" }
+  },
+  {
+    "id": "kaeld", "name": "ไคลด์", "role": "อัศวินหน้าเย็นแห่งลานประลอง",
+    "x": 9, "y": 36, "romanceable": true,
+    "portrait": { "skin": "#d8b08a", "hair": "#3a3f4a", "eye": "#7ad1c4", "outfit": "#5a5f6b" }
+  },
+  {
+    "id": "lumen", "name": "ลูเมน", "role": "จอมเวทเจ้าเล่ห์แห่งห้องสมุดต้องห้าม",
+    "x": 48, "y": 33, "romanceable": true,
+    "portrait": { "skin": "#f0d6bd", "hair": "#c94f7c", "eye": "#a24aff", "outfit": "#241b3a" }
+  },
+  {
+    "id": "rosalie", "name": "โรซาลี", "role": "สาวคาเฟ่ไรส์ทาผู้ร่าเริง",
+    "x": 12, "y": 33, "romanceable": true,
+    "portrait": { "skin": "#f6cdae", "hair": "#e08a3c", "eye": "#4fbf6a", "outfit": "#ffe1b0" }
+  },
+  {
+    "id": "thane", "name": "รุ่นพี่เธน", "role": "ดาวโรงเรียน หัวหน้าหอชาย",
+    "x": 47, "y": 24, "romanceable": true,
+    "portrait": { "skin": "#e6bd94", "hair": "#2b2b2b", "eye": "#d13a3a", "outfit": "#1f3a5a" }
+  },
+  {
+    "id": "nyx", "name": "นิกซ์", "role": "เด็กลึกลับสายมืด (คล้ายกับเธอ)",
+    "x": 44, "y": 36, "romanceable": true,
+    "portrait": { "skin": "#d9c2c8", "hair": "#6a2fb0", "eye": "#ff4a8d", "outfit": "#14121f" }
+  }
+]

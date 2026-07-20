@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+  <title>Spirit World — วายร้ายแห่งอเล็กเทียร์</title>
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+  <canvas id="game"></canvas>
+
+  <!-- Join gate -->
+  <div id="join-screen" class="overlay show">
+    <div class="panel">
+      <h1>✦ Spirit World ✦</h1>
+      <p class="subtitle">วิญญาณข้ามมิติ: วายร้ายแห่งอเล็กเทียร์</p>
+      <p class="lore">เธอตื่นขึ้นในร่างของ “ตัวร้ายที่ใคร ๆ ก็รังเกียจ”<br>ในนิยายแฟนตาซีธีมโรงเรียนเวทศิลป์…<br>จะพลิกชะตา และจีบใครก็ได้ในโลกใบนี้</p>
+      <input id="name-input" maxlength="24" placeholder="ตั้งชื่อตัวละครของเธอ" />
+      <button id="join-btn">เข้าสู่โลกอเล็กเทียร์</button>
+      <p class="hint">แอดมินต้องอนุมัติก่อนถึงจะเล่นได้ • WASD/ลูกศร หรือจอยสติ๊กเพื่อเดิน</p>
+    </div>
+  </div>
+
+  <!-- Waiting for approval -->
+  <div id="pending-screen" class="overlay">
+    <div class="panel">
+      <div class="spinner"></div>
+      <h2>รอแอดมินอนุมัติ…</h2>
+      <p class="lore">คำขอของเธอถูกส่งไปยังผู้ดูแลโลกแล้ว<br>เมื่อได้รับอนุมัติ เธอจะปรากฏตัวที่ประตูเมืองทิศใต้ทันที</p>
+    </div>
+  </div>
+
+  <!-- Banned -->
+  <div id="banned-screen" class="overlay">
+    <div class="panel banned">
+      <h2>⛔ ถูกระงับการเข้าเล่น</h2>
+      <p id="ban-reason" class="lore">แอดมินได้ปฏิเสธหรือแบนบัญชีนี้</p>
+    </div>
+  </div>
+
+  <!-- In-game HUD -->
+  <div id="game-ui">
+    <div id="chat-wrap">
+      <div id="chat-log"></div>
+      <input id="chat-input" maxlength="200" placeholder="พิมพ์แชท… (แอดมินอนุญาตให้แชทได้)" />
+    </div>
+
+    <div id="controls">
+      <div id="joystick"><div id="joy-nub"></div></div>
+      <div id="action-cluster">
+        <button id="btn-quest" title="ภารกิจ">📜</button>
+        <button id="btn-chat" title="แชท">💬</button>
+        <button id="btn-action" title="คุย / เลือก">💗</button>
+      </div>
+    </div>
+
+    <!-- Dialogue -->
+    <div id="dialogue" class="overlay-soft">
+      <div class="dlg-box">
+        <canvas id="dlg-portrait" width="96" height="96"></canvas>
+        <div class="dlg-main">
+          <div class="dlg-head"><b id="dlg-name"></b><span id="dlg-role"></span><span id="dlg-aff"></span></div>
+          <div id="dlg-lines"></div>
+          <div id="dlg-choices"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Quest / relationship panel -->
+    <div id="quest-panel" class="overlay-soft">
+      <div class="panel wide">
+        <button id="quest-close" class="close">✕</button>
+        <h3>📜 บันทึกเนื้อเรื่อง</h3>
+        <p class="rep">ชื่อเสียง: <b id="rep-value">0</b> / 100</p>
+        <div id="quest-list"></div>
+        <h3>💗 ความสัมพันธ์</h3>
+        <div id="rel-list"></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast"></div>
+
+  <script type="module" src="/js/game.js"></script>
+</body>
+</html>

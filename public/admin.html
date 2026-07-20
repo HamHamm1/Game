@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Spirit World — แผงควบคุมแอดมิน</title>
+  <style>
+    :root { --bg:#14101f; --panel:#241a38; --accent:#b06bff; --accent2:#ff4a8d; --gold:#ffd24a; --text:#efe6ff; --muted:#a595c2; }
+    * { box-sizing:border-box; } body { margin:0; background:var(--bg); color:var(--text);
+      font-family:"Noto Sans Thai",system-ui,sans-serif; padding:18px; }
+    h1 { color:var(--gold); margin:0 0 4px; font-size:22px; }
+    .sub { color:var(--muted); font-size:13px; margin-bottom:16px; }
+    .bar { display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-bottom:16px; }
+    input, textarea, select { background:#180f2a; border:1px solid #3a2b5a; color:var(--text);
+      border-radius:8px; padding:9px 11px; font-family:inherit; font-size:14px; }
+    input:focus, textarea:focus { outline:none; border-color:var(--accent); }
+    button { cursor:pointer; border:none; border-radius:8px; padding:8px 13px; font-weight:600;
+      font-family:inherit; font-size:13px; color:#fff; background:#3a2b5a; }
+    button.go { background:linear-gradient(90deg,var(--accent),var(--accent2)); }
+    button.ok { background:#2e7d46; } button.bad { background:#b3382f; } button.warn { background:#8a6a1f; }
+    .grid { display:grid; grid-template-columns:1fr; gap:16px; } @media(min-width:900px){ .grid{grid-template-columns:1.2fr .8fr;} }
+    .card { background:var(--panel); border:1px solid #3a2b5a; border-radius:14px; padding:16px; }
+    .card h2 { margin:0 0 12px; font-size:16px; color:var(--gold); }
+    table { width:100%; border-collapse:collapse; font-size:13px; }
+    th,td { text-align:left; padding:8px 6px; border-bottom:1px solid #2c2145; }
+    th { color:var(--muted); font-weight:600; }
+    .badge { padding:2px 8px; border-radius:20px; font-size:11px; font-weight:700; }
+    .b-pending{background:#8a6a1f;} .b-approved{background:#2e7d46;} .b-banned{background:#b3382f;}
+    .dot { display:inline-block; width:8px; height:8px; border-radius:50%; background:#555; margin-right:5px; }
+    .dot.on { background:#4caf50; box-shadow:0 0 6px #4caf50; }
+    .row-actions button { padding:5px 9px; font-size:12px; margin:0 2px 2px 0; }
+    textarea { width:100%; height:180px; resize:vertical; font-family:ui-monospace,monospace; font-size:12px; }
+    .msg { font-size:12px; color:var(--muted); margin-top:6px; min-height:16px; }
+    .muted { color:var(--muted); }
+  </style>
+</head>
+<body>
+  <h1>✦ แผงควบคุมแอดมิน — Spirit World</h1>
+  <div class="sub">อนุมัติ / ปฏิเสธ / แบนผู้เล่น และอัปเดตเนื้อหาเกมแบบเรียลไทม์</div>
+
+  <div class="bar">
+    <input id="token" placeholder="ADMIN_TOKEN" style="width:220px" />
+    <button class="go" onclick="saveToken()">เชื่อมต่อ</button>
+    <span id="conn" class="muted"></span>
+    <label class="muted" style="margin-left:auto;"><input type="checkbox" id="auto" checked style="width:auto"> รีเฟรชอัตโนมัติ</label>
+  </div>
+
+  <div class="grid">
+    <div class="card">
+      <h2>👥 ผู้เล่น</h2>
+      <table><thead><tr><th>สถานะ</th><th>ชื่อ</th><th>ID</th><th>ชื่อเสียง</th><th>จัดการ</th></tr></thead>
+        <tbody id="players"><tr><td colspan="5" class="muted">กรอก token แล้วกดเชื่อมต่อ</td></tr></tbody></table>
+    </div>
+
+    <div class="card">
+      <h2>⚡ เนื้อหาเรียลไทม์</h2>
+      <select id="kind" onchange="loadContent()">
+        <option value="npcs">npcs (ตัวละคร)</option>
+        <option value="quests">quests (ภารกิจ)</option>
+        <option value="dialogues">dialogues (บทสนทนา)</option>
+        <option value="events">events (อีเวนต์)</option>
+      </select>
+      <button onclick="loadContent()">โหลด</button>
+      <button class="ok" onclick="pushContent()">💾 อัปเดตสด</button>
+      <button class="warn" onclick="reloadAll()">↻ โหลดไฟล์ใหม่</button>
+      <div class="msg" id="cmsg"></div>
+      <textarea id="editor" spellcheck="false"></textarea>
+    </div>
+  </div>
+
+  <script>
+    let TOKEN = localStorage.getItem('sw_admin_token') || '';
+    document.getElementById('token').value = TOKEN;
+    const H = () => ({ 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + TOKEN });
+    function saveToken() { TOKEN = document.getElementById('token').value.trim(); localStorage.setItem('sw_admin_token', TOKEN); refresh(); loadContent(); }
+
+    async function refresh() {
+      const conn = document.getElementById('conn');
+      try {
+        const r = await fetch('/api/admin/players', { headers: H() });
+        if (r.status === 401) { conn.textContent = '❌ token ไม่ถูกต้อง'; conn.style.color = '#ff5a5a'; return; }
+        const { players } = await r.json();
+        conn.textContent = '✅ เชื่อมต่อแล้ว (' + players.length + ' บัญชี)'; conn.style.color = '#4caf50';
+        render(players);
+      } catch { conn.textContent = '⚠ เชื่อมต่อเซิร์ฟเวอร์ไม่ได้'; }
+    }
+
+    function render(players) {
+      players.sort((a, b) => (a.status === 'pending' ? -1 : 1) - (b.status === 'pending' ? -1 : 1));
+      document.getElementById('players').innerHTML = players.map(p => `
+        <tr>
+          <td><span class="dot ${p.online ? 'on' : ''}"></span><span class="badge b-${p.status}">${thai(p.status)}</span></td>
+          <td>${esc(p.name)}</td><td class="muted">${esc(p.id)}</td><td>${p.reputation}</td>
+          <td class="row-actions">
+            <button class="ok" onclick="decide('${p.id}','approve')">อนุมัติ</button>
+            <button class="bad" onclick="decide('${p.id}','ban')">แบน</button>
+            <button onclick="decide('${p.id}','pending')">พัก</button>
+            <button class="${p.canChat ? 'warn' : ''}" onclick="chat('${p.id}',${!p.canChat})">${p.canChat ? '🔇 ปิดแชท' : '💬 เปิดแชท'}</button>
+          </td>
+        </tr>`).join('');
+    }
+    const thai = s => ({ pending: 'รออนุมัติ', approved: 'อนุมัติ', banned: 'แบน' }[s] || s);
+    const esc = s => String(s).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+
+    async function decide(id, action) { await fetch('/api/admin/decision', { method: 'POST', headers: H(), body: JSON.stringify({ id, action }) }); refresh(); }
+    async function chat(id, canChat) { await fetch('/api/admin/chat', { method: 'POST', headers: H(), body: JSON.stringify({ id, canChat }) }); refresh(); }
+
+    async function loadContent() {
+      const kind = document.getElementById('kind').value;
+      const r = await fetch('/api/admin/content', { headers: H() });
+      if (!r.ok) { document.getElementById('cmsg').textContent = 'โหลดไม่ได้ (ตรวจ token)'; return; }
+      const c = await r.json();
+      document.getElementById('editor').value = JSON.stringify(c[kind], null, 2);
+      document.getElementById('cmsg').textContent = 'เวอร์ชันเนื้อหา: ' + c.version;
+    }
+    async function pushContent() {
+      const kind = document.getElementById('kind').value;
+      let payload; try { payload = JSON.parse(document.getElementById('editor').value); }
+      catch (e) { document.getElementById('cmsg').textContent = '❌ JSON ผิดพลาด: ' + e.message; return; }
+      const r = await fetch('/api/admin/content', { method: 'POST', headers: H(), body: JSON.stringify({ kind, payload }) });
+      const j = await r.json();
+      document.getElementById('cmsg').textContent = r.ok ? '✅ อัปเดตสดสำเร็จ! ผู้เล่นทุกคนเห็นทันที (v' + j.version + ')' : '❌ ' + (j.error || 'ล้มเหลว');
+    }
+    async function reloadAll() { await fetch('/api/admin/reload', { method: 'POST', headers: H() }); loadContent(); }
+
+    if (TOKEN) { refresh(); loadContent(); }
+    setInterval(() => { if (document.getElementById('auto').checked && TOKEN) refresh(); }, 3000);
+  </script>
+</body>
+</html>
