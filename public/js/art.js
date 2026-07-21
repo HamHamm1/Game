@@ -447,17 +447,121 @@ function drawPalace(ctx, obj, cfg, L, R, mid, bodyTop, sh) {
   for (let i = 0; i < 3; i++) { ctx.fillStyle = shade(stone, 0.85 - i * 0.06); ctx.fillRect(mid - dw / 2 - 6 - i * 3, sh - 2 + i, dw + 12 + i * 6, 2); }
 }
 
+// ---- prettiness helpers ----
+function litArch(ctx, x, y, ww, wh, trim, lit) {
+  if (lit) { ctx.fillStyle = 'rgba(242,207,136,0.22)'; ctx.fillRect(x - 2, y - 1, ww + 4, wh + 3); }
+  winDraw(ctx, 'arch', x, y, ww, wh, trim, lit ? '#f2cf88' : '#454158');
+}
+function leadWin(ctx, x, y, w, h, frame, lit) {
+  ctx.fillStyle = shade(frame, 0.7); ctx.fillRect(x - 1, y - 1, w + 2, h + 2);
+  ctx.fillStyle = lit ? '#f2cf88' : '#51616e'; ctx.fillRect(x, y, w, h);
+  ctx.strokeStyle = 'rgba(40,30,20,0.5)'; ctx.lineWidth = 0.5; ctx.beginPath();
+  for (let d = -h; d < w; d += 3) { ctx.moveTo(x + d, y + h); ctx.lineTo(x + d + h, y); ctx.moveTo(x + d, y); ctx.lineTo(x + d + h, y + h); } ctx.stroke();
+}
+function flowerBox(ctx, x, y, w) {
+  ctx.fillStyle = '#4a3020'; ctx.fillRect(x, y, w, 2);
+  const cols = ['#c85a7a', '#d9c44a', '#7a5ad0', '#e08a4a']; for (let i = 0; i < w; i += 2) { ctx.fillStyle = cols[(i >> 1) % 4]; ctx.fillRect(x + i, y - 1, 1, 1); }
+}
+function smoke(ctx, x, y) { ctx.fillStyle = 'rgba(210,210,218,0.4)'; ctx.beginPath(); ctx.arc(x, y - 2, 1.6, 0, 7); ctx.arc(x + 2, y - 5, 2, 0, 7); ctx.arc(x - 1, y - 8, 1.8, 0, 7); ctx.arc(x + 2, y - 11, 1.4, 0, 7); ctx.fill(); }
+
+// Cozy café: brick, asymmetric corner turret, warm-lit storefront + awning,
+// flower boxes, gingerbread gable, smoking chimney, hanging sign.
+function drawCafe(ctx, obj, cfg, L, R, mid, bodyTop, sh) {
+  const brick = cfg.wall, roofc = cfg.roof, trim = cfg.trim, tw = U * 1.5, bx = L + tw * 0.7, bh = sh - bodyTop, cx = (bx + R) / 2;
+  ctx.fillStyle = OUTLINE; ctx.fillRect(bx - 1, bodyTop - 1, R - bx + 1, bh + 1);
+  matFill(ctx, 'brick', bx, bodyTop, R - bx, bh, brick, trim);
+  const cols = Math.max(2, obj.w - 2);
+  for (let i = 0; i < cols; i++) { const wx = bx + (R - bx) * (i + 0.5) / cols - 3; if (wx < bx + 2 || wx > R - 8) continue; litArch(ctx, wx, bodyTop + 7, 6, 7, trim, ((i * 5) % 3) !== 0); flowerBox(ctx, wx - 1, bodyTop + 15, 8); }
+  const gy = sh - Math.round(U * 1.4), pn = Math.max(3, obj.w - 1), pw = (R - bx - 6) / pn;
+  ctx.fillStyle = OUTLINE; ctx.fillRect(bx + 1, gy - 1, R - bx - 2, sh - gy);
+  for (let i = 0; i < pn; i++) { const px = bx + 3 + i * pw; ctx.fillStyle = '#f2cf88'; ctx.fillRect(px, gy + 1, pw - 1, sh - gy - 4); ctx.fillStyle = 'rgba(255,255,255,0.25)'; ctx.fillRect(px, gy + 1, pw - 1, 2); ctx.fillStyle = shade(trim, 0.7); ctx.fillRect(px - 1, gy + 1, 1, sh - gy - 4); }
+  drawDoor(ctx, R - U * 1.1, sh - 1, U * 0.85, U * 1.35, trim);
+  const ay = gy - 2; for (let i = 0; i * 4 < (R - bx - 2); i++) { ctx.fillStyle = i & 1 ? '#8a3a3a' : '#e8d3a0'; fillPoly(ctx, [[bx + 1 + i * 4, ay], [bx + 1 + i * 4 + 4, ay], [bx + 1 + i * 4 + 2, ay + 4]]); }
+  ctx.fillStyle = '#5a2f2f'; ctx.fillRect(bx + 1, ay - 1, R - bx - 2, 1);
+  const sg = bx + 4; ctx.fillStyle = trim; ctx.fillRect(sg, bodyTop + 3, 1, 7); ctx.fillRect(sg, bodyTop + 3, 7, 1); ctx.fillStyle = '#5a3a2a'; ctx.fillRect(sg + 4, bodyTop + 9, 7, 6); ctx.fillStyle = '#e8d3a0'; ctx.fillRect(sg + 5, bodyTop + 10, 5, 4);
+  const apexY = bodyTop - U * 1.7;
+  ctx.fillStyle = OUTLINE; fillPoly(ctx, [[bx - 3, bodyTop], [cx, apexY - 2], [R + 3, bodyTop]]);
+  ctx.fillStyle = roofc; fillPoly(ctx, [[bx - 1, bodyTop], [cx, apexY], [R + 1, bodyTop]]);
+  ctx.fillStyle = shade(roofc, 0.8); fillPoly(ctx, [[cx, apexY], [R + 1, bodyTop], [cx, bodyTop]]);
+  ctx.fillStyle = shade(roofc, 0.92); for (let k = 1; k < 3; k++) { const yy = apexY + (bodyTop - apexY) * k / 3, hf = ((R - bx) / 2 + 3) * k / 3; ctx.fillRect(cx - hf, yy, hf * 2, 1); }
+  ctx.fillStyle = trim; for (let gx = bx - 2; gx < R + 2; gx += 4) fillPoly(ctx, [[gx, bodyTop], [gx + 4, bodyTop], [gx + 2, bodyTop + 2]]);
+  ctx.fillStyle = trim; ctx.fillRect(cx - 0.5, apexY - 4, 1, 4); ctx.beginPath(); ctx.arc(cx, apexY - 4, 1.5, 0, 7); ctx.fill();
+  chimneyDraw(ctx, R - U * 1.4, apexY - U * 0.4, U * 1.6, shade(brick, 1.1)); smoke(ctx, R - U * 1.4 + 2, apexY - U * 0.4);
+  const ttop = bodyTop - U, tcx = L + tw / 2;
+  ctx.fillStyle = OUTLINE; ctx.fillRect(L - 1, ttop - 1, tw + 2, sh - ttop + 1);
+  matFill(ctx, 'brick', L, ttop, tw, sh - ttop, brick, trim);
+  litArch(ctx, tcx - 2.5, ttop + 4, 5, 7, trim, true); litArch(ctx, tcx - 2.5, ttop + 14, 5, 7, trim, false);
+  const sH = tw * 1.3; ctx.fillStyle = OUTLINE; fillPoly(ctx, [[L - 2, ttop], [tcx, ttop - sH - 1], [L + tw + 2, ttop]]);
+  ctx.fillStyle = roofc; fillPoly(ctx, [[L - 1, ttop], [tcx, ttop - sH], [L + tw + 1, ttop]]);
+  ctx.fillStyle = shade(roofc, 0.8); fillPoly(ctx, [[tcx, ttop - sH], [L + tw + 1, ttop], [tcx, ttop]]);
+  ctx.fillStyle = trim; ctx.fillRect(tcx - 0.5, ttop - sH - 4, 1, 4);
+}
+
+// Classical library: colonnade + full pediment + rooftop cupola (temple form).
+function drawLibrary(ctx, obj, cfg, L, R, mid, bodyTop, sh) {
+  const W = R - L, bh = sh - bodyTop, stone = cfg.wall, roofc = cfg.roof, trim = cfg.trim, nc = Math.max(4, obj.w);
+  ctx.fillStyle = OUTLINE; ctx.fillRect(L - 1, bodyTop - 1, W + 2, bh + 1);
+  matFill(ctx, 'stone', L, bodyTop, W, bh, stone, trim);
+  for (let i = 0; i < nc; i++) { const wx = L + 2 + (W - 4) * (i + 0.5) / nc - 2; litArch(ctx, wx, bodyTop + 7, 4, bh - 14, trim, i % 2 === 0); }
+  for (let i = 0; i <= nc; i++) { const c = L + 2 + (W - 4) * i / nc; ctx.fillStyle = shade(stone, 1.12); ctx.fillRect(c - 1, bodyTop + 3, 2, bh - 4); ctx.fillStyle = shade(stone, 0.68); ctx.fillRect(c + 1, bodyTop + 3, 1, bh - 4); ctx.fillStyle = trim; ctx.fillRect(c - 1.5, bodyTop + 3, 3, 1); ctx.fillRect(c - 1.5, sh - 4, 3, 1); }
+  drawDoor(ctx, mid, sh - 1, U * 1.1, U * 1.6, trim);
+  ctx.fillStyle = trim; ctx.fillRect(L - 1, bodyTop - 1, W + 2, 2); ctx.fillStyle = shade(stone, 1.05); ctx.fillRect(L - 2, bodyTop - 3, W + 4, 2);
+  const apexY = bodyTop - U * 1.4;
+  ctx.fillStyle = OUTLINE; fillPoly(ctx, [[L - 4, bodyTop - 2], [mid, apexY - 2], [R + 4, bodyTop - 2]]);
+  ctx.fillStyle = roofc; fillPoly(ctx, [[L - 3, bodyTop - 3], [mid, apexY], [R + 3, bodyTop - 3]]);
+  ctx.fillStyle = shade(roofc, 0.82); fillPoly(ctx, [[mid, apexY], [R + 3, bodyTop - 3], [mid, bodyTop - 3]]);
+  ctx.fillStyle = stone; fillPoly(ctx, [[L + U * 0.8, bodyTop - 4], [mid, apexY + U * 0.5], [R - U * 0.8, bodyTop - 4]]);
+  ctx.fillStyle = trim; ctx.beginPath(); ctx.arc(mid, bodyTop - U * 0.4, U * 0.32, 0, 7); ctx.fill(); ctx.fillStyle = cfg.glass; ctx.beginPath(); ctx.arc(mid, bodyTop - U * 0.4, U * 0.25, 0, 7); ctx.fill();
+  ctx.fillStyle = trim; for (let dx = L - 3; dx < R + 3; dx += 3) ctx.fillRect(dx, bodyTop - 3, 1, 1);
+  const dw = U * 1.5; ctx.fillStyle = OUTLINE; ctx.fillRect(mid - dw / 2 - 1, apexY - U * 0.9 - 1, dw + 2, U * 0.9 + 1); ctx.fillStyle = stone; ctx.fillRect(mid - dw / 2, apexY - U * 0.9, dw, U * 0.9);
+  ctx.fillStyle = roofc; ctx.beginPath(); ctx.ellipse(mid, apexY - U * 0.9, dw / 2, U * 0.7, 0, Math.PI, 0); ctx.fill(); ctx.fillStyle = shade(roofc, 0.78); ctx.beginPath(); ctx.ellipse(mid, apexY - U * 0.9, dw / 2, U * 0.7, 0, Math.PI * 0.5, 0); ctx.fill();
+  ctx.fillStyle = trim; ctx.fillRect(mid - 0.5, apexY - U * 0.9 - U * 0.7 - 4, 1, 4); ctx.beginPath(); ctx.arc(mid, apexY - U * 0.9 - U * 0.7 - 4, 1.4, 0, 7); ctx.fill();
+}
+
+// Tudor inn: jettied (overhanging) half-timber floors, leaded diamond panes,
+// asymmetric cross-gable, big smoking chimney, hanging bracket sign.
+function drawInn(ctx, obj, cfg, L, R, mid, bodyTop, sh) {
+  const W = R - L, bh = sh - bodyTop, roofc = cfg.roof, plaster = cfg.wall, beam = cfg.trim;
+  const floors = Math.max(2, Math.min(3, obj.h - 2)), j = 3, fh = bh / floors;
+  for (let f = 0; f < floors; f++) {
+    const inset = (floors - 1 - f) * j, fx = L + inset, fw = W - 2 * inset, fy = sh - (f + 1) * fh;
+    ctx.fillStyle = OUTLINE; ctx.fillRect(fx - 1, fy - 1, fw + 2, fh + (f > 0 ? 2 : 1));
+    matFill(ctx, 'timber', fx, fy, fw, fh, plaster, beam);
+    if (f > 0) { ctx.fillStyle = beam; ctx.fillRect(fx, fy + fh - 2, fw, 2); ctx.fillStyle = 'rgba(0,0,0,0.2)'; ctx.fillRect(fx, fy + fh, fw, 1); }
+    const cols = Math.max(2, obj.w - 2); for (let i = 0; i < cols; i++) { const wx = fx + fw * (i + 0.5) / cols - 3; leadWin(ctx, wx, fy + 4, 6, 7, beam, (i + f) % 2 === 0); }
+  }
+  const gInset = (floors - 1) * j;
+  drawDoor(ctx, Math.max(L + gInset + U, Math.min(R - gInset - U * 0.6, L + obj.door * U + U / 2)), sh - 1, U * 0.85, U * 1.3, beam);
+  const apexY = bodyTop - U * 2;
+  ctx.fillStyle = OUTLINE; fillPoly(ctx, [[L - 3, bodyTop], [mid, apexY - 2], [R + 3, bodyTop]]);
+  ctx.fillStyle = roofc; fillPoly(ctx, [[L - 1, bodyTop], [mid, apexY], [R + 1, bodyTop]]);
+  ctx.fillStyle = shade(roofc, 0.8); fillPoly(ctx, [[mid, apexY], [R + 1, bodyTop], [mid, bodyTop]]);
+  ctx.fillStyle = shade(roofc, 0.92); for (let k = 1; k < 3; k++) { const yy = apexY + (bodyTop - apexY) * k / 3, hf = (W / 2 + 3) * k / 3; ctx.fillRect(mid - hf, yy, hf * 2, 1); }
+  const cgx = L + W * 0.32, cgY = bodyTop + 2, cgA = cgY - U * 1.5;
+  ctx.fillStyle = OUTLINE; fillPoly(ctx, [[cgx - U * 0.9, cgY], [cgx, cgA - 1], [cgx + U * 0.9, cgY]]);
+  ctx.fillStyle = roofc; fillPoly(ctx, [[cgx - U * 0.8, cgY], [cgx, cgA], [cgx + U * 0.8, cgY]]);
+  ctx.fillStyle = plaster; fillPoly(ctx, [[cgx - U * 0.5, cgY], [cgx, cgA + U * 0.4], [cgx + U * 0.5, cgY]]);
+  ctx.fillStyle = beam; ctx.fillRect(cgx - U * 0.5, cgY - 1, U, 1); ctx.fillRect(cgx - 0.5, cgA + U * 0.4, 1, cgY - (cgA + U * 0.4));
+  leadWin(ctx, cgx - 2, cgY - U * 0.7, 4, 5, beam, true);
+  ctx.fillStyle = beam; ctx.fillRect(cgx - 0.5, cgA - 3, 1, 3); ctx.fillRect(mid - 0.5, apexY - 4, 1, 4);
+  chimneyDraw(ctx, R - U * 1.7, apexY - U * 0.3, U * 1.9, '#7a5a4a'); smoke(ctx, R - U * 1.7 + 2, apexY - U * 0.3);
+  const sgx = R - U * 1.2, sgy = bodyTop + U; ctx.fillStyle = beam; ctx.fillRect(sgx - 8, sgy, 8, 1); ctx.fillRect(sgx - 8, sgy, 1, 4); ctx.fillStyle = '#4a3020'; ctx.fillRect(sgx - 7, sgy + 4, 6, 5); ctx.fillStyle = cfg.glass; ctx.fillRect(sgx - 6, sgy + 5, 4, 3);
+}
+
+const BESPOKE = { cafe: drawCafe, library: drawLibrary, inn: drawInn };
+
 function buildVictorian(obj) {
   const cfg = VST[obj.style] || VST.house;
   const W = obj.w * U, bodyH = obj.h * U, PAD = 6, grand = !!cfg.grand, rt = cfg.roofType || 'gable';
   const roofH = grand ? Math.round(U * 2.6) : rt === 'gable' ? Math.round(U * 2.1) : rt === 'mansard' ? Math.round(U * 1.7) : Math.round(U * 1.4);
   const towerH = grand ? Math.round(U * 3.2) : 0;
-  const topExtra = towerH + roofH + Math.round(U * 1.7);
+  const topExtra = grand ? towerH + roofH + Math.round(U * 1.7) : Math.round(U * 4.4);
   const sw = W + PAD * 2, sh = bodyH + topExtra;
   const { c: sc, ctx } = makeCanvas(sw, sh);
   const L = PAD, R = PAD + W, mid = L + W / 2, bodyTop = sh - bodyH;
   if (cfg.grand === 'royal') drawPalace(ctx, obj, cfg, L, R, mid, bodyTop, sh);
   else if (grand) drawGrand(ctx, obj, cfg, L, R, mid, bodyTop, sh, towerH, roofH);
+  else if (BESPOKE[obj.style]) BESPOKE[obj.style](ctx, obj, cfg, L, R, mid, bodyTop, sh);
   else { drawBody(ctx, obj, cfg, L, R, bodyTop, sh); drawRoof(ctx, obj, cfg, L, R, mid, bodyTop, roofH); }
   const f = makeCanvas(sw * 2, sh * 2); f.ctx.imageSmoothingEnabled = false; f.ctx.drawImage(sc, 0, 0, sw * 2, sh * 2);
   return { canvas: f.c, ox: -PAD * 2, oy: 0 };
