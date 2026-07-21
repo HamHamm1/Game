@@ -22,18 +22,36 @@ function sheetFor(look) {
   return charCache.get(key);
 }
 
-export const camera = { x: 0, y: 0 };
-export function focus(x, y, view) {
+export const camera = { x: 0, y: 0, zoom: 1 };
+
+// Pick a camera zoom so the world fills the screen (bigger sprites on phones,
+// and small maps like interiors cover the viewport instead of leaving black
+// bars). Capped so huge desktop screens don't blow interiors up absurdly.
+function computeZoom(m, view) {
+  const minDim = Math.min(view.w, view.h);
+  const base = minDim < 520 ? 1.6 : minDim < 900 ? 1.3 : 1.1;   // phones zoom in more
+  const cap = minDim < 520 ? 3.4 : minDim < 900 ? 2.6 : 2.0;    // let tiny rooms fill a phone screen
+  const cover = Math.max(view.w / (m.w * TILE), view.h / (m.h * TILE)) * 1.02;
+  return Math.min(Math.max(base, cover), cap);
+}
+
+export function focus(x, y, view, mapId) {
+  if (mapId) camera.map = mapId;
   const m = getMap(camera.map);
-  camera.x = Math.max(0, Math.min(m.w * TILE - view.w, x - view.w / 2));
-  camera.y = Math.max(0, Math.min(m.h * TILE - view.h, y - view.h / 2));
+  const Z = computeZoom(m, view); camera.zoom = Z;
+  const vw = view.w / Z, vh = view.h / Z, worldW = m.w * TILE, worldH = m.h * TILE;
+  // centre the map when it is smaller than the viewport, else follow the player
+  camera.x = worldW <= vw ? (worldW - vw) / 2 : Math.max(0, Math.min(worldW - vw, x - vw / 2));
+  camera.y = worldH <= vh ? (worldH - vh) / 2 : Math.max(0, Math.min(worldH - vh, y - vh / 2));
 }
 
 export function draw(ctx, view, mapId, remotes, self, npcs, frameTick) {
   camera.map = mapId;
   const m = getMap(mapId);
+  const Z = camera.zoom || 1;
+  const vw = view.w / Z, vh = view.h / Z;      // visible size in world units
   ctx.imageSmoothingEnabled = false;
-  ctx.fillStyle = '#0c1420'; ctx.fillRect(0, 0, view.w, view.h);
+  ctx.fillStyle = '#0c1420'; ctx.fillRect(0, 0, view.w, view.h);   // full-screen backdrop
 
   // baked terrain (blit visible region)
   const bake = bakedMap(mapId);
@@ -43,7 +61,14 @@ export function draw(ctx, view, mapId, remotes, self, npcs, frameTick) {
     ctx.fillText('กำลังโหลดพื้นผิว…', view.w / 2, view.h / 2);
     return;
   }
-  ctx.drawImage(bake, camera.x, camera.y, view.w, view.h, 0, 0, view.w, view.h);
+  ctx.save();
+  ctx.scale(Z, Z);                              // everything below is drawn in world units, zoomed
+  // Blit the map, tolerating a map smaller than the viewport (centred, no crash).
+  const worldW = m.w * TILE, worldH = m.h * TILE;
+  const bsx = Math.max(0, camera.x), bsy = Math.max(0, camera.y);
+  const bdx = Math.max(0, -camera.x), bdy = Math.max(0, -camera.y);
+  const bsw = Math.min(worldW - bsx, vw - bdx), bsh = Math.min(worldH - bsy, vh - bdy);
+  ctx.drawImage(bake, bsx, bsy, bsw, bsh, bdx, bdy, bsw, bsh);
 
   // interior floor decals (rugs) — drawn under furniture and characters
   if (m.interior) {
@@ -128,14 +153,14 @@ export function draw(ctx, view, mapId, remotes, self, npcs, frameTick) {
   if (amb.a > 0.001) {
     ctx.save();
     ctx.globalCompositeOperation = 'multiply'; ctx.globalAlpha = amb.a;
-    ctx.fillStyle = `rgb(${amb.c[0]},${amb.c[1]},${amb.c[2]})`; ctx.fillRect(0, 0, view.w, view.h);
+    ctx.fillStyle = `rgb(${amb.c[0]},${amb.c[1]},${amb.c[2]})`; ctx.fillRect(0, 0, vw, vh);
     ctx.restore();
   }
   if (amb.dark > 0.04) { // warm lamp pools at night
     ctx.save(); ctx.globalCompositeOperation = 'lighter';
     for (const [lx, ly] of lamps) {
       const sx = lx - camera.x, sy = ly - camera.y;
-      if (sx < -80 || sx > view.w + 80 || sy < -80 || sy > view.h + 80) continue;
+      if (sx < -80 || sx > vw + 80 || sy < -80 || sy > vh + 80) continue;
       const g = ctx.createRadialGradient(sx, sy, 4, sx, sy, 66);
       g.addColorStop(0, `rgba(255,214,140,${0.55 * amb.dark})`); g.addColorStop(1, 'rgba(255,214,140,0)');
       ctx.fillStyle = g; ctx.beginPath(); ctx.arc(sx, sy, 66, 0, 7); ctx.fill();
@@ -148,15 +173,16 @@ export function draw(ctx, view, mapId, remotes, self, npcs, frameTick) {
   for (const o of m.objects) {
     if (o.t !== 'building' || !o.name) continue;
     const bx = (o.x + o.w / 2) * TILE - camera.x, by = o.y * TILE - camera.y - 20;
-    if (bx < -80 || bx > view.w + 80 || by < -20 || by > view.h + 20) continue;
+    if (bx < -80 || bx > vw + 80 || by < -20 || by > vh + 20) continue;
     ctx.font = 'bold 11px system-ui'; label(ctx, o.name, bx, by);
   }
   // Map name + time of day (top center)
   ctx.font = 'bold 13px system-ui'; ctx.fillStyle = 'rgba(20,16,30,0.6)';
   const nameStr = phaseEmoji(amb.phase) + ' ' + m.name;
   const tw = ctx.measureText(nameStr).width + 16;
-  ctx.fillRect(view.w / 2 - tw / 2, 8, tw, 22); ctx.fillStyle = '#ffd98a';
-  ctx.fillText(nameStr, view.w / 2, 23);
+  ctx.fillRect(vw / 2 - tw / 2, 8, tw, 22); ctx.fillStyle = '#ffd98a';
+  ctx.fillText(nameStr, vw / 2, 23);
+  ctx.restore();
 }
 
 // ---- day/night cycle ----

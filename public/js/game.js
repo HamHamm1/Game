@@ -191,6 +191,17 @@ document.getElementById('dlg-send')?.addEventListener('click', () => ui.sendDial
 document.getElementById('dlg-close')?.addEventListener('click', () => ui.hideDialogue());
 document.getElementById('dlg-input')?.addEventListener('keydown', (e) => { if (e.key === 'Enter') ui.sendDialogue(); e.stopPropagation(); });
 
+// Landscape: tap the hint to go fullscreen + lock landscape (best-effort; works on Android Chrome).
+const rotateHint = document.getElementById('rotate-hint');
+rotateHint?.addEventListener('click', async (e) => {
+  if (e.target.id === 'rotate-x') { rotateHint.classList.add('hide'); return; }
+  try {
+    if (document.documentElement.requestFullscreen) await document.documentElement.requestFullscreen();
+    if (screen.orientation?.lock) await screen.orientation.lock('landscape');
+    rotateHint.classList.add('hide');
+  } catch { /* unsupported (e.g. iOS) — the on-screen hint still tells them to rotate */ }
+});
+
 // ---- Main loop ----
 let last = performance.now(), tick = 0;
 const speedPerSec = PLAYER_SPEED * TICK_HZ;
@@ -208,7 +219,7 @@ function loop(now) {
       if (!solidAt(world.map, world.self.x, ny)) world.self.y = ny;
       world.self.dir = Math.abs(dx) > Math.abs(dy) ? (dx < 0 ? 'left' : 'right') : (dy < 0 ? 'up' : 'down');
     }
-    focus(world.self.x, world.self.y, view);
+    focus(world.self.x, world.self.y, view, world.map);
   }
 
   const renderTime = now - 90, remotes = [];
