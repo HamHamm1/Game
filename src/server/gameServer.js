@@ -1,7 +1,7 @@
 // Authoritative realtime world across multiple maps.
 import { WebSocketServer } from 'ws';
 import { MSG, STATUS, TICK_HZ, PLAYER_SPEED, MAX_CHAT_LEN } from '../shared/constants.js';
-import { TILE, getMap } from '../shared/maps.js';
+import { TILE, getMap, getInterior, doorNear } from '../shared/maps.js';
 import * as players from './players.js';
 import * as content from './content.js';
 import { isSolid, portalAt } from './collision.js';
@@ -51,7 +51,18 @@ function nearestNpc(acc) {
 
 function handleInteract(c) {
   const best = nearestNpc(c.acc);
-  if (!best) return;
+  if (!best) {
+    // No NPC in reach — try entering a building doorway.
+    const b = doorNear(c.acc.map, c.acc.x, c.acc.y);
+    if (b) {
+      const int = getInterior(c.acc.map, b);
+      c.acc.map = int.id; c.acc.x = int.spawn.x * TILE + TILE / 2; c.acc.y = int.spawn.y * TILE + TILE / 2;
+      c.input = {}; players.persist();
+      send(c.ws, MSG.TOAST, { text: `เข้าสู่ ${int.name}`, level: 'good' });
+      send(c.ws, MSG.CONTENT, { content: content.get() });
+    }
+    return;
+  }
   const explicit = content.get().dialogues[best.id];
   const dlg = explicit ? { lines: explicit.lines, choices: explicit.choices } : templateDialogue(best);
   send(c.ws, MSG.DIALOGUE, {

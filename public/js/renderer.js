@@ -1,14 +1,19 @@
 // Camera + multi-map rendering with depth-sorted objects and characters.
 import { TILE, getMap } from '/shared/maps.js';
 import { T } from '/shared/tiles.js';
-import { bakeMap, buildingSprite, treeSprite, propSprite, mountainSprite, makeCharacter, drawPortrait, loadTileset, tilesetOk } from './art.js';
+import { bakeMap, bakeInterior, furnitureSprite, buildingSprite, treeSprite, propSprite, mountainSprite, makeCharacter, drawPortrait, loadTileset, tilesetOk } from './art.js';
 
 loadTileset();                // begin loading the terrain tileset immediately
 const baked = new Map();      // mapId -> canvas
 const charCache = new Map();  // lookKey -> sheet
 function bakedMap(id) {
+  const m = getMap(id);
+  if (m.interior) {                            // interiors are procedural — no tileset needed
+    if (!baked.has(id)) baked.set(id, bakeInterior(m));
+    return baked.get(id);
+  }
   if (!tilesetOk()) return null;              // wait for the tileset image
-  if (!baked.has(id)) baked.set(id, bakeMap(getMap(id)));
+  if (!baked.has(id)) baked.set(id, bakeMap(m));
   return baked.get(id);
 }
 function sheetFor(look) {
@@ -40,6 +45,16 @@ export function draw(ctx, view, mapId, remotes, self, npcs, frameTick) {
   }
   ctx.drawImage(bake, camera.x, camera.y, view.w, view.h, 0, 0, view.w, view.h);
 
+  // interior floor decals (rugs) — drawn under furniture and characters
+  if (m.interior) {
+    for (const o of m.objects) {
+      if (o.t !== 'furn') continue;
+      const s = furnitureSprite(o);
+      if (!s.flat) continue;
+      ctx.drawImage(s.canvas, Math.round((o.x + 0.5) * TILE - camera.x - s.canvas.width / 2), Math.round((o.y + 0.5) * TILE - camera.y - s.canvas.height / 2));
+    }
+  }
+
   // portals glow
   for (const p of m.portals) {
     const px = p.x * TILE - camera.x, py = p.y * TILE - camera.y;
@@ -56,6 +71,7 @@ export function draw(ctx, view, mapId, remotes, self, npcs, frameTick) {
     else if (o.t === 'tree') { const s = treeSprite(o.variant, o.code === T.SNOW); D.push({ y: (o.y + 1) * TILE, spr: s.canvas, dx: o.x * TILE + s.ox, dy: (o.y + 1) * TILE - s.canvas.height, sw: TILE * 0.85, scx: (o.x + 0.5) * TILE, scy: (o.y + 1) * TILE - 2 }); }
     else if (o.t === 'mountain') { const s = mountainSprite(o); D.push({ y: (o.y + o.h) * TILE, spr: s.canvas, dx: o.x * TILE + s.ox, dy: (o.y + o.h) * TILE - s.canvas.height, sw: o.w * TILE * 0.75, scx: (o.x + o.w / 2) * TILE, scy: (o.y + o.h) * TILE - 3 }); }
     else if (o.t === 'prop') { const s = propSprite(o); const fh = s.canvas.height; const flat = o.kind === 'flowerbed' || o.kind === 'bench'; D.push({ y: (o.y + 1) * TILE, spr: s.canvas, dx: o.x * TILE + s.ox, dy: (o.y + 1) * TILE - fh, sw: flat ? 0 : (PROP_SW[o.kind] || TILE * 0.7), scx: o.x * TILE + s.ox + s.canvas.width / 2, scy: (o.y + 1) * TILE - 2 }); }
+    else if (o.t === 'furn') { const s = furnitureSprite(o); if (s.flat || s.hang) continue; const fw = s.canvas.width, fh = s.canvas.height; D.push({ y: (o.y + 1) * TILE, spr: s.canvas, dx: (o.x + 0.5) * TILE - fw / 2, dy: (o.y + 1) * TILE - fh, sw: TILE * 0.5, scx: (o.x + 0.5) * TILE, scy: (o.y + 1) * TILE - 2 }); }
   }
   for (const n of npcs) {
     const sheet = sheetFor(n.look || { skin: '#e9c39b', hair: '#5a3b22', hairStyle: 'short', eye: '#333', outfit: '#556' });
@@ -92,8 +108,19 @@ export function draw(ctx, view, mapId, remotes, self, npcs, frameTick) {
     }
   }
 
+  // hanging fixtures (chandeliers) — drawn above everyone
+  if (m.interior) {
+    for (const o of m.objects) {
+      if (o.t !== 'furn') continue;
+      const s = furnitureSprite(o);
+      if (!s.hang) continue;
+      ctx.drawImage(s.canvas, Math.round((o.x + 0.5) * TILE - camera.x - s.canvas.width / 2), Math.round(1.4 * TILE - camera.y));
+    }
+  }
+
   // ---- ambient light tint (day/night) ----
   const amb = ambient();
+  if (m.interior) { amb.a = Math.min(amb.a, 0.14); amb.dark = 0; }   // rooms are lit within
   if (amb.a > 0.001) {
     ctx.save();
     ctx.globalCompositeOperation = 'multiply'; ctx.globalAlpha = amb.a;

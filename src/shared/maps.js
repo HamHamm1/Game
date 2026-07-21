@@ -162,11 +162,25 @@ const SOLID_PROPS = new Set(['fountain', 'statue', 'well', 'stall', 'signpost', 
 const _solid = {};
 
 export function getMaps() { return _maps; }
-export function getMap(id) { return _maps[id] || _maps.school; }
+export function getMap(id) {
+  if (_maps[id]) return _maps[id];
+  if (_interiors[id]) return _interiors[id];
+  // Resolve an interior id (`int:<fromMap>:<x>:<y>`) on demand — this lets the
+  // client rebuild the exact same room the server generated, from the id alone.
+  if (typeof id === 'string' && id.startsWith('int:')) {
+    const [, fromMapId, sx, sy] = id.split(':');
+    const from = _maps[fromMapId];
+    const b = from && from.objects.find((o) => o.t === 'building' && o.x === +sx && o.y === +sy);
+    if (b) return getInterior(fromMapId, b);
+  }
+  return _maps.school;
+}
 
 export function getSolid(id) {
   if (_solid[id]) return _solid[id];
-  const m = getMap(id), s = new Uint8Array(m.w * m.h);
+  const m = getMap(id);
+  if (m.solid) { _solid[id] = m.solid; return m.solid; }   // interiors carry their own solid grid
+  const s = new Uint8Array(m.w * m.h);
   for (let i = 0; i < s.length; i++) if (SOLID_TILE.has(m.tiles[i])) s[i] = 1;
   for (const o of m.objects) {
     if (o.t === 'building') {
@@ -183,6 +197,72 @@ export function getSolid(id) {
   }
   _solid[id] = s;
   return s;
+}
+
+// ---------------- INTERIORS (entered through building doors) ----------------
+const _interiors = {};
+const SOLID_FURN = new Set(['table', 'counter', 'bookshelf', 'bed', 'fireplace', 'throne', 'barrel', 'crate', 'shelf', 'wardrobe', 'desk', 'stage', 'chalkboard', 'stove', 'cauldron', 'piano', 'seatrow', 'plant', 'chair', 'stool', 'bench2']);
+
+function furnFor(style, w, h) {
+  const midx = w >> 1, list = [];
+  const put = (kind, x, y) => list.push({ t: 'furn', kind, x: Math.max(1, Math.min(w - 2, x | 0)), y: Math.max(2, Math.min(h - 2, y | 0)) });
+  put('rug', midx, h - 4);
+  if (style === 'cafe' || style === 'inn') {
+    for (let x = 2; x < w - 2; x++) put('counter', x, 2);
+    put('stove', w - 3, 2); put('shelf', 2, 2);
+    for (const [tx, ty] of [[3, h - 4], [w - 4, h - 4], [midx - 2, h - 3], [midx + 2, h - 3]]) { put('table', tx, ty); put('stool', tx, ty + 1); put('stool', tx, ty - 1); }
+    put('plant', 2, h - 2); put('barrel', w - 3, h - 2); put('fireplace', midx, 2);
+  } else if (style === 'library' || style === 'academy') {
+    for (let x = 2; x < w - 2; x += 2) { put('bookshelf', x, 2); }
+    put(style === 'academy' ? 'chalkboard' : 'bookshelf', midx, 2);
+    for (let y = 4; y < h - 2; y += 2) for (let x = 3; x < w - 2; x += 3) { put('desk', x, y); put('chair', x, y + 1); }
+    put('bookshelf', 2, h - 3); put('bookshelf', w - 3, h - 3);
+  } else if (style === 'shop' || style === 'shop2') {
+    for (let x = 2; x < w - 2; x++) put('shelf', x, 2);
+    for (let x = 3; x < w - 3; x += 2) put('counter', x, h - 4);
+    put('crate', 2, h - 2); put('crate', 3, h - 2); put('barrel', w - 3, h - 2); put('cauldron', w - 3, 3);
+  } else if (style === 'palace') {
+    for (let y = 2; y < h - 1; y++) put('rug', midx, y);
+    put('throne', midx, 2); put('plant', 2, 3); put('plant', w - 3, 3);
+    for (let y = 4; y < h - 2; y += 2) { put('column', 3, y); put('column', w - 4, y); }
+  } else if (style === 'opera') {
+    for (let x = 1; x < w - 1; x++) put('stage', x, 2);
+    for (let y = 4; y < h - 1; y++) for (let x = 2; x < w - 2; x += 2) put('seatrow', x, y);
+  } else { // houses & dorms
+    put('bed', 2, 3); put('wardrobe', w - 3, 3); put('fireplace', midx, 2);
+    put('table', midx, h - 4); put('chair', midx - 1, h - 4); put('chair', midx + 1, h - 4);
+    put('bookshelf', 2, h - 3); put('plant', w - 3, h - 2);
+  }
+  put('chandelier', midx, 3);   // decorative (hangs, non-solid)
+  return list;
+}
+
+export function getInterior(fromMapId, obj) {
+  const id = `int:${fromMapId}:${obj.x}:${obj.y}`;
+  if (_interiors[id]) return _interiors[id];
+  const w = Math.max(9, Math.min(15, obj.w + 1)), h = Math.max(8, Math.min(11, obj.h + 2));
+  const tiles = new Uint8Array(w * h).fill(T.FLOOR);
+  const solid = new Uint8Array(w * h);
+  for (let x = 0; x < w; x++) { solid[x] = 1; solid[1 * w + x] = 1; solid[(h - 1) * w + x] = 1; }
+  for (let y = 0; y < h; y++) { solid[y * w] = 1; solid[y * w + w - 1] = 1; }
+  const ex = w >> 1; solid[(h - 1) * w + ex] = 0;                     // doorway
+  const objects = furnFor(obj.style, w, h);
+  for (const f of objects) if (SOLID_FURN.has(f.kind)) solid[f.y * w + f.x] = 1;
+  const portals = [{ x: ex, y: h - 1, w: 1, h: 1, to: fromMapId, tx: obj.x + obj.door, ty: obj.y + obj.h, label: 'ออกไปข้างนอก' }];
+  _interiors[id] = { id, interior: true, style: obj.style, name: obj.name || 'ภายในอาคาร', w, h, tiles, solid, objects, portals, spawn: { x: ex, y: h - 3 } };
+  return _interiors[id];
+}
+
+// Building whose doorway the player is standing in front of (for entering).
+export function doorNear(mapId, px, py) {
+  const m = getMap(mapId); if (!m.objects) return null;
+  const tx = px / TILE, ty = py / TILE;
+  for (const o of m.objects) {
+    if (o.t !== 'building') continue;
+    const dx = o.x + o.door + 0.5, dy = o.y + o.h + 0.3;
+    if (Math.hypot(dx - tx, dy - ty) < 1.6) return o;
+  }
+  return null;
 }
 
 // List of walkable cells on a map suitable for placing NPCs (near roads/plaza).

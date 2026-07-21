@@ -143,6 +143,315 @@ const DECOR = [];
 ].forEach(([t, w]) => { for (let i = 0; i < w; i++) DECOR.push(t); });
 const pickDecor = (x, y) => DECOR[Math.floor(hashf(x * 3.1 + 1.3, y * 4.7 + 0.9) * 991) % DECOR.length];
 
+// ---------------- INTERIORS (baked room + furniture sprites) ----------------
+// Interiors ignore the terrain tileset — floors and walls are procedural so a
+// room reads instantly even before the tileset loads. Muted, cosy palette.
+const INT_PAL = {
+  cafe:    { floor: '#a9743f', wall: '#c39c6a', wains: '#7a4f2c', accent: '#e0b878', marble: false },
+  inn:     { floor: '#9c6a39', wall: '#b8935f', wains: '#6e4526', accent: '#d8a860', marble: false },
+  library: { floor: '#7a5a3a', wall: '#8f7f62', wains: '#4a3a28', accent: '#c9b98a', marble: false },
+  academy: { floor: '#6a5c4a', wall: '#7d7060', wains: '#463c30', accent: '#b0a080', marble: false },
+  palace:  { floor: '#e6e0ea', floor2: '#cbc0d8', wall: '#b6a6c8', wains: '#8a6f5a', accent: '#ffd24a', marble: true },
+  shop:    { floor: '#6f6470', wall: '#82778e', wains: '#463c50', accent: '#c9a24a', marble: false },
+  shop2:   { floor: '#5a7068', wall: '#6f8078', wains: '#3a4a44', accent: '#c9e0d4', marble: false },
+  opera:   { floor: '#5a2f3a', wall: '#7a4f6a', wains: '#3a1f2a', accent: '#ffd24a', marble: false },
+  default: { floor: '#9c7048', wall: '#b09070', wains: '#6a4a30', accent: '#d0b088', marble: false },
+};
+
+function framePic(ctx, x, y, w, h, P) {
+  ctx.fillStyle = shade(P.accent, 0.7); ctx.fillRect(x, y, w, h);
+  ctx.fillStyle = P.accent; ctx.fillRect(x + 1, y + 1, w - 2, h - 2);
+  ctx.fillStyle = shade(P.wall, 0.6); ctx.fillRect(x + 2, y + 2, w - 4, h - 4);
+  // a little landscape/portrait inside
+  ctx.fillStyle = shade(P.accent, 1.15); ctx.fillRect(x + 3, y + h - 6, w - 6, 3);
+  ctx.fillStyle = shade(P.wall, 0.9); ctx.fillRect(x + 4, y + 3, w - 8, 3);
+}
+
+export function bakeInterior(map) {
+  const P = INT_PAL[map.style] || INT_PAL.default;
+  const W = map.w, H = map.h, WP = W * TILE, HP = H * TILE;
+  const { c, ctx } = makeCanvas(WP, HP);
+  const wallH = 2 * TILE;                                    // top two rows = back wall
+
+  // ---- floor (rows 2..H-1) ----
+  for (let y = 2; y < H; y++) for (let x = 0; x < W; x++) {
+    const px = x * TILE, py = y * TILE;
+    if (P.marble) {
+      ctx.fillStyle = ((x + y) & 1) ? P.floor : P.floor2;
+      ctx.fillRect(px, py, TILE, TILE);
+      ctx.strokeStyle = 'rgba(255,255,255,0.08)'; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(px + 5, py + 7); ctx.lineTo(px + TILE - 7, py + TILE - 9); ctx.stroke();
+      ctx.strokeStyle = 'rgba(120,110,140,0.16)'; ctx.strokeRect(px + 0.5, py + 0.5, TILE - 1, TILE - 1);
+    } else {
+      const rs = (y % 2) ? 1.0 : 0.94;                       // alternate plank rows
+      ctx.fillStyle = shade(P.floor, rs); ctx.fillRect(px, py, TILE, TILE);
+      ctx.fillStyle = 'rgba(255,255,255,0.045)'; ctx.fillRect(px, py, TILE, 1);
+      ctx.fillStyle = shade(P.floor, rs * 0.86); ctx.fillRect(px, py + TILE - 2, TILE, 2);  // seam
+      const off = (y % 2) ? TILE / 2 : 0;                    // staggered joints
+      ctx.fillStyle = shade(P.floor, rs * 0.8); ctx.fillRect(px + off, py, 1, TILE);
+    }
+  }
+
+  // ---- side walls + bottom wall (single-tile borders) ----
+  const sideWall = (px, py, ao) => {
+    ctx.fillStyle = shade(P.wall, ao); ctx.fillRect(px, py, TILE, TILE);
+    ctx.fillStyle = P.wains; ctx.fillRect(px, py + TILE - 9, TILE, 9);              // baseboard
+    ctx.fillStyle = shade(P.wains, 1.25); ctx.fillRect(px, py + TILE - 9, TILE, 2);
+  };
+  for (let y = 2; y < H; y++) { sideWall(0, y * TILE, 0.9); sideWall((W - 1) * TILE, y * TILE, 0.84); }
+  const ex = W >> 1;
+  for (let x = 1; x < W - 1; x++) { if (x === ex) continue; sideWall(x * TILE, (H - 1) * TILE, 0.8); }
+  // inner edge shadow where floor meets side walls
+  ctx.fillStyle = 'rgba(0,0,0,0.16)';
+  ctx.fillRect(TILE, 2 * TILE, 3, HP); ctx.fillRect((W - 1) * TILE - 3, 2 * TILE, 3, HP);
+
+  // ---- back wall (top two rows) ----
+  ctx.fillStyle = P.wall; ctx.fillRect(0, 0, WP, wallH);
+  for (let x = 0; x < WP; x += 12) { ctx.fillStyle = shade(P.wall, 1.05); ctx.fillRect(x, 4, 6, wallH - 20); } // wallpaper stripes
+  ctx.fillStyle = shade(P.accent, 0.8); ctx.fillRect(0, 0, WP, 3);          // crown molding
+  ctx.fillStyle = P.accent; ctx.fillRect(0, 3, WP, 2);
+  const railY = wallH - 15;                                                  // chair rail + wainscot
+  ctx.fillStyle = P.wains; ctx.fillRect(0, railY, WP, 15);
+  ctx.fillStyle = shade(P.wains, 1.25); ctx.fillRect(0, railY, WP, 2);
+  for (let x = 4; x < WP - 4; x += 16) { ctx.strokeStyle = shade(P.wains, 0.75); ctx.lineWidth = 1; ctx.strokeRect(x + 1.5, railY + 4.5, 12, 7); }
+  for (let x = TILE; x < WP - TILE; x += TILE * 2) framePic(ctx, x + 5, 9, TILE - 10, 18, P);  // framed pictures
+  // soft shadow where back wall meets floor
+  const g = ctx.createLinearGradient(0, wallH, 0, wallH + 12);
+  g.addColorStop(0, 'rgba(0,0,0,0.24)'); g.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = g; ctx.fillRect(0, wallH, WP, 12);
+
+  // ---- doorway (exit) in the bottom row ----
+  const dx0 = ex * TILE, dy0 = (H - 1) * TILE;
+  ctx.fillStyle = shade(P.wains, 0.6); ctx.fillRect(dx0 - 2, dy0, TILE + 4, TILE);       // door frame
+  ctx.fillStyle = '#1b1622'; ctx.fillRect(dx0 + 2, dy0 + 2, TILE - 4, TILE - 2);         // opening (night outside)
+  ctx.fillStyle = P.accent; ctx.fillRect(dx0 + 2, dy0 + 2, TILE - 4, 2);                 // lintel
+  ctx.fillStyle = 'rgba(255,220,150,0.14)'; ctx.fillRect(dx0 + 5, dy0 + 6, TILE - 10, TILE - 8);
+  ctx.fillStyle = shade(P.accent, 1.1); ctx.fillRect(dx0 + TILE / 2 - 6, dy0 + TILE - 6, 12, 3); // welcome mat glint
+
+  return c;
+}
+
+// ---------------- FURNITURE SPRITES ----------------
+// Each returns { canvas, flat?, hang? }. flat = floor decal (rug) drawn under
+// everything; hang = hangs from the ceiling (chandelier). Others depth-sort.
+const woodGrain = (ctx, x, y, w, h, base) => {
+  ctx.fillStyle = base; ctx.fillRect(x, y, w, h);
+  ctx.fillStyle = shade(base, 0.82); for (let i = y + 3; i < y + h; i += 4) ctx.fillRect(x, i, w, 1);
+  ctx.fillStyle = shade(base, 1.12); ctx.fillRect(x, y, w, 1);
+  ctx.strokeStyle = OUTLINE; ctx.lineWidth = 1; ctx.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
+};
+
+export function furnitureSprite(obj) {
+  return cached(`f:${obj.kind}`, () => makeFurniture(obj.kind));
+}
+
+function makeFurniture(kind) {
+  const S = TILE;
+  const mk = (w, h) => makeCanvas(w, h);
+  switch (kind) {
+    case 'rug': {
+      const { c, ctx } = mk(S, S);
+      ctx.fillStyle = '#7a2f3a'; ctx.fillRect(1, 1, S - 2, S - 2);
+      ctx.fillStyle = '#a4404e'; ctx.fillRect(4, 4, S - 8, S - 8);
+      ctx.strokeStyle = '#ffd24a'; ctx.lineWidth = 1; ctx.strokeRect(3.5, 3.5, S - 7, S - 7);
+      ctx.fillStyle = '#ffd24a'; ctx.fillRect(S / 2 - 3, S / 2 - 3, 6, 6);
+      ctx.fillStyle = '#7a2f3a'; ctx.fillRect(S / 2 - 1, S / 2 - 1, 2, 2);
+      return { canvas: c, flat: true };
+    }
+    case 'table': {
+      const { c, ctx } = mk(S, 22);
+      woodGrain(ctx, 3, 4, S - 6, 8, '#8a5a34');          // top
+      ctx.fillStyle = shade('#8a5a34', 0.7); ctx.fillRect(5, 12, 3, 9); ctx.fillRect(S - 8, 12, 3, 9); // legs
+      return { canvas: c };
+    }
+    case 'desk': {
+      const { c, ctx } = mk(S, 22);
+      woodGrain(ctx, 2, 4, S - 4, 9, '#6f4a2c');
+      ctx.fillStyle = '#3a2a1c'; ctx.fillRect(4, 13, S - 8, 7);
+      ctx.fillStyle = '#e6dcc0'; ctx.fillRect(S / 2 - 5, 2, 10, 6);   // paper/book on top
+      ctx.strokeStyle = OUTLINE; ctx.strokeRect(S / 2 - 5.5, 1.5, 10, 6);
+      return { canvas: c };
+    }
+    case 'chair': {
+      const { c, ctx } = mk(20, 22);
+      woodGrain(ctx, 4, 2, 12, 10, '#7a4f2c');           // back
+      woodGrain(ctx, 3, 11, 14, 5, '#8a5a34');           // seat
+      ctx.fillStyle = shade('#7a4f2c', 0.7); ctx.fillRect(4, 16, 2, 5); ctx.fillRect(14, 16, 2, 5);
+      return { canvas: c };
+    }
+    case 'stool': {
+      const { c, ctx } = mk(16, 16);
+      woodGrain(ctx, 2, 5, 12, 4, '#8a5a34');
+      ctx.fillStyle = shade('#8a5a34', 0.7); ctx.fillRect(3, 9, 2, 6); ctx.fillRect(11, 9, 2, 6);
+      return { canvas: c };
+    }
+    case 'counter': {
+      const { c, ctx } = mk(S, 26);
+      woodGrain(ctx, 0, 4, S, 20, '#6f4a30');
+      ctx.fillStyle = shade('#6f4a30', 1.2); ctx.fillRect(0, 4, S, 3);   // polished top
+      ctx.fillStyle = shade('#6f4a30', 0.6); ctx.fillRect(2, 12, S - 4, 1);
+      return { canvas: c };
+    }
+    case 'stove': {
+      const { c, ctx } = mk(S, 26);
+      ctx.fillStyle = '#3a3540'; ctx.fillRect(2, 6, S - 4, 18);
+      ctx.strokeStyle = OUTLINE; ctx.strokeRect(2.5, 6.5, S - 5, 17);
+      ctx.fillStyle = '#ff8a3a'; ctx.fillRect(6, 12, 8, 8);            // fire glow
+      ctx.fillStyle = '#ffd24a'; ctx.fillRect(8, 14, 4, 4);
+      ctx.fillStyle = '#8a8f98'; ctx.fillRect(S - 9, 2, 4, 6);        // flue
+      return { canvas: c };
+    }
+    case 'bookshelf': {
+      const { c, ctx } = mk(S, 34);
+      woodGrain(ctx, 1, 1, S - 2, 32, '#5a3b22');
+      const cols = ['#8a3f3a', '#3a6a8a', '#6a8a3a', '#8a7a3a', '#6a3a8a', '#3a8a6a'];
+      for (let r = 0; r < 3; r++) {
+        const yy = 4 + r * 10;
+        ctx.fillStyle = '#2a1c12'; ctx.fillRect(3, yy + 7, S - 6, 3);   // shelf plank
+        for (let i = 0, x = 4; x < S - 6; i++) {
+          const bw = 2 + (i * 7 % 3); ctx.fillStyle = cols[(r * 3 + i) % cols.length];
+          ctx.fillRect(x, yy, bw, 7); x += bw + 1;
+        }
+      }
+      return { canvas: c };
+    }
+    case 'shelf': {
+      const { c, ctx } = mk(S, 20);
+      woodGrain(ctx, 1, 2, S - 2, 16, '#6f4a30');
+      ctx.fillStyle = '#2a1c12'; ctx.fillRect(2, 9, S - 4, 2);
+      for (const [x, col] of [[4, '#c94f7c'], [11, '#4fbf6a'], [18, '#4aa3ff'], [25, '#ffd24a']]) { ctx.fillStyle = col; ctx.fillRect(x, 4, 4, 4); ctx.fillRect(x, 12, 4, 4); }
+      return { canvas: c };
+    }
+    case 'wardrobe': {
+      const { c, ctx } = mk(S, 34);
+      woodGrain(ctx, 3, 1, S - 6, 32, '#5a3b28');
+      ctx.strokeStyle = shade('#5a3b28', 0.6); ctx.lineWidth = 1;
+      ctx.strokeRect(6.5, 4.5, (S - 12) / 2 - 1, 26); ctx.strokeRect(S / 2 + 0.5, 4.5, (S - 12) / 2 - 1, 26);
+      ctx.fillStyle = '#c9a24a'; ctx.fillRect(S / 2 - 2, 16, 2, 4); ctx.fillRect(S / 2 + 1, 16, 2, 4);
+      return { canvas: c };
+    }
+    case 'bed': {
+      const { c, ctx } = mk(S, 26);
+      woodGrain(ctx, 2, 2, 5, 22, '#5a3b28');            // headboard
+      ctx.fillStyle = '#c96a8a'; ctx.fillRect(7, 8, S - 9, 16);   // blanket
+      ctx.fillStyle = shade('#c96a8a', 0.8); ctx.fillRect(7, 16, S - 9, 8);
+      ctx.fillStyle = '#f6ead6'; ctx.fillRect(8, 4, 9, 7);        // pillow
+      ctx.strokeStyle = OUTLINE; ctx.strokeRect(7.5, 4.5, S - 10, 19);
+      return { canvas: c };
+    }
+    case 'fireplace': {
+      const { c, ctx } = mk(S, 30);
+      ctx.fillStyle = '#8a8478'; ctx.fillRect(1, 2, S - 2, 26);   // stone mantel
+      ctx.fillStyle = shade('#8a8478', 0.8); for (let y = 4; y < 28; y += 5) ctx.fillRect(1, y, S - 2, 1);
+      ctx.fillStyle = '#1b1420'; ctx.fillRect(6, 10, S - 12, 16); // hearth
+      ctx.fillStyle = '#ff7a2a'; ctx.fillRect(9, 18, S - 18, 8);
+      ctx.fillStyle = '#ffd24a'; ctx.fillRect(11, 20, S - 22, 5);
+      ctx.fillStyle = shade('#8a8478', 1.15); ctx.fillRect(0, 1, S, 3); // mantel shelf
+      ctx.strokeStyle = OUTLINE; ctx.strokeRect(1.5, 2.5, S - 3, 25);
+      return { canvas: c };
+    }
+    case 'plant': {
+      const { c, ctx } = mk(S, 26);
+      ctx.fillStyle = '#8a5a3a'; ctx.fillRect(9, 18, S - 18, 7);   // pot
+      ctx.fillStyle = shade('#8a5a3a', 1.15); ctx.fillRect(9, 18, S - 18, 2);
+      ctx.fillStyle = '#3a7a4a'; ctx.beginPath(); ctx.arc(S / 2, 12, 8, 0, 7); ctx.fill();
+      ctx.fillStyle = '#4f9a5f'; ctx.beginPath(); ctx.arc(S / 2 - 4, 9, 4, 0, 7); ctx.arc(S / 2 + 4, 10, 4, 0, 7); ctx.arc(S / 2, 5, 4, 0, 7); ctx.fill();
+      return { canvas: c };
+    }
+    case 'barrel': {
+      const { c, ctx } = mk(20, 24);
+      ctx.fillStyle = '#8a5a34'; rr(ctx, 3, 3, 14, 19, 4); ctx.fill();
+      ctx.fillStyle = shade('#8a5a34', 0.8); for (const y of [7, 12, 17]) ctx.fillRect(3, y, 14, 2);
+      ctx.fillStyle = '#5f5a52'; ctx.fillRect(3, 6, 14, 1); ctx.fillRect(3, 17, 14, 1);
+      ctx.strokeStyle = OUTLINE; rr(ctx, 3, 3, 14, 19, 4); ctx.stroke();
+      return { canvas: c };
+    }
+    case 'crate': {
+      const { c, ctx } = mk(20, 20);
+      woodGrain(ctx, 2, 3, 16, 15, '#8a6a3a');
+      ctx.strokeStyle = shade('#8a6a3a', 0.6); ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(2, 3); ctx.lineTo(18, 18); ctx.moveTo(18, 3); ctx.lineTo(2, 18); ctx.stroke();
+      return { canvas: c };
+    }
+    case 'cauldron': {
+      const { c, ctx } = mk(S, 24);
+      ctx.fillStyle = '#2f2a34'; ctx.beginPath(); ctx.arc(S / 2, 14, 9, 0, 7); ctx.fill();
+      ctx.fillStyle = '#1b1620'; ctx.fillRect(S / 2 - 9, 10, 18, 4);
+      ctx.fillStyle = '#6affc4'; ctx.fillRect(S / 2 - 7, 9, 14, 3);   // bubbling brew
+      ctx.fillStyle = '#a6ffe0'; ctx.fillRect(S / 2 - 3, 7, 3, 2);
+      ctx.fillStyle = '#ff7a2a'; ctx.fillRect(S / 2 - 6, 22, 12, 2);  // embers
+      return { canvas: c };
+    }
+    case 'throne': {
+      const { c, ctx } = mk(S, 36);
+      ctx.fillStyle = '#b0954e'; ctx.fillRect(6, 2, S - 12, 26);      // gold frame
+      ctx.fillStyle = '#ffd24a'; ctx.fillRect(8, 4, S - 16, 22);
+      ctx.fillStyle = '#7a2f3a'; ctx.fillRect(10, 10, S - 20, 16);    // cushion
+      ctx.fillStyle = '#ffd24a'; ctx.fillRect(4, 0, 4, 30); ctx.fillRect(S - 8, 0, 4, 30); // arms
+      gemAt(ctx, S / 2, 6, '#4aa3ff'); gemAt(ctx, S / 2 - 6, 3, '#ff4a8d'); gemAt(ctx, S / 2 + 6, 3, '#4fbf6a');
+      ctx.strokeStyle = OUTLINE; ctx.strokeRect(6.5, 2.5, S - 13, 25);
+      return { canvas: c };
+    }
+    case 'column': {
+      const { c, ctx } = mk(20, 40);
+      ctx.fillStyle = '#d8cfe0'; ctx.fillRect(5, 4, 10, 32);
+      ctx.fillStyle = shade('#d8cfe0', 1.12); ctx.fillRect(6, 4, 2, 32);
+      ctx.fillStyle = shade('#d8cfe0', 0.8); ctx.fillRect(12, 4, 2, 32);
+      ctx.fillStyle = '#c2b6cc'; ctx.fillRect(2, 0, 16, 5); ctx.fillRect(2, 35, 16, 5); // cap + base
+      ctx.strokeStyle = OUTLINE; ctx.strokeRect(5.5, 4.5, 9, 31);
+      return { canvas: c };
+    }
+    case 'chandelier': {
+      const { c, ctx } = mk(40, 30);
+      ctx.strokeStyle = '#5f5a52'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(20, 0); ctx.lineTo(20, 8); ctx.stroke();
+      ctx.fillStyle = '#b0954e'; ctx.beginPath(); ctx.ellipse(20, 12, 15, 4, 0, 0, 7); ctx.fill();
+      ctx.fillStyle = '#ffd24a'; for (const x of [5, 12, 20, 28, 35]) { ctx.fillRect(x - 1, 12, 2, 6); ctx.fillStyle = '#fff2c9'; ctx.beginPath(); ctx.arc(x, 20, 3, 0, 7); ctx.fill(); ctx.fillStyle = '#ffd24a'; }
+      return { canvas: c, hang: true };
+    }
+    case 'chalkboard': {
+      const { c, ctx } = mk(S, 24);
+      ctx.fillStyle = '#5a3b28'; ctx.fillRect(1, 1, S - 2, 20);
+      ctx.fillStyle = '#26302a'; ctx.fillRect(3, 3, S - 6, 15);
+      ctx.strokeStyle = 'rgba(230,230,220,0.5)'; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(6, 7); ctx.lineTo(14, 7); ctx.moveTo(6, 11); ctx.lineTo(18, 11); ctx.moveTo(6, 15); ctx.lineTo(12, 15); ctx.stroke();
+      ctx.fillStyle = '#c9b98a'; ctx.fillRect(3, 18, S - 6, 3);
+      return { canvas: c };
+    }
+    case 'stage': {
+      const { c, ctx } = mk(S, 18);
+      woodGrain(ctx, 0, 6, S, 12, '#6f4a30');
+      ctx.fillStyle = '#b0954e'; ctx.fillRect(0, 4, S, 3);          // gilt lip
+      ctx.fillStyle = '#7a2f3a'; ctx.fillRect(0, 0, S, 5);          // curtain hem
+      return { canvas: c };
+    }
+    case 'seatrow': {
+      const { c, ctx } = mk(S, 16);
+      ctx.fillStyle = '#7a2f3a'; ctx.fillRect(2, 4, S - 4, 10);
+      ctx.fillStyle = shade('#7a2f3a', 1.2); ctx.fillRect(2, 4, S - 4, 3);
+      ctx.fillStyle = shade('#7a2f3a', 0.7); ctx.fillRect(2, 11, S - 4, 3);
+      ctx.strokeStyle = OUTLINE; ctx.strokeRect(2.5, 4.5, S - 5, 9);
+      return { canvas: c };
+    }
+    case 'piano': {
+      const { c, ctx } = mk(S, 26);
+      ctx.fillStyle = '#1b1620'; ctx.fillRect(2, 4, S - 4, 20);
+      ctx.fillStyle = '#f6ead6'; ctx.fillRect(4, 14, S - 8, 5);     // keys
+      ctx.fillStyle = '#1b1620'; for (let x = 6; x < S - 6; x += 3) ctx.fillRect(x, 14, 1, 3);
+      ctx.strokeStyle = OUTLINE; ctx.strokeRect(2.5, 4.5, S - 5, 19);
+      return { canvas: c };
+    }
+    default: {
+      const { c, ctx } = mk(S, 18);
+      woodGrain(ctx, 3, 3, S - 6, 12, '#7a5a3a');
+      return { canvas: c };
+    }
+  }
+}
+function gemAt(ctx, x, y, col) {
+  ctx.fillStyle = col; ctx.beginPath(); ctx.moveTo(x, y - 3); ctx.lineTo(x + 3, y); ctx.lineTo(x, y + 3); ctx.lineTo(x - 3, y); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,0.7)'; ctx.fillRect(x - 1, y - 1, 1, 1);
+}
+
 // ---------------- OBJECT SPRITES ----------------
 const cache = new Map();
 function cached(key, fn) { if (!cache.has(key)) cache.set(key, fn()); return cache.get(key); }
