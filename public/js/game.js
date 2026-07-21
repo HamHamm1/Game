@@ -74,7 +74,7 @@ document.getElementById('creator-random').onclick = () => {
 };
 
 // ---- Screens flow: creator -> join -> game ----
-const world = { status: 'pending', canChat: false, self: null, map: 'school', remotes: new Map(), npcs: [], quests: [], affection: {}, questProgress: {}, reputation: 0 };
+const world = { status: 'pending', canChat: false, self: null, map: 'school', remotes: new Map(), npcs: [], npcById: {}, npcLive: new Map(), quests: [], affection: {}, questProgress: {}, reputation: 0 };
 let net = null;
 const input = createInput({ onInteract: () => net?.interact() });
 
@@ -114,6 +114,7 @@ function startNet(name) {
       [MSG.STATUS]: (m) => { world.status = m.status; world.canChat = m.canChat; applyStatus(); },
       [MSG.CONTENT]: (m) => {
         world.npcs = m.content.npcs || []; world.quests = m.content.quests || [];
+        world.npcById = {}; for (const n of world.npcs) world.npcById[n.id] = n;
         ui.renderQuests(world.quests, world.questProgress, world.affection, world.npcs, world.reputation);
       },
       [MSG.STATE]: (m) => ingestState(m),
@@ -147,7 +148,7 @@ function applyStatus(reason) {
 function ingestState(m) {
   const now = performance.now(), seen = new Set();
   // Detect a map change for the local player (portal used).
-  if (world.self && m.map && m.map !== world.map) { world.map = m.map; world.remotes.clear(); }
+  if (world.self && m.map && m.map !== world.map) { world.map = m.map; world.remotes.clear(); world.npcLive.clear(); }
   for (const p of m.players) {
     seen.add(p.id);
     if (world.self && p.id === world.self.id) {
@@ -164,6 +165,20 @@ function ingestState(m) {
     world.remotes.set(p.id, r);
   }
   for (const id of world.remotes.keys()) if (!seen.has(id)) world.remotes.delete(id);
+
+  // Living NPCs — interpolate positions like remote players.
+  if (m.npcs) {
+    const seenN = new Set();
+    for (const n of m.npcs) {
+      seenN.add(n.id);
+      let r = world.npcLive.get(n.id);
+      if (!r) r = { prev: { x: n.x, y: n.y, t: now }, next: { x: n.x, y: n.y, t: now } };
+      r.prev = r.next; r.next = { x: n.x, y: n.y, t: now };
+      r.dir = n.dir; r.moving = n.moving; r.emote = n.emote; r.id = n.id;
+      world.npcLive.set(n.id, r);
+    }
+    for (const id of world.npcLive.keys()) if (!seenN.has(id)) world.npcLive.delete(id);
+  }
 }
 
 // ---- Chat / buttons ----
@@ -204,7 +219,21 @@ function loop(now) {
   }
 
   if (world.status === 'approved' && world.self) {
-    const npcs = world.npcs.filter((n) => (n.map || 'school') === world.map);
+    const npcs = [];
+    if (world.npcLive.size) {
+      for (const r of world.npcLive.values()) {
+        const ident = world.npcById[r.id]; if (!ident) continue;
+        const span = Math.max(1, r.next.t - r.prev.t);
+        const a = Math.max(0, Math.min(1.2, (renderTime - r.prev.t) / span));
+        npcs.push({
+          id: r.id, name: ident.name, look: ident.look, dir: r.dir, moving: r.moving, emote: r.emote,
+          x: r.prev.x + (r.next.x - r.prev.x) * a, y: r.prev.y + (r.next.y - r.prev.y) * a,
+        });
+      }
+    } else { // fallback before first NPC snapshot arrives
+      for (const n of world.npcs) if ((n.map || 'school') === world.map)
+        npcs.push({ id: n.id, name: n.name, look: n.look, dir: 'down', moving: false, x: n.x * TILE + TILE / 2, y: n.y * TILE + TILE / 2 });
+    }
     draw(ctx, view, world.map, remotes, world.self, npcs, tick);
   } else { ctx.fillStyle = '#0c1420'; ctx.fillRect(0, 0, view.w, view.h); }
   requestAnimationFrame(loop);

@@ -4,6 +4,7 @@ import { MSG, STATUS, TICK_HZ, PLAYER_SPEED, MAX_CHAT_LEN } from '../shared/cons
 import { TILE, getMap, getInterior, doorNear } from '../shared/maps.js';
 import * as players from './players.js';
 import * as content from './content.js';
+import * as npcSim from './npcSim.js';
 import { isSolid, portalAt } from './collision.js';
 import { aiReply, aiEnabled } from './ai.js';
 
@@ -43,7 +44,9 @@ function templateDialogue(npc) {
 function nearestNpc(acc) {
   let best = null, bestD = Infinity;
   for (const npc of npcsOnMap(acc.map)) {
-    const d = Math.hypot(npc.x * TILE - acc.x, npc.y * TILE - acc.y);
+    const live = npcSim.posOf(npc.id);                 // NPCs walk around — use live pos
+    const nx = live ? live.x : npc.x * TILE, ny = live ? live.y : npc.y * TILE;
+    const d = Math.hypot(nx - acc.x, ny - acc.y);
     if (d < bestD) { bestD = d; best = npc; }
   }
   return bestD <= TILE * 1.7 ? best : null;
@@ -63,6 +66,7 @@ function handleInteract(c) {
     }
     return;
   }
+  npcSim.pauseFacing(best.id, c.acc.x, c.acc.y);       // stop wandering & face the player
   const explicit = content.get().dialogues[best.id];
   const dlg = explicit ? { lines: explicit.lines, choices: explicit.choices } : templateDialogue(best);
   send(c.ws, MSG.DIALOGUE, {
@@ -143,18 +147,20 @@ function step() {
   }
 
   // Broadcast per map so you only see players on your map.
-  const byMap = {};
+  const byMap = {}, activeMaps = new Set();
   for (const c of live.values()) {
     if (!c.acc || c.acc.status !== STATUS.APPROVED) continue;
+    activeMaps.add(c.acc.map);
     (byMap[c.acc.map] ||= []).push({
       id: c.acc.id, name: c.acc.name, map: c.acc.map,
       x: Math.round(c.acc.x), y: Math.round(c.acc.y),
       dir: c.acc.dir, moving: !!c.acc.moving, look: c.acc.look, rep: c.acc.reputation,
     });
   }
+  const npcByMap = npcSim.update(activeMaps);           // advance living NPCs on active maps
   for (const c of live.values()) {
     if (!c.acc || c.acc.status !== STATUS.APPROVED) continue;
-    send(c.ws, MSG.STATE, { players: byMap[c.acc.map] || [], map: c.acc.map, t: Date.now() });
+    send(c.ws, MSG.STATE, { players: byMap[c.acc.map] || [], npcs: npcByMap[c.acc.map] || [], map: c.acc.map, t: Date.now() });
   }
 }
 
@@ -196,8 +202,9 @@ export function attach(server) {
     ws.on('close', () => live.delete(connId));
     ws.on('error', () => {});
   });
+  npcSim.reconcile();                                   // spin up living NPCs from content
   setInterval(step, 1000 / TICK_HZ);
-  content.onChange(() => pushContent());
+  content.onChange(() => { pushContent(); npcSim.reconcile(); });
   return { broadcast, live };
 }
 

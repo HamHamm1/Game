@@ -75,7 +75,10 @@ export function draw(ctx, view, mapId, remotes, self, npcs, frameTick) {
   }
   for (const n of npcs) {
     const sheet = sheetFor(n.look || { skin: '#e9c39b', hair: '#5a3b22', hairStyle: 'short', eye: '#333', outfit: '#556' });
-    D.push({ y: n.y * TILE + TILE, char: sheet, frames: sheet.down, idx: 0, cx: n.x * TILE + TILE / 2, cy: n.y * TILE + TILE, name: n.name, npc: true });
+    const flip = n.dir === 'left' && sheet.flipLeft;
+    const frames = (n.dir === 'left' ? sheet.right : sheet[n.dir]) || sheet.down;
+    const idx = n.moving ? [1, 0, 2, 0][Math.floor(frameTick / 5) % 4] : 0;
+    D.push({ y: n.y + TILE * 0.1, char: sheet, frame: frames[idx], cx: n.x, cy: n.y, name: n.name, npc: true, flip, emote: n.emote });
   }
   const everyone = [self, ...remotes].filter(Boolean);
   for (const p of everyone) {
@@ -105,6 +108,7 @@ export function draw(ctx, view, mapId, remotes, self, npcs, frameTick) {
       else ctx.drawImage(fr, sx, sy);
       if (d.self) { ctx.strokeStyle = '#ffd24a'; ctx.lineWidth = 2; ctx.strokeRect(sx + 6, sy + 2, w - 12, h - 4); }
       nameplate(ctx, d.name, Math.round(d.cx - camera.x), sy - 2, d.self, d.npc);
+      if (d.emote) drawEmote(ctx, Math.round(d.cx - camera.x), sy - 14, d.emote);
     }
   }
 
@@ -198,6 +202,19 @@ function label(ctx, text, cx, y) {
   const tw = ctx.measureText(text).width + 12;
   ctx.fillStyle = 'rgba(20,16,30,0.72)'; ctx.fillRect(cx - tw / 2, y - 11, tw, 16);
   ctx.fillStyle = '#e9d9ff'; ctx.fillText(text, cx, y + 1);
+}
+const EMOTE = {
+  love: { g: '♥', c: '#ff5a8d' }, chat: { g: '♬', c: '#7fc4ff' },
+  happy: { g: '☺', c: '#ffd24a' }, note: { g: '♪', c: '#b06bff' },
+  surprise: { g: '!', c: '#ff8a3a' },
+};
+function drawEmote(ctx, cx, y, kind) {
+  const e = EMOTE[kind] || EMOTE.chat;
+  ctx.fillStyle = 'rgba(255,255,255,0.95)';
+  ctx.beginPath(); ctx.roundRect ? ctx.roundRect(cx - 9, y - 15, 18, 16, 5) : ctx.rect(cx - 9, y - 15, 18, 16); ctx.fill();
+  ctx.beginPath(); ctx.moveTo(cx - 3, y + 0); ctx.lineTo(cx + 3, y + 0); ctx.lineTo(cx, y + 4); ctx.closePath(); ctx.fill(); // tail
+  ctx.fillStyle = e.c; ctx.font = 'bold 12px system-ui'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText(e.g, cx, y - 6); ctx.textBaseline = 'alphabetic';
 }
 function nameplate(ctx, name, cx, y, self, npc) {
   ctx.font = 'bold 10px system-ui'; ctx.textAlign = 'center';
