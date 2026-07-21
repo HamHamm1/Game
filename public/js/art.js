@@ -548,6 +548,51 @@ function drawInn(ctx, obj, cfg, L, R, mid, bodyTop, sh) {
   const sgx = R - U * 1.2, sgy = bodyTop + U; ctx.fillStyle = beam; ctx.fillRect(sgx - 8, sgy, 8, 1); ctx.fillRect(sgx - 8, sgy, 1, 4); ctx.fillStyle = '#4a3020'; ctx.fillRect(sgx - 7, sgy + 4, 6, 5); ctx.fillStyle = cfg.glass; ctx.fillRect(sgx - 6, sgy + 5, 4, 3);
 }
 
+// Gothic collegiate academy: central clock tower with spire + battlements,
+// symmetric gabled wings with dormers, lancet windows, buttresses.
+function drawAcademy(ctx, obj, cfg, L, R, mid, bodyTop, sh) {
+  const W = R - L, bh = sh - bodyTop, stone = cfg.wall, roofc = cfg.roof, trim = cfg.trim;
+  const jewel = ['#5a6a8a', '#4a6a70', '#6a5a7a', '#7a6a4a'];
+  const ctw = Math.max(U * 2.6, W * 0.24), cL = mid - ctw / 2, cR = mid + ctw / 2;
+
+  const wing = (x0, x1) => {
+    const w = x1 - x0, wc = (x0 + x1) / 2, nb = Math.max(2, Math.round(w / U) - 1), rows = Math.max(1, obj.h - 3);
+    ctx.fillStyle = OUTLINE; ctx.fillRect(x0 - 1, bodyTop - 1, w + 2, bh + 1);
+    matFill(ctx, 'stone', x0, bodyTop, w, bh, stone, trim);
+    for (let c = 0; c < nb; c++) for (let r = 0; r < rows; r++) { const wx = x0 + w * (c + 0.5) / nb - 2.5, wy = bodyTop + 7 + r * ((bh - 16) / rows); winDraw(ctx, 'lancet', wx, wy, 5, 10, trim, (c + r) % 2 ? jewel[(c + r) % jewel.length] : '#f2cf88'); }
+    for (let i = 0; i <= nb; i++) { const bx = x0 + w * i / nb; ctx.fillStyle = shade(stone, 0.84); ctx.fillRect(bx - 1, bodyTop + 2, 2, bh - 2); ctx.fillStyle = shade(stone, 1.08); ctx.fillRect(bx - 1, bodyTop + 2, 1, bh - 2); ctx.fillStyle = roofc; fillPoly(ctx, [[bx - 2, bodyTop + 2], [bx, bodyTop - 2], [bx + 2, bodyTop + 2]]); }
+    const apexY = bodyTop - U * 1.6;
+    ctx.fillStyle = OUTLINE; fillPoly(ctx, [[x0 - 2, bodyTop], [wc, apexY - 2], [x1 + 2, bodyTop]]);
+    ctx.fillStyle = roofc; fillPoly(ctx, [[x0 - 1, bodyTop], [wc, apexY], [x1 + 1, bodyTop]]);
+    ctx.fillStyle = shade(roofc, 0.8); fillPoly(ctx, [[wc, apexY], [x1 + 1, bodyTop], [wc, bodyTop]]);
+    ctx.fillStyle = shade(roofc, 0.92); for (let k = 1; k < 3; k++) { const yy = apexY + (bodyTop - apexY) * k / 3, hf = (w / 2 + 2) * k / 3; ctx.fillRect(wc - hf, yy, hf * 2, 1); }
+    const nd = Math.max(1, Math.round(w / (U * 2.2))); for (let i = 0; i < nd; i++) dormerDraw(ctx, x0 + w * (i + 0.5) / nd, bodyTop - U * 0.5, roofc, trim, cfg.glass);
+    ctx.fillStyle = trim; ctx.fillRect(wc - 0.5, apexY - 4, 1, 4);
+  };
+  wing(L, cL); wing(cR, R);
+
+  const tTop = bodyTop - U * 2.6;
+  ctx.fillStyle = OUTLINE; ctx.fillRect(cL - 1, tTop - 1, ctw + 2, sh - tTop + 1);
+  matFill(ctx, 'stone', cL, tTop, ctw, sh - tTop, stone, trim);
+  ctx.fillStyle = shade(trim, 0.85); for (let yy = tTop + U; yy < sh - 4; yy += U) ctx.fillRect(cL, yy, ctw, 1);
+  const clkY = tTop + U * 0.95;
+  ctx.fillStyle = trim; ctx.beginPath(); ctx.arc(mid, clkY, ctw * 0.22, 0, 7); ctx.fill();
+  ctx.fillStyle = '#e8e0d0'; ctx.beginPath(); ctx.arc(mid, clkY, ctw * 0.18, 0, 7); ctx.fill();
+  ctx.strokeStyle = '#2a2230'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(mid, clkY); ctx.lineTo(mid, clkY - ctw * 0.12); ctx.moveTo(mid, clkY); ctx.lineTo(mid + ctw * 0.09, clkY + ctw * 0.05); ctx.stroke();
+  for (let i = 0; i < 2; i++) { const wx = cL + ctw * (i + 1) / 3 - 2.5; winDraw(ctx, 'lancet', wx, clkY + ctw * 0.3, 5, U * 1.2, trim, '#f2cf88'); }
+  drawDoor(ctx, mid, sh - 1, U * 1.2, U * 1.8, trim);
+  ctx.fillStyle = trim; ctx.fillRect(cL - 1, tTop - 1, ctw + 2, 2);
+  ctx.fillStyle = stone; for (let bx = cL; bx < cR; bx += 4) ctx.fillRect(bx, tTop - 3, 2, 3);
+  pinnacle(ctx, cL + 1, tTop, roofc, trim); pinnacle(ctx, cR - 1, tTop, roofc, trim);
+  const sH = ctw * 0.9, y0 = tTop - 3;
+  ctx.fillStyle = OUTLINE; fillPoly(ctx, [[cL - 2, y0], [mid, y0 - sH - 1], [cR + 2, y0]]);
+  ctx.fillStyle = roofc; fillPoly(ctx, [[cL - 1, y0], [mid, y0 - sH], [cR + 1, y0]]);
+  ctx.fillStyle = shade(roofc, 0.8); fillPoly(ctx, [[mid, y0 - sH], [cR + 1, y0], [mid, y0]]);
+  ctx.fillStyle = shade(roofc, 0.92); for (let k = 1; k < 4; k++) { const yy = y0 - sH * k / 4, hf = (ctw / 2 + 1) * (1 - k / 4); ctx.fillRect(mid - hf, yy, hf * 2, 1); }
+  ctx.strokeStyle = shade(trim, 0.7); ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(mid, y0 - sH); ctx.lineTo(mid, y0 - sH - 9); ctx.stroke();
+  ctx.fillStyle = '#57cfe0'; fillPoly(ctx, [[mid, y0 - sH - 9], [mid + 8, y0 - sH - 6], [mid, y0 - sH - 3]]);
+}
+
 const BESPOKE = { cafe: drawCafe, library: drawLibrary, inn: drawInn };
 
 function buildVictorian(obj) {
@@ -560,6 +605,7 @@ function buildVictorian(obj) {
   const { c: sc, ctx } = makeCanvas(sw, sh);
   const L = PAD, R = PAD + W, mid = L + W / 2, bodyTop = sh - bodyH;
   if (cfg.grand === 'royal') drawPalace(ctx, obj, cfg, L, R, mid, bodyTop, sh);
+  else if (obj.style === 'academy') drawAcademy(ctx, obj, cfg, L, R, mid, bodyTop, sh);
   else if (grand) drawGrand(ctx, obj, cfg, L, R, mid, bodyTop, sh, towerH, roofH);
   else if (BESPOKE[obj.style]) BESPOKE[obj.style](ctx, obj, cfg, L, R, mid, bodyTop, sh);
   else { drawBody(ctx, obj, cfg, L, R, bodyTop, sh); drawRoof(ctx, obj, cfg, L, R, mid, bodyTop, roofH); }
