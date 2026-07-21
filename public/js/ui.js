@@ -27,27 +27,52 @@ export function chatLog(from, text) {
   log.scrollTop = log.scrollHeight;
 }
 
-let onChoose = null;
-export function showDialogue(m, chooseCb) {
-  onChoose = chooseCb;
+let onChoose = null, onSend = null, curNpc = null;
+export function showDialogue(m, chooseCb, sendCb) {
+  onChoose = chooseCb; onSend = sendCb; curNpc = m.npc.id;
   $('dlg-name').textContent = m.npc.name;
   $('dlg-role').textContent = m.npc.role || '';
   $('dlg-aff').textContent = `♥ ${m.affection || 0}`;
-  const cv = $('dlg-portrait');
-  const ctx = cv.getContext('2d');
+  const cv = $('dlg-portrait'), ctx = cv.getContext('2d');
   ctx.clearRect(0, 0, cv.width, cv.height);
   drawPortrait(ctx, m.npc.portrait, 6, 4, 84);
-  const lines = $('dlg-lines');
-  lines.innerHTML = m.lines.map((l) => `<p>${escape(l)}</p>`).join('');
-  const ch = $('dlg-choices');
-  ch.innerHTML = '';
-  m.choices.forEach((c, i) => {
+  $('dlg-lines').innerHTML = m.lines.map((l) => `<p>${escape(l)}</p>`).join('');
+  const ch = $('dlg-choices'); ch.innerHTML = '';
+  (m.choices || []).forEach((c, i) => {
     const b = document.createElement('button');
     b.textContent = c.text;
     b.onclick = () => { onChoose?.(i); hideDialogue(); };
     ch.appendChild(b);
   });
+  // roleplay memory: replay stored conversation so the NPC "remembers"
+  const chat = $('dlg-chat'); chat.innerHTML = '';
+  (m.history || []).forEach((t) => appendChat(t.role === 'user' ? 'you' : m.npc.name, t.content, t.role === 'user'));
+  $('dlg-inputrow').style.display = 'flex';
+  const hint = m.ai ? '' : ' ';
+  $('dlg-input').placeholder = m.ai ? 'พิมพ์คุยกับตัวละคร… (โรลเพลย์ AI)' : 'พิมพ์คุยได้ (โหมดออฟไลน์ — ตั้ง API key เพื่อ AI จริง)';
   $('dialogue').classList.add('show');
+  setTimeout(() => $('dlg-input').focus(), 50);
+}
+export function appendChat(from, text, isYou) {
+  const chat = $('dlg-chat');
+  const d = document.createElement('div');
+  d.className = 'chatbubble ' + (isYou ? 'you' : 'npc');
+  d.innerHTML = `<b>${escape(from)}</b> ${escape(text)}`;
+  chat.appendChild(d); chat.scrollTop = chat.scrollHeight;
+}
+export function setTyping(on) {
+  let t = $('dlg-typing');
+  if (on) {
+    if (!t) { t = document.createElement('div'); t.id = 'dlg-typing'; t.className = 'chatbubble npc'; t.textContent = '…'; $('dlg-chat').appendChild(t); }
+    $('dlg-chat').scrollTop = $('dlg-chat').scrollHeight;
+  } else if (t) t.remove();
+}
+export function dialogueNpc() { return $('dialogue').classList.contains('show') ? curNpc : null; }
+export function sendDialogue() {
+  const inp = $('dlg-input'), text = inp.value.trim();
+  if (!text || !curNpc) return;
+  appendChat('คุณ', text, true); inp.value = ''; setTyping(true);
+  onSend?.(curNpc, text);
 }
 export function hideDialogue() { $('dialogue').classList.remove('show'); }
 

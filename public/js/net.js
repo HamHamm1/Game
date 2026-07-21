@@ -28,6 +28,7 @@ export function connect({ id, name, look, handlers }) {
     chat: (text) => ws.readyState === 1 && ws.send(JSON.stringify({ type: MSG.CHAT, text })),
     interact: () => ws.readyState === 1 && ws.send(JSON.stringify({ type: MSG.INTERACT })),
     choose: (index) => ws.readyState === 1 && ws.send(JSON.stringify({ type: MSG.DIALOGUE_CHOICE, index })),
+    aiChat: (npcId, text) => ws.readyState === 1 && ws.send(JSON.stringify({ type: MSG.AI_CHAT, npcId, text })),
   };
   return api;
 }

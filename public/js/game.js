@@ -118,7 +118,14 @@ function startNet(name) {
       },
       [MSG.STATE]: (m) => ingestState(m),
       [MSG.CHAT_MSG]: (m) => ui.chatLog(m.from, m.text),
-      [MSG.DIALOGUE]: (m) => ui.showDialogue(m, (i) => net.choose(i)),
+      [MSG.DIALOGUE]: (m) => ui.showDialogue(m, (i) => net.choose(i), (npcId, text) => net.aiChat(npcId, text)),
+      [MSG.AI_TYPING]: () => ui.setTyping(true),
+      [MSG.AI_REPLY]: (m) => {
+        ui.setTyping(false); ui.appendChat(m.from, m.text, false);
+        if (typeof m.affection === 'number') { world.affection[m.npcId] = m.affection; document.getElementById('dlg-aff').textContent = `♥ ${m.affection}`; }
+        if (typeof m.reputation === 'number') world.reputation = m.reputation;
+        ui.renderQuests(world.quests, world.questProgress, world.affection, world.npcs, world.reputation);
+      },
       [MSG.TOAST]: (m) => {
         ui.toast(m.text, m.level);
         if (m.affection) Object.assign(world.affection, m.affection);
@@ -165,6 +172,9 @@ chatInput.addEventListener('keydown', (e) => { if (e.key === 'Enter' && chatInpu
 document.getElementById('btn-chat')?.addEventListener('click', () => chatInput.focus());
 document.getElementById('btn-quest')?.addEventListener('click', ui.togglePanel);
 document.getElementById('quest-close')?.addEventListener('click', ui.togglePanel);
+document.getElementById('dlg-send')?.addEventListener('click', () => ui.sendDialogue());
+document.getElementById('dlg-close')?.addEventListener('click', () => ui.hideDialogue());
+document.getElementById('dlg-input')?.addEventListener('keydown', (e) => { if (e.key === 'Enter') ui.sendDialogue(); e.stopPropagation(); });
 
 // ---- Main loop ----
 let last = performance.now(), tick = 0;

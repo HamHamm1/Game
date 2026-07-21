@@ -28,12 +28,14 @@ export function upsert(id, name, look) {
       quests: {},      // questId -> { state, progress }
       flags: {},       // story flags
       reputation: 0,   // starts hated; rises as you win people over
+      ai: {},          // npcId -> [{role, content}] roleplay memory
     };
     persist();
   } else {
     if (name && acc.status === STATUS.PENDING) acc.name = name;
     if (look) acc.look = { ...DEFAULT_LOOK, ...acc.look, ...look };
     if (!acc.map) { acc.map = 'school'; acc.x = 26 * 32; acc.y = 36 * 32; }
+    if (!acc.ai) acc.ai = {};
     persist();
   }
   return acc;

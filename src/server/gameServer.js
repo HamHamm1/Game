@@ -5,6 +5,7 @@ import { TILE, getMap } from '../shared/maps.js';
 import * as players from './players.js';
 import * as content from './content.js';
 import { isSolid, portalAt } from './collision.js';
+import { aiReply, aiEnabled } from './ai.js';
 
 let nextConnId = 1;
 const live = new Map(); // connId -> { ws, id, input, acc }
@@ -58,6 +59,8 @@ function handleInteract(c) {
     affection: c.acc.affection[best.id] || 0,
     lines: dlg.lines,
     choices: dlg.choices || [{ text: 'ทักทาย (+2 ♥)', affection: 2 }, { text: 'จากไป', affection: 0 }],
+    history: c.acc.ai?.[best.id] || [],
+    ai: aiEnabled(),
   });
 }
 
@@ -77,6 +80,23 @@ function handleChoice(c, index) {
       affection: { [best.id]: total }, reputation: c.acc.reputation,
     });
   }
+}
+
+async function handleAiChat(c, npcId, text) {
+  const acc = c.acc;
+  const npc = content.get().npcs.find((n) => n.id === npcId);
+  if (!npc || !text) return;
+  send(c.ws, MSG.AI_TYPING, { npcId });
+  acc.ai ||= {};
+  const hist = acc.ai[npcId] || [];
+  const reply = await aiReply(npc, acc, hist, text);
+  hist.push({ role: 'user', content: text }, { role: 'assistant', content: reply });
+  acc.ai[npcId] = hist.slice(-40);   // keep recent memory (persists across sessions)
+  // free-form chatting slowly warms the relationship
+  if ((acc.affection[npcId] || 0) < 100) players.addAffection(acc.id, npcId, 1);
+  c.acc = players.get(acc.id);
+  players.persist();
+  send(c.ws, MSG.AI_REPLY, { npcId, from: npc.name, text: reply, affection: acc.affection[npcId] || 0, reputation: c.acc.reputation });
 }
 
 function usePortal(c, portal) {
@@ -159,6 +179,7 @@ export function attach(server) {
         }
         case MSG.INTERACT: if (c.acc?.status === STATUS.APPROVED) handleInteract(c); break;
         case MSG.DIALOGUE_CHOICE: if (c.acc?.status === STATUS.APPROVED) handleChoice(c, m.index | 0); break;
+        case MSG.AI_CHAT: if (c.acc?.status === STATUS.APPROVED) handleAiChat(c, String(m.npcId || ''), String(m.text || '').slice(0, 500).trim()); break;
       }
     });
     ws.on('close', () => live.delete(connId));

@@ -13,13 +13,13 @@ const pick = (a) => a[(r() * a.length) | 0];
 
 // Seven hand-authored main love interests (dialogues.json matches these ids).
 const MAINS = [
-  { id: 'seraphine', name: 'เซราฟิน', role: 'นางเอกตัวจริงของนิยาย', map: 'school', hairStyle: 'long', look: { skin: '#f3d2b3', hair: '#f2d16b', eye: '#4aa3ff', outfit: '#ffd9e6' }, personality: 'cheerful' },
-  { id: 'aric', name: 'เจ้าชายอาริค', role: 'รัชทายาทแห่งอเล็กเทียร์', map: 'town', hairStyle: 'short', look: { skin: '#e9c39b', hair: '#8a6bd1', eye: '#c9a227', outfit: '#3a2f6b' }, personality: 'noble' },
-  { id: 'kaeld', name: 'ไคลด์', role: 'อัศวินหน้าเย็นแห่งลานประลอง', map: 'school', hairStyle: 'spiky', look: { skin: '#d8b08a', hair: '#3a3f4a', eye: '#7ad1c4', outfit: '#5a5f6b' }, personality: 'knight' },
-  { id: 'lumen', name: 'ลูเมน', role: 'จอมเวทเจ้าเล่ห์แห่งห้องสมุดต้องห้าม', map: 'school', hairStyle: 'ponytail', look: { skin: '#f0d6bd', hair: '#c94f7c', eye: '#a24aff', outfit: '#241b3a' }, personality: 'scholar' },
-  { id: 'rosalie', name: 'โรซาลี', role: 'สาวคาเฟ่ไรส์ทาผู้ร่าเริง', map: 'school', hairStyle: 'bob', look: { skin: '#f6cdae', hair: '#e08a3c', eye: '#4fbf6a', outfit: '#ffe1b0' }, personality: 'cheerful' },
-  { id: 'thane', name: 'รุ่นพี่เธน', role: 'ดาวโรงเรียน หัวหน้าหอชาย', map: 'town', hairStyle: 'short', look: { skin: '#e6bd94', hair: '#2b2b2b', eye: '#d13a3a', outfit: '#1f3a5a' }, personality: 'flirty' },
-  { id: 'nyx', name: 'นิกซ์', role: 'เด็กลึกลับสายมืด', map: 'world', hairStyle: 'hood', look: { skin: '#d9c2c8', hair: '#6a2fb0', eye: '#ff4a8d', outfit: '#14121f' }, personality: 'mysterious' },
+  { id: 'seraphine', name: 'เซราฟิน', role: 'นางเอกตัวจริงของนิยาย', map: 'school', x: 27, y: 28, look: { skin: '#f3d2b3', hair: '#f2d16b', hairStyle: 'long', eye: '#4aa3ff', outfit: '#ffd9e6' }, personality: 'cheerful' },
+  { id: 'aric', name: 'เจ้าชายอาริค', role: 'รัชทายาทแห่งอเล็กเทียร์', map: 'town', x: 30, y: 15, look: { skin: '#e9c39b', hair: '#8a6bd1', hairStyle: 'short', eye: '#c9a227', outfit: '#3a2f6b' }, personality: 'noble' },
+  { id: 'kaeld', name: 'ไคลด์', role: 'อัศวินหน้าเย็นแห่งลานประลอง', map: 'school', x: 9, y: 35, look: { skin: '#d8b08a', hair: '#3a3f4a', hairStyle: 'spiky', eye: '#7ad1c4', outfit: '#5a5f6b' }, personality: 'knight' },
+  { id: 'lumen', name: 'ลูเมน', role: 'จอมเวทเจ้าเล่ห์แห่งห้องสมุดต้องห้าม', map: 'school', x: 48, y: 33, look: { skin: '#f0d6bd', hair: '#c94f7c', hairStyle: 'ponytail', eye: '#a24aff', outfit: '#241b3a' }, personality: 'scholar' },
+  { id: 'rosalie', name: 'โรซาลี', role: 'สาวคาเฟ่ไรส์ทาผู้ร่าเริง', map: 'school', x: 12, y: 33, look: { skin: '#f6cdae', hair: '#e08a3c', hairStyle: 'bob', eye: '#4fbf6a', outfit: '#ffe1b0' }, personality: 'cheerful' },
+  { id: 'thane', name: 'รุ่นพี่เธน', role: 'ดาวโรงเรียน หัวหน้าหอชาย', map: 'town', x: 34, y: 26, look: { skin: '#e6bd94', hair: '#2b2b2b', hairStyle: 'short', eye: '#d13a3a', outfit: '#1f3a5a' }, personality: 'flirty' },
+  { id: 'nyx', name: 'นิกซ์', role: 'เด็กลึกลับสายมืด', map: 'world', x: 24, y: 34, look: { skin: '#d9c2c8', hair: '#6a2fb0', hairStyle: 'hood', eye: '#ff4a8d', outfit: '#14121f' }, personality: 'mysterious' },
 ];
 
 const GIVEN = ['อาริน', 'เซเลน', 'ไคออน', 'มิรา', 'เวลกา', 'ลิอาน', 'ซินเธีย', 'ราเวน', 'อีเดน', 'ฟลอรา', 'ดันเต้', 'ยูริ', 'คาลิกซ์', 'เอลาร่า', 'ธีโอ', 'นวล', 'ไอริส', 'เฟรย่า', 'ออร์ริน', 'เลโอ', 'ซาช่า', 'มิลก้า', 'เรน', 'ไวโอเล็ต', 'แคสเปียน', 'ลูน่า', 'อีธาน', 'เซฟิร์', 'มายา', 'โรแลนด์', 'อีวา', 'กาเบรียล', 'นิน่า', 'ออกัส', 'เพิร์ล', 'ไทเรล', 'เอสเทล', 'บรูโน', 'คลารา', 'เฟลิกซ์', 'ซีลีน', 'ฮิวโก้', 'มารีน', 'โจเซฟ', 'อลิซ', 'เดเมียน', 'โรซ่า', 'เอนโซ่', 'ลีนา', 'วิคเตอร์'];

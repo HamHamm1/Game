@@ -19,6 +19,7 @@ export const MSG = {
   CHAT: 'chat',
   INTERACT: 'interact',
   DIALOGUE_CHOICE: 'dialogue_choice',
+  AI_CHAT: 'ai_chat',
   // server -> client
   WELCOME: 'welcome',
   STATE: 'state',
@@ -26,6 +27,8 @@ export const MSG = {
   STATUS: 'status',
   CHAT_MSG: 'chat_msg',
   DIALOGUE: 'dialogue',
+  AI_REPLY: 'ai_reply',
+  AI_TYPING: 'ai_typing',
   TOAST: 'toast',
   KICK: 'kick',
 };
