@@ -14,66 +14,48 @@ function shade(hex, f) {
 }
 const hashf = (x, y) => { const s = Math.sin(x * 127.1 + y * 311.7) * 43758.5453; return s - Math.floor(s); };
 
-// ---------------- TERRAIN (baked per map) ----------------
-const TERRAIN = {
-  [T.GRASS]:     { base: '#4a8b3f', hi: '#5aa24b', lo: '#3c7534', pr: 3 },
-  [T.TALLGRASS]: { base: '#3f7d36', hi: '#57a047', lo: '#356b2d', pr: 3 },
-  [T.PATH]:      { base: '#c9b48a', hi: '#d8c69e', lo: '#b39a6f', pr: 4 },
-  [T.ROAD]:      { base: '#b7a98a', hi: '#c9bda3', lo: '#9c8b6f', pr: 4 },
-  [T.PLAZA]:     { base: '#cdbfa0', hi: '#ddd0b3', lo: '#b3a488', pr: 4 },
-  [T.FLOOR]:     { base: '#cdbfa0', hi: '#ddd0b3', lo: '#b3a488', pr: 4 },
-  [T.DIRT]:      { base: '#a9885f', hi: '#bd9c6f', lo: '#8f7049', pr: 4 },
-  [T.SAND]:      { base: '#e0cc95', hi: '#eeddac', lo: '#cdb87f', pr: 2 },
-  [T.SNOW]:      { base: '#e8eef5', hi: '#ffffff', lo: '#cfd8e6', pr: 3 },
-  [T.CARPET]:    { base: '#7a2f4a', hi: '#95466a', lo: '#5f2038', pr: 4 },
-  [T.WATER]:     { base: '#3f79c9', hi: '#5f9ae0', lo: '#2f5fa8', pr: 1 },
-  [T.DEEPWATER]: { base: '#274f8f', hi: '#3a68a8', lo: '#1d3d70', pr: 0 },
-  [T.ROCK]:      { base: '#7d7568', hi: '#948b7c', lo: '#615a50', pr: 5 },
+// ---------------- TERRAIN (real tileset, baked per map) ----------------
+// Tileset: Tuxemon (CC BY-SA 4.0) — see public/assets/ATTRIBUTION.md.
+// 16px source tiles, scaled x2 to our 32px grid. Coordinates measured from
+// the sheet (grass plain, grass variants, dirt, stone, sand, snow, water).
+const ST = 16; // source tile size
+export const TILESET = new Image();
+let tilesetReady = false;
+export function loadTileset() {
+  return new Promise((res) => {
+    TILESET.onload = () => { tilesetReady = true; res(true); };
+    TILESET.onerror = () => { tilesetReady = false; res(false); };
+    TILESET.src = '/assets/terrain.png';
+  });
+}
+export function tilesetOk() { return tilesetReady; }
+
+// terrain code -> weighted list of source tiles [col,row] (repeats = more common)
+const TSRC = {
+  [T.GRASS]:     [[1, 3], [1, 3], [1, 3], [9, 3], [10, 3]],
+  [T.TALLGRASS]: [[9, 3], [10, 3]],
+  [T.PATH]:      [[17, 3]],
+  [T.DIRT]:      [[17, 3]],
+  [T.ROAD]:      [[25, 3]],
+  [T.PLAZA]:     [[25, 3]],
+  [T.FLOOR]:     [[25, 3]],
+  [T.CARPET]:    [[25, 3]],
+  [T.SAND]:      [[1, 18]],
+  [T.SNOW]:      [[8, 18]],
+  [T.WATER]:     [[21, 25]],
+  [T.DEEPWATER]: [[17, 25]],
+  [T.ROCK]:      [[17, 3]],
 };
-const terr = (code) => TERRAIN[code] || TERRAIN[T.GRASS];
-
-function flatTile(ctx, px, py, code) {
-  const c = terr(code); ctx.fillStyle = c.base; ctx.fillRect(px, py, TILE, TILE);
-  // subtle texture dots
-  for (let i = 0; i < 6; i++) {
-    const hx = hashf(px + i * 3, py), hy = hashf(py + i * 5, px);
-    ctx.fillStyle = hx > 0.5 ? c.hi : c.lo;
-    ctx.fillRect(px + (hx * TILE | 0), py + (hy * TILE | 0), 2, 2);
-  }
-  if (code === T.WATER || code === T.DEEPWATER) {
-    ctx.fillStyle = c.hi;
-    ctx.fillRect(px + 4, py + 8 + (hashf(px, py) * 6 | 0), 10, 2);
-    ctx.fillRect(px + 16, py + 20 + (hashf(py, px) * 6 | 0), 8, 2);
-  }
-}
-
-// Round an outer corner: fill the quadrant with the lower-priority neighbour.
-function roundCorner(ctx, px, py, qx, qy, lowCode) {
-  const c = terr(lowCode);
-  const cx = px + qx * 16, cy = py + qy * 16;
-  ctx.fillStyle = c.base;
-  ctx.fillRect(cx, cy, 16, 16);
-  // foam / edge highlight for water
-  if (lowCode === T.WATER || lowCode === T.DEEPWATER) { ctx.fillStyle = shade(c.hi, 1.1); }
-}
+const pickTile = (code, x, y) => {
+  const v = TSRC[code] || TSRC[T.GRASS];
+  return v[(Math.floor(hashf(x, y) * 997)) % v.length];
+};
 
 export function bakeMap(map) {
   const { c, ctx } = makeCanvas(map.w * TILE, map.h * TILE);
-  const at = (x, y) => (x < 0 || y < 0 || x >= map.w || y >= map.h) ? T.GRASS : map.tiles[y * map.w + x];
-  // pass 1: flat tiles
-  for (let y = 0; y < map.h; y++) for (let x = 0; x < map.w; x++) flatTile(ctx, x * TILE, y * TILE, map.tiles[y * map.w + x]);
-  // pass 2: round outer corners toward lower-priority neighbours
   for (let y = 0; y < map.h; y++) for (let x = 0; x < map.w; x++) {
-    const code = map.tiles[y * map.w + x], g = terr(code).pr, px = x * TILE, py = y * TILE;
-    const corners = [
-      [0, 0, at(x - 1, y), at(x, y - 1)],   // TL
-      [1, 0, at(x + 1, y), at(x, y - 1)],   // TR
-      [0, 1, at(x - 1, y), at(x, y + 1)],   // BL
-      [1, 1, at(x + 1, y), at(x, y + 1)],   // BR
-    ];
-    for (const [qx, qy, nH, nV] of corners) {
-      if (terr(nH).pr < g && terr(nV).pr < g && nH === nV) roundCorner(ctx, px, py, qx, qy, nH);
-    }
+    const [sx, sy] = pickTile(map.tiles[y * map.w + x], x, y);
+    ctx.drawImage(TILESET, sx * ST, sy * ST, ST, ST, x * TILE, y * TILE, TILE, TILE);
   }
   return c;
 }

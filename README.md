@@ -186,4 +186,7 @@ public/                   ไคลเอนต์ (Canvas + JS ล้วน)
 | `ADMIN_TOKEN` | `changeme-admin` | **เปลี่ยนก่อนเปิดใช้จริงเสมอ** |
 
 ## 📄 License
-MIT
+- **Code:** MIT
+- **Art:** `public/assets/terrain.png` is from the [Tuxemon](https://github.com/Tuxemon/Tuxemon)
+  project under **CC BY-SA 4.0** — see [`public/assets/ATTRIBUTION.md`](public/assets/ATTRIBUTION.md).
+  Procedurally-generated sprites (characters, buildings, trees, props) are part of the MIT code.

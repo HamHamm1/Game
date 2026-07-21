@@ -1,11 +1,16 @@
 // Camera + multi-map rendering with depth-sorted objects and characters.
 import { TILE, getMap } from '/shared/maps.js';
 import { T } from '/shared/tiles.js';
-import { bakeMap, buildingSprite, treeSprite, propSprite, mountainSprite, makeCharacter, drawPortrait } from './art.js';
+import { bakeMap, buildingSprite, treeSprite, propSprite, mountainSprite, makeCharacter, drawPortrait, loadTileset, tilesetOk } from './art.js';
 
+loadTileset();                // begin loading the terrain tileset immediately
 const baked = new Map();      // mapId -> canvas
 const charCache = new Map();  // lookKey -> sheet
-function bakedMap(id) { if (!baked.has(id)) baked.set(id, bakeMap(getMap(id))); return baked.get(id); }
+function bakedMap(id) {
+  if (!tilesetOk()) return null;              // wait for the tileset image
+  if (!baked.has(id)) baked.set(id, bakeMap(getMap(id)));
+  return baked.get(id);
+}
 function sheetFor(look) {
   const key = `${look.skin}|${look.hair}|${look.hairStyle}|${look.eye}|${look.outfit}`;
   if (!charCache.has(key)) charCache.set(key, makeCharacter(look, 3));
@@ -27,6 +32,12 @@ export function draw(ctx, view, mapId, remotes, self, npcs, frameTick) {
 
   // baked terrain (blit visible region)
   const bake = bakedMap(mapId);
+  if (!bake) { // tileset still loading
+    ctx.fillStyle = '#3c7534'; ctx.fillRect(0, 0, view.w, view.h);
+    ctx.fillStyle = '#e9d9ff'; ctx.font = 'bold 14px system-ui'; ctx.textAlign = 'center';
+    ctx.fillText('กำลังโหลดพื้นผิว…', view.w / 2, view.h / 2);
+    return;
+  }
   ctx.drawImage(bake, camera.x, camera.y, view.w, view.h, 0, 0, view.w, view.h);
 
   // portals glow
