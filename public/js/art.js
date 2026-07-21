@@ -1,7 +1,7 @@
 // Procedural pixel-art engine v2: blob-autotiled terrain, building/tree/prop
 // sprites with depth, and customizable characters (hairstyles + outfits).
 import { T } from '/shared/tiles.js';
-import { TILE } from '/shared/maps.js';
+import { TILE, getSolid } from '/shared/maps.js';
 
 export function makeCanvas(w, h) {
   const c = document.createElement('canvas'); c.width = w; c.height = h;
@@ -114,8 +114,28 @@ export function bakeMap(map) {
       if (pr(b) > a && pr(at(x + o1[0], y + o1[1])) <= a && pr(at(x + o2[0], y + o2[1])) <= a) blend(b, x + dx, y + dy, x, y, dir);
     }
   }
+
+  // pass 3: decorator/clutter layer — scatter flowers, tufts, bushes, rocks on
+  // grass with patchy density (some lush meadows, some bare). Baked flat.
+  const solid = getSolid(map.id);
+  for (let y = 1; y < map.h - 1; y++) for (let x = 1; x < map.w - 1; x++) {
+    const code = map.tiles[y * map.w + x];
+    if (code !== T.GRASS && code !== T.TALLGRASS) continue;
+    if (solid[y * map.w + x]) continue;                         // under trees/buildings
+    const patch = hashf(Math.floor(x / 6) + 0.5, Math.floor(y / 6) + 0.5); // coarse noise
+    const density = 0.04 + patch * 0.18;                        // 4%..22%
+    if (hashf(x * 1.7, y * 2.3) > density) continue;
+    const d = pickDecor(x, y);
+    ctx.drawImage(TILESET, d[0] * ST, d[1] * ST, ST, ST, x * TILE, y * TILE, TILE, TILE);
+  }
   return c;
 }
+
+// Weighted decoration tiles (all sit on a grass backdrop in the sheet).
+const DECOR = [];
+[[[29, 27], 8], [[25, 33], 4], [[27, 35], 3], [[7, 0], 2], [[24, 33], 2], [[27, 33], 1],
+ [[6, 0], 1], [[6, 2], 1], [[30, 32], 2], [[31, 32], 1]].forEach(([t, w]) => { for (let i = 0; i < w; i++) DECOR.push(t); });
+const pickDecor = (x, y) => DECOR[Math.floor(hashf(x * 3.1 + 1.3, y * 4.7 + 0.9) * 991) % DECOR.length];
 
 // ---------------- OBJECT SPRITES ----------------
 const cache = new Map();
