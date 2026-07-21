@@ -171,12 +171,296 @@ function rr(ctx, x, y, w, h, r) {
 const OUTLINE = '#241d2e';
 
 export function buildingSprite(obj) {
-  return cached(`b:${obj.style}:${obj.w}:${obj.h}:${obj.door}`, () => {
-    const s = BSTYLE[obj.style] || BSTYLE.house;
-    if (obj.style === 'palace') return grandBuilding(obj, 'royal');
-    if (obj.style === 'academy') return grandBuilding(obj, 'magic');
-    return normalBuilding(obj, s);
-  });
+  return cached(`b:${obj.style}:${obj.w}:${obj.h}:${obj.door}`, () => buildVictorian(obj));
+}
+
+// ===================== Victorian building system =====================
+// Drawn at 16px/tile then upscaled x2 (nearest) so pixel density matches the
+// tileset. Each style differs: material, roof shape, windows, ornaments.
+const U = 16;
+const fillPoly = (ctx, p) => { ctx.beginPath(); ctx.moveTo(p[0][0], p[0][1]); for (let i = 1; i < p.length; i++) ctx.lineTo(p[i][0], p[i][1]); ctx.closePath(); ctx.fill(); };
+
+// Muted Victorian palette — cream stone, burgundy, slate, dark green, brick
+// brown, brass trim; desaturated slate/amber/sage glass (no candy brights).
+const VST = {
+  palace:  { mat: 'stone',  wall: '#d8cdb2', roof: '#5f3540', trim: '#b0954e', glass: '#8ea6bd', grand: 'royal' },
+  academy: { mat: 'stone',  wall: '#7c7690', roof: '#38414f', trim: '#9f93b2', glass: '#7fa1ab', grand: 'magic' },
+  opera:   { mat: 'stone',  wall: '#b3a4bd', roof: '#432a40', trim: '#b0954e', glass: '#a898b8', roofType: 'mansard', win: 'arch', chimney: 2, cornice: true, urns: true },
+  library: { mat: 'stone',  wall: '#c4baa0', roof: '#41433f', trim: '#9c8858', glass: '#93aab8', roofType: 'hip', win: 'tall', cupola: true, cornice: true, chimney: 1 },
+  cafe:    { mat: 'brick',  wall: '#9c5a45', roof: '#412c24', trim: '#c2a877', glass: '#d9c48f', roofType: 'gable', win: 'bay', awning: true, chimney: 1, ginger: true },
+  shop:    { mat: 'stone',  wall: '#6f5a7e', roof: '#34273f', trim: '#a98fb8', glass: '#b7a4c9', roofType: 'mansard', win: 'sash', shopfront: true, chimney: 1 },
+  shop2:   { mat: 'brick',  wall: '#456e60', roof: '#243d34', trim: '#9cb3a8', glass: '#a7c4b8', roofType: 'gable', win: 'sash', shopfront: true, chimney: 1, ginger: true },
+  inn:     { mat: 'timber', wall: '#c9b48a', roof: '#43301f', trim: '#5f4230', glass: '#d9c48f', roofType: 'gable', win: 'sash', sign: true, chimney: 2, ginger: true },
+  house:   { mat: 'brick',  wall: '#9a6047', roof: '#452a34', trim: '#c9b48f', glass: '#c6b184', roofType: 'gable', win: 'bay', chimney: 2, ginger: true },
+  house2:  { mat: 'stone',  wall: '#8a7c9c', roof: '#3a3049', trim: '#c2b6cc', glass: '#c6b184', roofType: 'mansard', win: 'sash', chimney: 1 },
+  dorm:    { mat: 'brick',  wall: '#8a5f52', roof: '#402420', trim: '#c2ab86', glass: '#c6b184', roofType: 'hip', win: 'sash', chimney: 3, cornice: true },
+  dorm2:   { mat: 'brick',  wall: '#54637f', roof: '#2c3542', trim: '#a9b3c2', glass: '#c6b184', roofType: 'hip', win: 'sash', chimney: 3, cornice: true },
+};
+
+function matFill(ctx, mat, x, y, w, h, wall, trim) {
+  x = Math.round(x); y = Math.round(y); w = Math.round(w); h = Math.round(h);
+  ctx.fillStyle = wall; ctx.fillRect(x, y, w, h);
+  if (mat === 'brick') {
+    ctx.fillStyle = shade(wall, 0.78);
+    for (let ry = 0; ry < h; ry += 3) { ctx.fillRect(x, y + ry + 2, w, 1); const off = ((ry / 3) & 1) ? 3 : 0; for (let rx = off; rx < w; rx += 6) ctx.fillRect(x + rx, y + ry, 1, 2); }
+  } else if (mat === 'timber') {
+    ctx.fillStyle = trim; ctx.fillRect(x, y, w, 2); ctx.fillRect(x, y + h - 2, w, 2); ctx.fillRect(x, y + (h >> 1) - 1, w, 2);
+    const step = Math.max(8, Math.round(w / Math.max(1, Math.round(w / 12))));
+    for (let bx = x; bx <= x + w - 2; bx += step) ctx.fillRect(bx, y, 2, h);
+  } else {
+    ctx.fillStyle = shade(wall, 0.85);
+    for (let ry = 0; ry < h; ry += 4) { ctx.fillRect(x, y + ry + 3, w, 1); const off = ((ry / 4) & 1) ? 4 : 0; for (let rx = off; rx < w; rx += 8) ctx.fillRect(x + rx, y + ry, 1, 4); }
+  }
+  ctx.fillStyle = 'rgba(0,0,0,0.10)'; ctx.fillRect(x + w - Math.max(2, w * 0.12 | 0), y, Math.max(2, w * 0.12 | 0), h);
+  ctx.fillStyle = 'rgba(255,255,255,0.07)'; ctx.fillRect(x, y, Math.max(1, w * 0.08 | 0), h);
+}
+
+function winDraw(ctx, type, x, y, ww, wh, trim, glass) {
+  x = Math.round(x); y = Math.round(y);
+  if (type === 'arch' || type === 'lancet') {
+    const ah = Math.min(ww, wh * 0.55);
+    ctx.fillStyle = shade(trim, 0.7);
+    ctx.beginPath(); ctx.moveTo(x - 1, y + ah);
+    if (type === 'lancet') ctx.lineTo(x + ww / 2, y - 1); else { ctx.quadraticCurveTo(x - 1, y - 1, x + ww / 2, y - 1); ctx.quadraticCurveTo(x + ww + 1, y - 1, x + ww + 1, y + ah); }
+    ctx.lineTo(x + ww + 1, y + wh + 1); ctx.lineTo(x - 1, y + wh + 1); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = glass;
+    ctx.beginPath(); ctx.moveTo(x, y + ah);
+    if (type === 'lancet') ctx.lineTo(x + ww / 2, y + 1); else { ctx.quadraticCurveTo(x, y, x + ww / 2, y); ctx.quadraticCurveTo(x + ww, y, x + ww, y + ah); }
+    ctx.lineTo(x + ww, y + wh); ctx.lineTo(x, y + wh); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.22)'; ctx.fillRect(x, y + ah, ww, (wh - ah) / 2 | 0);
+    ctx.fillStyle = shade(trim, 0.75); ctx.fillRect(x + (ww >> 1), y + 2, 1, wh - 2);
+  } else {
+    ctx.fillStyle = shade(trim, 0.7); ctx.fillRect(x - 1, y - 1, ww + 2, wh + 2);
+    ctx.fillStyle = glass; ctx.fillRect(x, y, ww, wh);
+    ctx.fillStyle = 'rgba(255,255,255,0.22)'; ctx.fillRect(x, y, ww, Math.ceil(wh / 2));
+    ctx.fillStyle = shade(trim, 0.75); ctx.fillRect(x + (ww >> 1), y, 1, wh); ctx.fillRect(x, y + (wh >> 1), ww, 1);
+    ctx.fillStyle = shade(trim, 0.55); ctx.fillRect(x - 1, y + wh + 1, ww + 2, 1);
+    ctx.fillStyle = trim; ctx.fillRect(x - 1, y - 2, ww + 2, 1);
+  }
+}
+
+function drawDoor(ctx, cx, baseY, ww, wh, trim) {
+  const top = baseY - wh, sh2 = ww / 2;
+  ctx.fillStyle = shade(trim, 0.6);
+  ctx.beginPath(); ctx.moveTo(cx - sh2 - 1, baseY); ctx.lineTo(cx - sh2 - 1, top + sh2); ctx.quadraticCurveTo(cx - sh2 - 1, top - 1, cx, top - 1); ctx.quadraticCurveTo(cx + sh2 + 1, top - 1, cx + sh2 + 1, top + sh2); ctx.lineTo(cx + sh2 + 1, baseY); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = '#3a2616';
+  ctx.beginPath(); ctx.moveTo(cx - sh2, baseY); ctx.lineTo(cx - sh2, top + sh2); ctx.quadraticCurveTo(cx - sh2, top + 1, cx, top + 1); ctx.quadraticCurveTo(cx + sh2, top + 1, cx + sh2, top + sh2); ctx.lineTo(cx + sh2, baseY); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = '#2a1a0e'; ctx.fillRect(cx - 0.5, top + sh2, 1, wh - sh2);
+  ctx.fillStyle = shade(trim, 1.15); ctx.fillRect(cx + 1, baseY - wh / 2, 1, 1);
+}
+
+function drawBay(ctx, cx, baseY, w, h, trim, glass, roofc) {
+  const top = baseY - h;
+  ctx.fillStyle = shade(trim, 0.6); ctx.fillRect(cx - w / 2 - 1, top, w + 2, h);
+  const pw = (w - 4) / 3;
+  for (let i = 0; i < 3; i++) { const px = cx - w / 2 + 1 + i * (pw + 1); ctx.fillStyle = glass; ctx.fillRect(px, top + 2, pw, h - 4); ctx.fillStyle = 'rgba(255,255,255,0.2)'; ctx.fillRect(px, top + 2, pw, 2); }
+  ctx.fillStyle = roofc; fillPoly(ctx, [[cx - w / 2 - 2, top], [cx, top - 4], [cx + w / 2 + 2, top]]);
+}
+
+function chimneyDraw(ctx, x, topY, h, brickc) {
+  matFill(ctx, 'brick', x, topY, 4, h, brickc, shade(brickc, 0.7));
+  ctx.fillStyle = shade(brickc, 0.55); ctx.fillRect(x - 1, topY, 6, 1.5);
+  ctx.fillStyle = '#39313a'; ctx.fillRect(x, topY - 2, 1.5, 2); ctx.fillRect(x + 2.5, topY - 2, 1.5, 2);
+}
+function dormerDraw(ctx, cx, y, roofc, trim, glass) {
+  ctx.fillStyle = OUTLINE; ctx.fillRect(cx - 4, y - 5, 8, 7);
+  ctx.fillStyle = shade(roofc, 1.12); fillPoly(ctx, [[cx - 5, y - 5], [cx, y - 10], [cx + 5, y - 5]]);
+  ctx.fillStyle = shade(trim, 0.8); ctx.fillRect(cx - 3, y - 4, 6, 6); ctx.fillStyle = glass; ctx.fillRect(cx - 2, y - 3, 4, 4);
+}
+
+function drawRoof(ctx, obj, cfg, L, R, mid, bodyTop, roofH) {
+  const W = R - L, apexY = bodyTop - roofH, rc = cfg.roof, trim = cfg.trim, rt = cfg.roofType || 'gable';
+  if (rt === 'mansard') {
+    const ins = W * 0.14;
+    ctx.fillStyle = OUTLINE; fillPoly(ctx, [[L - 3, bodyTop], [L + ins, apexY], [R - ins, apexY], [R + 3, bodyTop]]);
+    ctx.fillStyle = rc; fillPoly(ctx, [[L - 1, bodyTop], [L + ins, apexY], [R - ins, apexY], [R + 1, bodyTop]]);
+    ctx.fillStyle = shade(rc, 0.8); fillPoly(ctx, [[mid, apexY], [R - ins, apexY], [R + 1, bodyTop], [mid, bodyTop]]);
+    ctx.fillStyle = shade(rc, 0.92); for (let k = 1; k < 4; k++) { const yy = bodyTop - roofH * k / 4, e = ins * (1 - k / 4); ctx.fillRect(L + e - 2, yy, W - 2 * e + 4, 1); }
+    const nd = Math.max(1, obj.w - 3); for (let i = 0; i < nd; i++) dormerDraw(ctx, L + W * (i + 0.5) / nd, bodyTop - roofH * 0.34, rc, trim, cfg.glass);
+    ctx.fillStyle = trim; ctx.fillRect(L + ins, apexY - 1, W - 2 * ins, 1); for (let cx = L + ins; cx < R - ins; cx += 3) ctx.fillRect(cx, apexY - 2, 1, 2);
+  } else if (rt === 'hip') {
+    const ins = W * 0.24;
+    ctx.fillStyle = OUTLINE; fillPoly(ctx, [[L - 3, bodyTop], [L + ins, apexY], [R - ins, apexY], [R + 3, bodyTop]]);
+    ctx.fillStyle = rc; fillPoly(ctx, [[L - 1, bodyTop], [L + ins, apexY], [R - ins, apexY], [R + 1, bodyTop]]);
+    ctx.fillStyle = shade(rc, 0.8); fillPoly(ctx, [[mid, apexY], [R - ins, apexY], [R + 1, bodyTop], [mid, bodyTop]]);
+    ctx.fillStyle = shade(rc, 0.92); for (let k = 1; k < 3; k++) { const yy = bodyTop - roofH * k / 3, e = ins * (1 - k / 3); ctx.fillRect(L + e, yy, W - 2 * e, 1); }
+    ctx.fillStyle = trim; ctx.fillRect(L + ins, apexY - 1, W - 2 * ins, 1); for (let cx = L + ins; cx < R - ins; cx += 3) ctx.fillRect(cx, apexY - 3, 1, 3);
+    ctx.fillRect(L + ins - 1, apexY - 4, 2, 4); ctx.fillRect(R - ins - 1, apexY - 4, 2, 4);
+  } else {
+    ctx.fillStyle = OUTLINE; fillPoly(ctx, [[L - 3, bodyTop], [mid, apexY - 2], [R + 3, bodyTop]]);
+    ctx.fillStyle = rc; fillPoly(ctx, [[L - 1, bodyTop], [mid, apexY], [R + 1, bodyTop]]);
+    ctx.fillStyle = shade(rc, 0.8); fillPoly(ctx, [[mid, apexY], [R + 1, bodyTop], [mid, bodyTop]]);
+    ctx.fillStyle = shade(rc, 0.92); for (let k = 1; k < 3; k++) { const yy = apexY + (bodyTop - apexY) * k / 3, hf = (W / 2 + 3) * k / 3; ctx.fillRect(mid - hf, yy, hf * 2, 1); }
+    ctx.fillStyle = trim; ctx.beginPath(); ctx.arc(mid, bodyTop - roofH * 0.4, 3, 0, 7); ctx.fill(); ctx.fillStyle = cfg.glass; ctx.beginPath(); ctx.arc(mid, bodyTop - roofH * 0.4, 2, 0, 7); ctx.fill();
+    if (cfg.ginger) { ctx.fillStyle = trim; for (let gx = L - 2; gx < R + 2; gx += 4) fillPoly(ctx, [[gx, bodyTop], [gx + 4, bodyTop], [gx + 2, bodyTop + 2]]); }
+    ctx.fillStyle = trim; ctx.fillRect(mid - 0.5, apexY - 4, 1, 4); ctx.beginPath(); ctx.arc(mid, apexY - 4, 1.5, 0, 7); ctx.fill();
+  }
+  for (let i = 0; i < (cfg.chimney || 0); i++) chimneyDraw(ctx, L + W * (i + 1) / ((cfg.chimney) + 1) - 2, apexY - U * 0.6, roofH + U * 0.6, shade(rc, 1.2));
+  if (cfg.urns) for (const ux of [L + 3, R - 7]) { ctx.fillStyle = trim; ctx.fillRect(ux, bodyTop - 6, 4, 6); ctx.beginPath(); ctx.arc(ux + 2, bodyTop - 7, 2.5, 0, 7); ctx.fill(); }
+  if (cfg.cupola) { const cw = W * 0.22; ctx.fillStyle = OUTLINE; ctx.fillRect(mid - cw / 2 - 1, apexY - U - 1, cw + 2, U + 1); ctx.fillStyle = cfg.wall; ctx.fillRect(mid - cw / 2, apexY - U, cw, U); ctx.fillStyle = cfg.glass; ctx.fillRect(mid - cw / 2 + 1, apexY - U + 2, cw - 2, U - 4); ctx.fillStyle = trim; ctx.beginPath(); ctx.arc(mid, apexY - U, cw / 2, Math.PI, 0); ctx.fill(); ctx.fillStyle = OUTLINE; ctx.fillRect(mid - 0.5, apexY - U - 4, 1, 4); }
+}
+
+function drawBody(ctx, obj, cfg, L, R, bodyTop, sh) {
+  const W = R - L, bh = sh - bodyTop, dcx = L + obj.door * U + U / 2;
+  ctx.fillStyle = OUTLINE; ctx.fillRect(L - 1, bodyTop - 1, W + 2, bh + 1);
+  matFill(ctx, cfg.mat, L, bodyTop, W, bh, cfg.wall, cfg.trim);
+  ctx.fillStyle = shade(cfg.wall, 0.56); ctx.fillRect(L, sh - 3, W, 3);
+  ctx.fillStyle = shade(cfg.trim, 0.85); ctx.fillRect(L, bodyTop + (bh * 0.5 | 0), W, 1);
+  ctx.fillStyle = shade(cfg.trim, 0.9); for (let i = 0; i * 6 < bh; i++) if (i & 1) { ctx.fillRect(L, bodyTop + 2 + i * 6, 2, 4); ctx.fillRect(R - 2, bodyTop + 2 + i * 6, 2, 4); }
+  if (cfg.cornice) { ctx.fillStyle = cfg.trim; ctx.fillRect(L - 1, bodyTop - 1, W + 2, 2); }
+  const cols = Math.max(1, obj.w - 2), rows = Math.max(1, obj.h - 2), ww = 6, gx0 = (W - cols * ww) / (cols + 1);
+  for (let a = 0; a < cols; a++) for (let b = 0; b < rows; b++) {
+    const wx = L + gx0 + a * (ww + gx0), wy = bodyTop + 7 + b * ((bh - 15) / Math.max(1, rows));
+    if (b === rows - 1 && Math.abs(wx + ww / 2 - dcx) < U) continue;
+    if (cfg.shopfront && b === rows - 1) continue;
+    const t = cfg.win === 'tall' ? 'sash' : cfg.win === 'bay' ? 'sash' : cfg.win;
+    winDraw(ctx, t, wx, wy, ww, cfg.win === 'tall' ? 11 : 8, cfg.trim, cfg.glass);
+  }
+  if (cfg.awning) { const ay = bodyTop + (bh * 0.5 | 0) + 2; for (let i = 0; i * 4 < W; i++) { ctx.fillStyle = i & 1 ? shade(cfg.trim, 1.05) : '#c94f4f'; fillPoly(ctx, [[L + i * 4, ay], [L + i * 4 + 4, ay], [L + i * 4 + 2, ay + 4]]); } }
+  if (cfg.shopfront) { ctx.fillStyle = OUTLINE; ctx.fillRect(L + 3, sh - U - 1, W - 6, U); ctx.fillStyle = cfg.glass; ctx.fillRect(L + 4, sh - U, W - 8, U - 3); ctx.fillStyle = 'rgba(255,255,255,0.2)'; ctx.fillRect(L + 4, sh - U, W - 8, 2); for (let sx = L + 4; sx < R - 4; sx += 6) { ctx.fillStyle = shade(cfg.trim, 0.7); ctx.fillRect(sx, sh - U, 1, U - 3); } }
+  drawDoor(ctx, dcx, sh - 1, U * 0.9, U * 1.5, cfg.trim);
+  ctx.fillStyle = shade(cfg.wall, 0.72); ctx.fillRect(dcx - U * 0.8, sh - 2, U * 1.6, 2);
+  if (cfg.win === 'bay') drawBay(ctx, dcx > L + W / 2 ? L + W * 0.28 : R - W * 0.28, sh - 2, U * 1.3, U * 1.05, cfg.trim, cfg.glass, cfg.roof);
+  if (cfg.sign) { const sx = L + W * 0.72; ctx.fillStyle = cfg.trim; ctx.fillRect(sx, bodyTop + 5, 10, 1); ctx.fillStyle = '#5a3a2a'; ctx.fillRect(sx + 6, bodyTop + 6, 8, 6); ctx.fillStyle = cfg.glass; ctx.fillRect(sx + 7, bodyTop + 7, 6, 4); }
+}
+
+function towerDraw(ctx, x, w, topY, sh, cfg, roofc, gold, glass, flag) {
+  ctx.fillStyle = OUTLINE; ctx.fillRect(x - 1, topY - 1, w + 2, sh - topY + 1);
+  matFill(ctx, cfg.mat, x, topY, w, sh - topY, cfg.wall, gold);
+  const sH = w * 1.5, cx = x + w / 2;
+  ctx.fillStyle = OUTLINE; fillPoly(ctx, [[x - 2, topY], [cx, topY - sH - 1], [x + w + 2, topY]]);
+  ctx.fillStyle = roofc; fillPoly(ctx, [[x - 1, topY], [cx, topY - sH], [x + w + 1, topY]]);
+  ctx.fillStyle = shade(roofc, 0.78); fillPoly(ctx, [[cx, topY - sH], [x + w + 1, topY], [cx, topY]]);
+  ctx.fillStyle = gold; ctx.fillRect(x - 1, topY, w + 2, 1);
+  ctx.strokeStyle = shade(gold, 0.7); ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(cx, topY - sH); ctx.lineTo(cx, topY - sH - 7); ctx.stroke();
+  ctx.fillStyle = flag; fillPoly(ctx, [[cx, topY - sH - 7], [cx + 7, topY - sH - 5], [cx, topY - sH - 3]]);
+  for (let i = 0; i < 3; i++) winDraw(ctx, 'arch', cx - 2.5, topY + 5 + i * 8, 5, 6, gold, glass);
+}
+
+function drawGrand(ctx, obj, cfg, L, R, mid, bodyTop, sh, towerH, roofH) {
+  const royal = cfg.grand === 'royal', W = R - L, bh = sh - bodyTop, tw = Math.max(U * 1.6, W * 0.16);
+  const gold = cfg.trim, rc = cfg.roof, glass = cfg.glass, flag = royal ? '#e0566f' : '#57cfe0';
+  ctx.fillStyle = OUTLINE; ctx.fillRect(L + tw - 1, bodyTop - 1, W - 2 * tw + 2, bh + 1);
+  matFill(ctx, cfg.mat, L + tw, bodyTop, W - 2 * tw, bh, cfg.wall, gold);
+  ctx.fillStyle = gold; ctx.fillRect(L + tw, bodyTop + 3, W - 2 * tw, 1); ctx.fillRect(L + tw, sh - 5, W - 2 * tw, 1);
+  const nwin = Math.max(2, obj.w - 6), wrows = Math.max(1, obj.h - 3);
+  for (let r = 0; r < wrows; r++) for (let i = 0; i < nwin; i++) { const gx = L + tw + (W - 2 * tw) * (i + 0.5) / nwin - 3, gy = bodyTop + 6 + r * ((bh - 15) / wrows); winDraw(ctx, royal ? 'arch' : 'lancet', gx, gy, 6, 9, gold, glass); }
+  // grand block + dome
+  const cbw = Math.max(U * 2.2, W * 0.34), cbTop = bodyTop - roofH;
+  ctx.fillStyle = OUTLINE; ctx.fillRect(mid - cbw / 2 - 1, cbTop - 1, cbw + 2, bodyTop - cbTop + 1);
+  matFill(ctx, cfg.mat, mid - cbw / 2, cbTop, cbw, bodyTop - cbTop, cfg.wall, gold);
+  ctx.fillStyle = gold; ctx.beginPath(); ctx.arc(mid, cbTop + cbw * 0.32, cbw * 0.17, 0, 7); ctx.fill(); ctx.fillStyle = glass; ctx.beginPath(); ctx.arc(mid, cbTop + cbw * 0.32, cbw * 0.13, 0, 7); ctx.fill();
+  ctx.fillStyle = shade(gold, 0.7); ctx.fillRect(mid - cbw * 0.13, cbTop + cbw * 0.32 - 0.5, cbw * 0.26, 1); ctx.fillRect(mid - 0.5, cbTop + cbw * 0.32 - cbw * 0.13, 1, cbw * 0.26);
+  ctx.fillStyle = OUTLINE; ctx.beginPath(); ctx.ellipse(mid, cbTop, cbw / 2 + 1, U * 0.95 + 1, 0, Math.PI, 0); ctx.fill();
+  ctx.fillStyle = gold; ctx.beginPath(); ctx.ellipse(mid, cbTop, cbw / 2, U * 0.95, 0, Math.PI, 0); ctx.fill();
+  ctx.fillStyle = shade(gold, 0.78); ctx.beginPath(); ctx.ellipse(mid, cbTop, cbw / 2, U * 0.95, 0, Math.PI * 0.5, 0); ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,0.5)'; ctx.beginPath(); ctx.ellipse(mid - cbw * 0.16, cbTop - U * 0.3, cbw * 0.08, U * 0.3, 0, 0, 7); ctx.fill();
+  ctx.strokeStyle = shade(gold, 0.7); ctx.lineWidth = 1; const dt = cbTop - U * 0.95; ctx.beginPath(); ctx.moveTo(mid, dt); ctx.lineTo(mid, dt - 9); ctx.stroke();
+  ctx.fillStyle = flag; fillPoly(ctx, [[mid, dt - 9], [mid + 9, dt - 6], [mid, dt - 3]]);
+  towerDraw(ctx, L, tw, bodyTop - U * 0.5, sh, cfg, rc, gold, glass, flag);
+  towerDraw(ctx, R - tw, tw, bodyTop - U * 0.5, sh, cfg, rc, gold, glass, flag);
+  for (const bx of [mid - cbw / 2 - 4, mid + cbw / 2]) { const bhh = bh * 0.4; ctx.fillStyle = royal ? '#9a2f4a' : '#2f3f9a'; ctx.fillRect(bx, bodyTop + 4, 4, bhh); ctx.fillStyle = gold; ctx.fillRect(bx + 1, bodyTop + 4 + bhh * 0.4, 2, 2); ctx.fillStyle = royal ? '#9a2f4a' : '#2f3f9a'; fillPoly(ctx, [[bx, bodyTop + 4 + bhh], [bx + 2, bodyTop + 4 + bhh + 3], [bx + 4, bodyTop + 4 + bhh]]); }
+  // portico door
+  const dw = Math.max(U, W * 0.13);
+  ctx.fillStyle = gold; fillPoly(ctx, [[mid - dw / 2 - 4, sh - U * 1.9], [mid, sh - U * 1.9 - 6], [mid + dw / 2 + 4, sh - U * 1.9]]);
+  drawDoor(ctx, mid, sh - 1, dw, U * 1.7, gold);
+  ctx.fillStyle = shade(cfg.wall, 1.12); ctx.fillRect(mid - dw / 2 - 3, sh - U * 1.9, 2, U * 1.9); ctx.fillRect(mid + dw / 2 + 1, sh - U * 1.9, 2, U * 1.9);
+  for (let i = 0; i < 3; i++) { ctx.fillStyle = shade(cfg.wall, 0.85 - i * 0.06); ctx.fillRect(mid - dw / 2 - 4 - i * 3, sh - 2 + i, dw + 8 + i * 6, 2); }
+}
+
+function pinnacle(ctx, x, baseY, roofc, gold) {
+  ctx.fillStyle = OUTLINE; fillPoly(ctx, [[x - 2.5, baseY], [x, baseY - 9], [x + 2.5, baseY]]);
+  ctx.fillStyle = roofc; fillPoly(ctx, [[x - 2, baseY], [x, baseY - 8], [x + 2, baseY]]);
+  ctx.fillStyle = gold; ctx.fillRect(x - 0.5, baseY - 11, 1, 3);
+}
+function ironCrest(ctx, x0, x1, y, trim) {
+  ctx.fillStyle = trim; ctx.fillRect(x0, y - 1, x1 - x0, 1);
+  for (let x = x0 + 1; x < x1; x += 3) { ctx.fillRect(x, y - 3, 1, 2); }
+}
+function mansardRoof(ctx, L, R, topY, baseY, roofc, trim, glass) {
+  const W = R - L, ins = W * 0.16, mid = (L + R) / 2;
+  ctx.fillStyle = OUTLINE; fillPoly(ctx, [[L - 2, baseY], [L + ins, topY], [R - ins, topY], [R + 2, baseY]]);
+  ctx.fillStyle = roofc; fillPoly(ctx, [[L, baseY], [L + ins, topY], [R - ins, topY], [R, baseY]]);
+  ctx.fillStyle = shade(roofc, 0.8); fillPoly(ctx, [[mid, topY], [R - ins, topY], [R, baseY], [mid, baseY]]);
+  ctx.fillStyle = shade(roofc, 0.9); for (let k = 1; k < 4; k++) { const yy = baseY - (baseY - topY) * k / 4, e = ins * (1 - k / 4); ctx.fillRect(L + e - 1, yy, W - 2 * e + 2, 1); }
+  for (let i = 0; i < 2; i++) dormerDraw(ctx, L + W * (i + 0.5) / 2, baseY - (baseY - topY) * 0.42, roofc, trim, glass);
+  ironCrest(ctx, L + ins, R - ins, topY, trim);
+  ctx.fillStyle = trim; ctx.fillRect(mid - 0.5, topY - 6, 1, 6); ctx.beginPath(); ctx.arc(mid, topY - 6, 1.5, 0, 7); ctx.fill();
+}
+function turret(ctx, x, w, topY, sh, stone, roofc, trim, glass, jewel, flag) {
+  ctx.fillStyle = OUTLINE; ctx.fillRect(x - 1, topY - 1, w + 2, sh - topY + 1);
+  matFill(ctx, 'stone', x, topY, w, sh - topY, stone, trim);
+  ctx.fillStyle = shade(trim, 0.8); for (let yy = topY + U; yy < sh - 3; yy += U) ctx.fillRect(x, yy, w, 1);
+  for (let i = 0; i < 3; i++) winDraw(ctx, 'arch', x + w / 2 - 2.5, topY + 5 + i * 8, 5, 6, trim, jewel[i % jewel.length]);
+  ctx.fillStyle = trim; ctx.fillRect(x - 1, topY - 1, w + 2, 2);
+  const sH = w * 1.7, cx = x + w / 2;
+  ctx.fillStyle = OUTLINE; fillPoly(ctx, [[x - 2, topY], [cx, topY - sH - 1], [x + w + 2, topY]]);
+  ctx.fillStyle = roofc; fillPoly(ctx, [[x - 1, topY], [cx, topY - sH], [x + w + 1, topY]]);
+  ctx.fillStyle = shade(roofc, 0.78); fillPoly(ctx, [[cx, topY - sH], [x + w + 1, topY], [cx, topY]]);
+  ctx.fillStyle = shade(roofc, 0.9); for (let k = 1; k < 4; k++) { const yy = topY - sH * k / 4, hf = (w / 2) * (1 - k / 4) + 1; ctx.fillRect(cx - hf, yy, hf * 2, 1); }
+  ctx.strokeStyle = shade(trim, 0.7); ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(cx, topY - sH); ctx.lineTo(cx, topY - sH - 8); ctx.stroke();
+  ctx.fillStyle = flag; fillPoly(ctx, [[cx, topY - sH - 8], [cx + 7, topY - sH - 6], [cx, topY - sH - 4]]);
+}
+
+// Bespoke Victorian palace: cream stone, burgundy mansard + pointed turrets,
+// rose window, arched windows, wrought-iron cresting, portico entrance.
+function drawPalace(ctx, obj, cfg, L, R, mid, bodyTop, sh) {
+  const W = R - L, bh = sh - bodyTop, stone = cfg.wall, roofc = cfg.roof, trim = cfg.trim, glass = cfg.glass;
+  const jewel = ['#7a3a44', '#3f6270', '#9a7a44', '#4a5a72', '#5a4a6a'];
+  const flag = '#8a3a48', tw = Math.max(U * 1.7, W * 0.14);
+
+  // central body wall (between towers)
+  ctx.fillStyle = OUTLINE; ctx.fillRect(L + tw - 1, bodyTop - 1, W - 2 * tw + 2, bh + 1);
+  matFill(ctx, 'stone', L + tw, bodyTop, W - 2 * tw, bh, stone, trim);
+  ctx.fillStyle = shade(trim, 0.85); for (let yy = bodyTop + U; yy < sh - 4; yy += U) ctx.fillRect(L + tw, yy, W - 2 * tw, 1);
+  const nwin = Math.max(3, obj.w - 5), wrows = Math.max(2, obj.h - 3);
+  for (let r = 0; r < wrows; r++) for (let i = 0; i < nwin; i++) { const gx = L + tw + (W - 2 * tw) * (i + 0.5) / nwin - 3, gy = bodyTop + 7 + r * ((bh - 16) / wrows); winDraw(ctx, 'arch', gx, gy, 6, 9, trim, jewel[(i + r) % jewel.length]); }
+  ctx.fillStyle = trim; ctx.fillRect(L + tw - 2, bodyTop - 1, W - 2 * tw + 4, 2);   // cornice
+
+  // central raised block (tallest) + rose window + mansard roof
+  const cbw = Math.max(U * 2.6, W * 0.36), cbTop = bodyTop - U * 2.2;
+  ctx.fillStyle = OUTLINE; ctx.fillRect(mid - cbw / 2 - 1, cbTop - 1, cbw + 2, bodyTop - cbTop + 1);
+  matFill(ctx, 'stone', mid - cbw / 2, cbTop, cbw, bodyTop - cbTop, stone, trim);
+  ctx.fillStyle = trim; ctx.beginPath(); ctx.arc(mid, cbTop + U * 0.8, cbw * 0.17, 0, 7); ctx.fill();
+  ctx.fillStyle = jewel[1]; ctx.beginPath(); ctx.arc(mid, cbTop + U * 0.8, cbw * 0.13, 0, 7); ctx.fill();
+  ctx.strokeStyle = shade(trim, 0.7); ctx.lineWidth = 1;
+  for (let a = 0; a < 6; a++) { const ang = a * Math.PI / 3; ctx.beginPath(); ctx.moveTo(mid, cbTop + U * 0.8); ctx.lineTo(mid + Math.cos(ang) * cbw * 0.13, cbTop + U * 0.8 + Math.sin(ang) * cbw * 0.13); ctx.stroke(); }
+  mansardRoof(ctx, mid - cbw / 2, mid + cbw / 2, cbTop - U * 1.6, cbTop, roofc, trim, glass);
+
+  // pointed corner turrets
+  turret(ctx, L, tw, bodyTop - U * 0.6, sh, stone, roofc, trim, glass, jewel, flag);
+  turret(ctx, R - tw, tw, bodyTop - U * 0.6, sh, stone, roofc, trim, glass, jewel, flag);
+  // extra pinnacles for a multi-spired roofline
+  for (const px of [mid - cbw / 2, mid + cbw / 2, mid - cbw * 0.2, mid + cbw * 0.2]) pinnacle(ctx, px, cbTop, roofc, trim);
+  // wrought-iron cresting along the body eaves
+  ironCrest(ctx, L + tw, mid - cbw / 2, bodyTop, trim); ironCrest(ctx, mid + cbw / 2, R - tw, bodyTop, trim);
+
+  // banners
+  for (const bx of [mid - cbw / 2 - 4, mid + cbw / 2]) { const bhh = bh * 0.42; ctx.fillStyle = '#7a3340'; ctx.fillRect(bx, bodyTop + 4, 4, bhh); ctx.fillStyle = trim; ctx.fillRect(bx + 1, bodyTop + 4 + bhh * 0.45, 2, 2); ctx.fillStyle = '#7a3340'; fillPoly(ctx, [[bx, bodyTop + 4 + bhh], [bx + 2, bodyTop + 4 + bhh + 3], [bx + 4, bodyTop + 4 + bhh]]); }
+
+  // grand portico entrance: pediment, columns, arched door, steps
+  const dw = Math.max(U, W * 0.12);
+  ctx.fillStyle = trim; fillPoly(ctx, [[mid - dw / 2 - 5, sh - U * 2], [mid, sh - U * 2 - 7], [mid + dw / 2 + 5, sh - U * 2]]);
+  ctx.fillStyle = shade(trim, 0.8); ctx.fillRect(mid - dw / 2 - 5, sh - U * 2, dw + 10, 2);
+  for (const colx of [mid - dw / 2 - 4, mid + dw / 2 + 2]) { ctx.fillStyle = shade(stone, 1.12); ctx.fillRect(colx, sh - U * 2, 2, U * 2); ctx.fillStyle = shade(stone, 0.68); ctx.fillRect(colx + 2, sh - U * 2, 1, U * 2); }
+  drawDoor(ctx, mid, sh - 1, dw, U * 1.7, trim);
+  for (let i = 0; i < 3; i++) { ctx.fillStyle = shade(stone, 0.85 - i * 0.06); ctx.fillRect(mid - dw / 2 - 6 - i * 3, sh - 2 + i, dw + 12 + i * 6, 2); }
+}
+
+function buildVictorian(obj) {
+  const cfg = VST[obj.style] || VST.house;
+  const W = obj.w * U, bodyH = obj.h * U, PAD = 6, grand = !!cfg.grand, rt = cfg.roofType || 'gable';
+  const roofH = grand ? Math.round(U * 2.6) : rt === 'gable' ? Math.round(U * 2.1) : rt === 'mansard' ? Math.round(U * 1.7) : Math.round(U * 1.4);
+  const towerH = grand ? Math.round(U * 3.2) : 0;
+  const topExtra = towerH + roofH + Math.round(U * 1.7);
+  const sw = W + PAD * 2, sh = bodyH + topExtra;
+  const { c: sc, ctx } = makeCanvas(sw, sh);
+  const L = PAD, R = PAD + W, mid = L + W / 2, bodyTop = sh - bodyH;
+  if (cfg.grand === 'royal') drawPalace(ctx, obj, cfg, L, R, mid, bodyTop, sh);
+  else if (grand) drawGrand(ctx, obj, cfg, L, R, mid, bodyTop, sh, towerH, roofH);
+  else { drawBody(ctx, obj, cfg, L, R, bodyTop, sh); drawRoof(ctx, obj, cfg, L, R, mid, bodyTop, roofH); }
+  const f = makeCanvas(sw * 2, sh * 2); f.ctx.imageSmoothingEnabled = false; f.ctx.drawImage(sc, 0, 0, sw * 2, sh * 2);
+  return { canvas: f.c, ox: -PAD * 2, oy: 0 };
 }
 
 function normalBuilding(obj, s) {
