@@ -51,11 +51,68 @@ const pickTile = (code, x, y) => {
   return v[(Math.floor(hashf(x, y) * 997)) % v.length];
 };
 
+// Terrain "height": higher priority bleeds onto lower at boundaries.
+const PR = {
+  [T.DEEPWATER]: 0, [T.WATER]: 1, [T.SAND]: 2,
+  [T.PATH]: 3, [T.ROAD]: 3, [T.DIRT]: 3, [T.FLOOR]: 3, [T.PLAZA]: 3, [T.CARPET]: 3,
+  [T.GRASS]: 4, [T.TALLGRASS]: 4, [T.SNOW]: 4, [T.ROCK]: 5,
+};
+const pr = (code) => PR[code] ?? 4;
+
+// ---- dithered edge masks (ordered Bayer dithering for a pixel-art speckle) ----
+const BAYER = [[0, 8, 2, 10], [12, 4, 14, 6], [3, 11, 1, 9], [15, 7, 13, 5]];
+const FADE0 = 5, FADE1 = 15; // opaque within FADE0 px of the edge, dithered out to FADE1
+function edgeMask(depthFn) {
+  const { c, ctx } = makeCanvas(TILE, TILE);
+  const img = ctx.createImageData(TILE, TILE);
+  for (let py = 0; py < TILE; py++) for (let px = 0; px < TILE; px++) {
+    const d = depthFn(px, py);           // distance from the bleeding edge (0 = at edge)
+    let on = 0;
+    if (d <= FADE0) on = 1;
+    else if (d < FADE1) { const t = (FADE1 - d) / (FADE1 - FADE0); on = (BAYER[py & 3][px & 3] / 16) < t ? 1 : 0; }
+    const i = (py * TILE + px) * 4; img.data[i] = img.data[i + 1] = img.data[i + 2] = 255; img.data[i + 3] = on ? 255 : 0;
+  }
+  ctx.putImageData(img, 0, 0); return c;
+}
+const MASKS = {
+  N: edgeMask((x, y) => y), S: edgeMask((x, y) => TILE - 1 - y),
+  W: edgeMask((x, y) => x), E: edgeMask((x, y) => TILE - 1 - x),
+  NE: edgeMask((x, y) => Math.hypot(TILE - 1 - x, y)), NW: edgeMask((x, y) => Math.hypot(x, y)),
+  SE: edgeMask((x, y) => Math.hypot(TILE - 1 - x, TILE - 1 - y)), SW: edgeMask((x, y) => Math.hypot(x, TILE - 1 - y)),
+};
+let SCRATCH = null;
+
 export function bakeMap(map) {
   const { c, ctx } = makeCanvas(map.w * TILE, map.h * TILE);
+  const at = (x, y) => (x < 0 || y < 0 || x >= map.w || y >= map.h) ? map.tiles[Math.max(0, Math.min(map.h - 1, y)) * map.w + Math.max(0, Math.min(map.w - 1, x))] : map.tiles[y * map.w + x];
+  if (!SCRATCH) SCRATCH = makeCanvas(TILE, TILE);
+  const sc = SCRATCH.ctx, scc = SCRATCH.c;
+
+  // pass 1: base fills
   for (let y = 0; y < map.h; y++) for (let x = 0; x < map.w; x++) {
     const [sx, sy] = pickTile(map.tiles[y * map.w + x], x, y);
     ctx.drawImage(TILESET, sx * ST, sy * ST, ST, ST, x * TILE, y * TILE, TILE, TILE);
+  }
+
+  // pass 2: dithered transitions — a higher neighbour bleeds onto this tile
+  const blend = (bcode, bx, by, x, y, dir) => {
+    const [sx, sy] = pickTile(bcode, bx, by);
+    sc.globalCompositeOperation = 'source-over'; sc.clearRect(0, 0, TILE, TILE);
+    sc.drawImage(TILESET, sx * ST, sy * ST, ST, ST, 0, 0, TILE, TILE);
+    sc.globalCompositeOperation = 'destination-in'; sc.drawImage(MASKS[dir], 0, 0);
+    ctx.drawImage(scc, x * TILE, y * TILE);
+  };
+  const orth = [[0, -1, 'N'], [1, 0, 'E'], [0, 1, 'S'], [-1, 0, 'W']];
+  const diag = [[1, -1, 'NE', [0, -1], [1, 0]], [-1, -1, 'NW', [0, -1], [-1, 0]], [1, 1, 'SE', [0, 1], [1, 0]], [-1, 1, 'SW', [0, 1], [-1, 0]]];
+  for (let y = 0; y < map.h; y++) for (let x = 0; x < map.w; x++) {
+    const a = pr(map.tiles[y * map.w + x]);
+    for (const [dx, dy, dir] of orth) {
+      const b = at(x + dx, y + dy); if (pr(b) > a) blend(b, x + dx, y + dy, x, y, dir);
+    }
+    for (const [dx, dy, dir, o1, o2] of diag) {
+      const b = at(x + dx, y + dy);
+      if (pr(b) > a && pr(at(x + o1[0], y + o1[1])) <= a && pr(at(x + o2[0], y + o2[1])) <= a) blend(b, x + dx, y + dy, x, y, dir);
+    }
   }
   return c;
 }
