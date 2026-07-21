@@ -9,6 +9,8 @@ import { STATUS } from './src/shared/constants.js';
 import * as players from './src/server/players.js';
 import * as content from './src/server/content.js';
 import * as game from './src/server/gameServer.js';
+import * as aiConfig from './src/server/aiConfig.js';
+import { aiTest } from './src/server/ai.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PORT = process.env.PORT || 8080;
@@ -102,6 +104,27 @@ async function handleApi(req, res, url) {
   if (req.method === 'POST' && url.pathname === '/api/admin/reload') {
     content.reload();
     return json(res, 200, { ok: true, version: content.get().version });
+  }
+
+  // ---- AI connection + brain preset (connect your own model at runtime) ----
+  if (req.method === 'GET' && url.pathname === '/api/admin/ai') {
+    return json(res, 200, aiConfig.meta());
+  }
+  if (req.method === 'POST' && url.pathname === '/api/admin/ai') {
+    aiConfig.update(await readBody(req));
+    return json(res, 200, { ok: true, ...aiConfig.meta() });
+  }
+  if (req.method === 'POST' && url.pathname === '/api/admin/ai/reset') {
+    aiConfig.reset();
+    return json(res, 200, { ok: true, ...aiConfig.meta() });
+  }
+  if (req.method === 'POST' && url.pathname === '/api/admin/ai/test') {
+    try {
+      const reply = await aiTest();
+      return json(res, 200, { ok: true, reply });
+    } catch (e) {
+      return json(res, 200, { ok: false, error: String(e.message || e).slice(0, 300) });
+    }
   }
 
   return json(res, 404, { error: 'not found' });

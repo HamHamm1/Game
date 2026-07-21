@@ -1,57 +1,79 @@
-// AI roleplay backend. Talks to an LLM so NPCs reply in-character to free
-// text, and remembers the conversation (memory is persisted per player+NPC).
+// AI roleplay backend. Talks to an LLM so NPCs reply in-character to free text
+// and remembers the conversation (memory persisted per player+NPC).
 //
-// Configure with ONE of these (set in your environment before `node server.js`):
-//   ANTHROPIC_API_KEY=sk-ant-...          (uses Claude; AI_MODEL optional)
-//   OPENAI_API_KEY=sk-...                 (OpenAI or any compatible endpoint)
-//     AI_BASE_URL=https://api.openai.com/v1   (override for compatible APIs)
-//   AI_MODEL=...                          (override the model id)
-// With no key set, NPCs fall back to short in-character canned lines so the
-// game still works offline.
+// The endpoint, key, model, sampling params and the NPC "brain" (system prompt)
+// are all configured at RUNTIME from the admin panel — see aiConfig.js. Nothing
+// here needs restarting when the admin connects a different model.
+import * as cfg from './aiConfig.js';
 
-const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY;
-const OPENAI_KEY = process.env.OPENAI_API_KEY;
-const OPENAI_BASE = process.env.AI_BASE_URL || 'https://api.openai.com/v1';
-const MODEL = process.env.AI_MODEL || (ANTHROPIC_KEY ? 'claude-3-5-haiku-latest' : 'gpt-4o-mini');
+export function aiEnabled() { return cfg.isReady(); }
 
-export function aiEnabled() { return !!(ANTHROPIC_KEY || OPENAI_KEY); }
-
-function persona(npc, player) {
-  const aff = (player.affection && player.affection[npc.id]) || 0;
-  return [
-    `You are "${npc.name}", ${npc.role || 'a resident'} in the world of Alektier —`,
-    `a fantasy magic-academy dating RPG. This is an open-ended roleplay with no fixed ending.`,
-    `Your personality: ${npc.personality || 'friendly'}.`,
-    `You are talking to ${player.name}, who woke up as "the villain everyone fears" from a trashy`,
-    `fantasy novel and is trying to rewrite their fate. Current affection toward the player: ${aff} (higher = warmer).`,
-    `Rules: stay fully in character; never say you are an AI or a language model; keep replies short`,
-    `(1–3 sentences), warm and vivid; remember earlier moments in this conversation and refer back to them;`,
-    `reply in Thai unless the player clearly uses another language, then match it.`,
-  ].join(' ');
+function affTier(a) {
+  if (a >= 100) return 'รักและผูกพันลึกซึ้ง';
+  if (a >= 60) return 'สนิทสนม เริ่มมีใจให้';
+  if (a >= 30) return 'เป็นมิตร เริ่มไว้ใจ';
+  if (a >= 10) return 'เริ่มคุ้นเคยแต่ยังกันท่า';
+  return 'เย็นชาและระแวง (เธอคือวายร้ายที่ผู้คนหวาดกลัว)';
 }
 
-const TIMEOUT = 20000;
+// Dynamic, game-specific identity injected ahead of the editable brain modules.
+function identityBlock(npc, player) {
+  const aff = (player.affection && player.affection[npc.id]) || 0;
+  return [
+    `คุณกำลังสวมบทเป็น "${npc.name}" — ${npc.role || 'ผู้อยู่อาศัยคนหนึ่ง'} ในโลกของอเล็กเทียร์`,
+    `โลกนี้คือสถาบันเวทมนตร์แฟนตาซีวิกตอเรียนในนิยายจีบสาว/หนุ่ม เป็นการโรลเพลย์ปลายเปิด ไม่มีฉากจบตายตัว`,
+    `นิสัยหลักของ ${npc.name}: ${npc.personality || 'เป็นมิตร'}`,
+    `คุณกำลังคุยกับ "${player.name || 'ผู้พเนจร'}" ผู้ตื่นมาพบว่าตัวเองกลายเป็น "วายร้ายที่ทุกคนเกลียดชัง" จากนิยายแฟนตาซีเกรดต่ำ และกำลังพยายามลิขิตชะตาตัวเองใหม่`,
+    `ระดับความสัมพันธ์ที่ ${npc.name} มีต่อผู้เล่นตอนนี้: ${aff} — ${affTier(aff)}`,
+    `คุณจำทุกอย่างที่เคยเกิดขึ้นในบทสนทนานี้ได้ อ้างอิงถึงเรื่องเก่า ๆ ที่เคยคุยกันเมื่อเหมาะสม`,
+  ].join('\n');
+}
+
+// Compose the full system prompt: dynamic identity + enabled brain modules,
+// with {{char}}/{{user}} placeholders filled in.
+export function buildSystem(npc, player) {
+  const c = cfg.get();
+  const mods = (c.brain || []).filter((m) => m.enabled).map((m) => m.content);
+  return [identityBlock(npc, player), ...mods]
+    .join('\n\n')
+    .split('{{char}}').join(npc.name)
+    .split('{{user}}').join(player.name || 'ผู้เล่น');
+}
+
+const TIMEOUT = 25000;
 async function callJSON(url, headers, body) {
   const ctrl = new AbortController();
   const t = setTimeout(() => ctrl.abort(), TIMEOUT);
   try {
     const res = await fetch(url, { method: 'POST', headers, body: JSON.stringify(body), signal: ctrl.signal });
-    if (!res.ok) throw new Error(`${res.status} ${await res.text().catch(() => '')}`.slice(0, 200));
+    if (!res.ok) throw new Error(`${res.status} ${await res.text().catch(() => '')}`.slice(0, 300));
     return await res.json();
   } finally { clearTimeout(t); }
 }
 
-async function anthropic(system, messages) {
-  const j = await callJSON('https://api.anthropic.com/v1/messages',
-    { 'content-type': 'application/json', 'x-api-key': ANTHROPIC_KEY, 'anthropic-version': '2023-06-01' },
-    { model: MODEL, max_tokens: 220, system, messages });
-  return (j.content?.map((c) => c.text).join('') || '').trim();
+async function callAnthropic(system, messages) {
+  const c = cfg.resolved();
+  const url = c.baseUrl.replace(/\/+$/, '') + '/v1/messages';
+  const j = await callJSON(url,
+    { 'content-type': 'application/json', 'x-api-key': c.apiKey, 'anthropic-version': '2023-06-01' },
+    { model: c.model, max_tokens: c.max_tokens, temperature: c.temperature, top_p: c.top_p, system, messages });
+  return (j.content?.map((x) => x.text).join('') || '').trim();
 }
-async function openai(system, messages) {
-  const j = await callJSON(`${OPENAI_BASE}/chat/completions`,
-    { 'content-type': 'application/json', authorization: `Bearer ${OPENAI_KEY}` },
-    { model: MODEL, max_tokens: 220, messages: [{ role: 'system', content: system }, ...messages] });
+async function callOpenAI(system, messages) {
+  const c = cfg.resolved();
+  const url = c.baseUrl.replace(/\/+$/, '') + '/chat/completions';
+  const j = await callJSON(url,
+    { 'content-type': 'application/json', authorization: `Bearer ${c.apiKey}` },
+    {
+      model: c.model, max_tokens: c.max_tokens, temperature: c.temperature, top_p: c.top_p,
+      frequency_penalty: c.frequency_penalty, presence_penalty: c.presence_penalty,
+      messages: [{ role: 'system', content: system }, ...messages],
+    });
   return (j.choices?.[0]?.message?.content || '').trim();
+}
+
+function callProvider(system, messages) {
+  return cfg.get().provider === 'anthropic' ? callAnthropic(system, messages) : callOpenAI(system, messages);
 }
 
 const FB = {
@@ -73,10 +95,19 @@ function fallback(npc) {
 
 // history: [{role:'user'|'assistant', content}], returns reply text.
 export async function aiReply(npc, player, history, userText) {
-  const messages = [...history.slice(-24), { role: 'user', content: userText }];
+  const c = cfg.get();
+  const messages = [...history.slice(-(c.memoryTurns || 24)), { role: 'user', content: userText }];
   try {
-    if (ANTHROPIC_KEY) return await anthropic(persona(npc, player), messages) || fallback(npc);
-    if (OPENAI_KEY) return await openai(persona(npc, player), messages) || fallback(npc);
+    if (cfg.isReady()) return (await callProvider(buildSystem(npc, player), messages)) || fallback(npc);
   } catch (e) { console.warn('[ai] reply failed:', e.message); }
   return fallback(npc);
+}
+
+// Admin "test connection" — a tiny round-trip to verify the endpoint works.
+export async function aiTest() {
+  if (!cfg.isReady()) throw new Error('ยังไม่ได้ตั้งค่า API key');
+  const out = await callProvider(
+    'You are a connection tester. Reply with a short friendly greeting in Thai.',
+    [{ role: 'user', content: 'ทดสอบการเชื่อมต่อ ตอบสั้น ๆ ว่าเชื่อมต่อสำเร็จ' }]);
+  return out || '(เชื่อมต่อได้ แต่โมเดลไม่ส่งข้อความกลับ)';
 }
