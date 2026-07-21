@@ -402,49 +402,108 @@ function turret(ctx, x, w, topY, sh, stone, roofc, trim, glass, jewel, flag) {
   ctx.fillStyle = flag; fillPoly(ctx, [[cx, topY - sH - 8], [cx + 7, topY - sH - 6], [cx, topY - sH - 4]]);
 }
 
-// Bespoke Victorian palace: cream stone, burgundy mansard + pointed turrets,
-// rose window, arched windows, wrought-iron cresting, portico entrance.
+// ---- opulence helpers (gold + gems) ----
+const GOLD = '#e8c24a', GOLD_LO = '#b08526', GOLD_HI = '#f7e59a', MARBLE = '#f0ead9';
+const GEMS = ['#d23a5a', '#3a6ad2', '#2fae6a', '#9a4ad2', '#e0a83a'];
+function gem(ctx, x, y, s, col) {
+  ctx.fillStyle = GOLD_LO; fillPoly(ctx, [[x, y - s - 1], [x + s + 1, y], [x, y + s + 1], [x - s - 1, y]]);
+  ctx.fillStyle = col; fillPoly(ctx, [[x, y - s], [x + s, y], [x, y + s], [x - s, y]]);
+  ctx.fillStyle = shade(col, 1.5); fillPoly(ctx, [[x, y - s], [x + s * 0.55, y - s * 0.15], [x, y + s * 0.2], [x - s * 0.55, y - s * 0.15]]);
+  ctx.fillStyle = '#fff'; ctx.fillRect(x - 1, y - s + 0.5, 1, 1);
+}
+function goldDome(ctx, cx, baseY, r) {
+  const ry = r * 0.98;
+  ctx.fillStyle = OUTLINE; ctx.beginPath(); ctx.ellipse(cx, baseY, r + 1, ry + 1, 0, Math.PI, 0); ctx.fill();
+  ctx.fillStyle = GOLD; ctx.beginPath(); ctx.ellipse(cx, baseY, r, ry, 0, Math.PI, 0); ctx.fill();
+  ctx.fillStyle = GOLD_LO; ctx.beginPath(); ctx.ellipse(cx, baseY, r, ry, 0, Math.PI * 1.5, Math.PI * 2); ctx.lineTo(cx, baseY); ctx.fill();
+  ctx.strokeStyle = GOLD_LO; ctx.lineWidth = 0.75; for (let a = -2; a <= 2; a++) { ctx.beginPath(); ctx.moveTo(cx + a * r * 0.5, baseY - 1); ctx.lineTo(cx + a * r * 0.12, baseY - ry * 0.96); ctx.stroke(); }
+  ctx.fillStyle = GOLD_HI; ctx.beginPath(); ctx.ellipse(cx - r * 0.32, baseY - ry * 0.42, r * 0.13, ry * 0.42, 0, 0, 7); ctx.fill();
+  ctx.fillStyle = GOLD; ctx.fillRect(cx - r - 1, baseY - 1, 2 * r + 2, 2);
+}
+// Onion dome sitting on a tower whose top cornice is at baseY. Returns apex Y.
+function onionCap(ctx, cx, baseY, r) {
+  const H = r * 1.85;
+  const path = (rr, ex) => { ctx.beginPath(); ctx.moveTo(cx - rr, baseY); ctx.bezierCurveTo(cx - rr * 1.3, baseY - rr * 0.85, cx - rr * 0.5, baseY - rr * 1.45, cx, baseY - H - ex); ctx.bezierCurveTo(cx + rr * 0.5, baseY - rr * 1.45, cx + rr * 1.3, baseY - rr * 0.85, cx + rr, baseY); ctx.closePath(); };
+  ctx.fillStyle = OUTLINE; path(r + 1, 1); ctx.fill();
+  ctx.fillStyle = GOLD; path(r, 0); ctx.fill();
+  ctx.save(); ctx.beginPath(); ctx.rect(cx, baseY - H - 2, r + 2, H + 2); ctx.clip(); ctx.fillStyle = GOLD_LO; path(r, 0); ctx.fill(); ctx.restore();
+  ctx.fillStyle = GOLD_HI; ctx.beginPath(); ctx.ellipse(cx - r * 0.4, baseY - r * 0.8, r * 0.14, r * 0.55, 0, 0, 7); ctx.fill();
+  ctx.fillStyle = GOLD; ctx.fillRect(cx - 0.5, baseY - H - 3, 1, 3);
+  return baseY - H - 3;
+}
+function palaceTower(ctx, x, w, topY, sh, jglass) {
+  const cx = x + w / 2;
+  ctx.fillStyle = OUTLINE; ctx.fillRect(x - 1, topY - 1, w + 2, sh - topY + 1);
+  matFill(ctx, 'stone', x, topY, w, sh - topY, MARBLE, GOLD);
+  ctx.fillStyle = GOLD; ctx.fillRect(x, topY, 1.5, sh - topY); ctx.fillRect(x + w - 1.5, topY, 1.5, sh - topY);
+  for (let yy = topY + U; yy < sh - 3; yy += U) { ctx.fillStyle = GOLD; ctx.fillRect(x, yy, w, 1); gem(ctx, cx, yy + U * 0.5, 1.5, GEMS[(yy / U | 0) % GEMS.length]); }
+  for (let i = 0; i < 3; i++) { const wy = topY + 6 + i * 9; if (wy > sh - 11) break; winDraw(ctx, 'arch', cx - 2.5, wy, 5, 7, GOLD, jglass[i % jglass.length]); }
+  ctx.fillStyle = GOLD; ctx.fillRect(x - 1, topY - 2, w + 2, 2);
+  const apex = onionCap(ctx, cx, topY - 2, w * 0.52);
+  gem(ctx, cx, apex - 3, 1.8, GEMS[0]);
+}
+
+// Grandest building: white-marble palace dripping with gold and jewels — a
+// great gold central dome, gold onion-domed towers, gem-studded gold trim,
+// jewelled stained glass, a columned portico and a jewelled pediment.
 function drawPalace(ctx, obj, cfg, L, R, mid, bodyTop, sh) {
-  const W = R - L, bh = sh - bodyTop, stone = cfg.wall, roofc = cfg.roof, trim = cfg.trim, glass = cfg.glass;
-  const jewel = ['#7a3a44', '#3f6270', '#9a7a44', '#4a5a72', '#5a4a6a'];
-  const flag = '#8a3a48', tw = Math.max(U * 1.7, W * 0.14);
+  const W = R - L, bh = sh - bodyTop;
+  const jglass = ['#b24a5a', '#4a6ac2', '#4aae7a', '#8a5ac2', '#c2a23a'];
+  const tw = Math.max(U * 1.9, W * 0.14), itw = Math.max(U * 1.2, W * 0.08);
+  const cbw = Math.max(U * 3, W * 0.36), cbTop = bodyTop - U * 3;
 
-  // central body wall (between towers)
+  // central body wall between towers
   ctx.fillStyle = OUTLINE; ctx.fillRect(L + tw - 1, bodyTop - 1, W - 2 * tw + 2, bh + 1);
-  matFill(ctx, 'stone', L + tw, bodyTop, W - 2 * tw, bh, stone, trim);
-  ctx.fillStyle = shade(trim, 0.85); for (let yy = bodyTop + U; yy < sh - 4; yy += U) ctx.fillRect(L + tw, yy, W - 2 * tw, 1);
-  const nwin = Math.max(3, obj.w - 5), wrows = Math.max(2, obj.h - 3);
-  for (let r = 0; r < wrows; r++) for (let i = 0; i < nwin; i++) { const gx = L + tw + (W - 2 * tw) * (i + 0.5) / nwin - 3, gy = bodyTop + 7 + r * ((bh - 16) / wrows); winDraw(ctx, 'arch', gx, gy, 6, 9, trim, jewel[(i + r) % jewel.length]); }
-  ctx.fillStyle = trim; ctx.fillRect(L + tw - 2, bodyTop - 1, W - 2 * tw + 4, 2);   // cornice
+  matFill(ctx, 'stone', L + tw, bodyTop, W - 2 * tw, bh, MARBLE, GOLD);
+  // gold string courses with gem studs
+  for (let yy = bodyTop + U; yy < sh - 4; yy += U) { ctx.fillStyle = GOLD; ctx.fillRect(L + tw, yy, W - 2 * tw, 1); }
+  // arched jewelled windows with gold pilasters between them
+  const nwin = Math.max(3, obj.w - 6), wrows = Math.max(2, obj.h - 3);
+  for (let i = 0; i <= nwin; i++) { const px = L + tw + (W - 2 * tw) * i / nwin; ctx.fillStyle = GOLD; ctx.fillRect(px - 0.5, bodyTop + 2, 1.5, bh - 2); ctx.fillStyle = GOLD_LO; ctx.fillRect(px + 1, bodyTop + 2, 0.5, bh - 2); }
+  for (let r = 0; r < wrows; r++) for (let i = 0; i < nwin; i++) { const gx = L + tw + (W - 2 * tw) * (i + 0.5) / nwin - 3, gy = bodyTop + 7 + r * ((bh - 16) / wrows); winDraw(ctx, 'arch', gx, gy, 6, 9, GOLD, jglass[(i + r) % jglass.length]); }
+  // gold cornice with a row of gems
+  ctx.fillStyle = GOLD; ctx.fillRect(L + tw - 2, bodyTop - 2, W - 2 * tw + 4, 3);
+  for (let gx = L + tw + 4; gx < R - tw - 2; gx += 8) gem(ctx, gx, bodyTop - 0.5, 1.3, GEMS[(gx | 0) % GEMS.length]);
 
-  // central raised block (tallest) + rose window + mansard roof
-  const cbw = Math.max(U * 2.6, W * 0.36), cbTop = bodyTop - U * 2.2;
+  // central raised block: rose window + great gold dome + crown gem
   ctx.fillStyle = OUTLINE; ctx.fillRect(mid - cbw / 2 - 1, cbTop - 1, cbw + 2, bodyTop - cbTop + 1);
-  matFill(ctx, 'stone', mid - cbw / 2, cbTop, cbw, bodyTop - cbTop, stone, trim);
-  ctx.fillStyle = trim; ctx.beginPath(); ctx.arc(mid, cbTop + U * 0.8, cbw * 0.17, 0, 7); ctx.fill();
-  ctx.fillStyle = jewel[1]; ctx.beginPath(); ctx.arc(mid, cbTop + U * 0.8, cbw * 0.13, 0, 7); ctx.fill();
-  ctx.strokeStyle = shade(trim, 0.7); ctx.lineWidth = 1;
-  for (let a = 0; a < 6; a++) { const ang = a * Math.PI / 3; ctx.beginPath(); ctx.moveTo(mid, cbTop + U * 0.8); ctx.lineTo(mid + Math.cos(ang) * cbw * 0.13, cbTop + U * 0.8 + Math.sin(ang) * cbw * 0.13); ctx.stroke(); }
-  mansardRoof(ctx, mid - cbw / 2, mid + cbw / 2, cbTop - U * 1.6, cbTop, roofc, trim, glass);
+  matFill(ctx, 'stone', mid - cbw / 2, cbTop, cbw, bodyTop - cbTop, MARBLE, GOLD);
+  ctx.fillStyle = GOLD; ctx.fillRect(mid - cbw / 2, cbTop, cbw, 1.5); ctx.fillRect(mid - cbw / 2, bodyTop - 2, cbw, 1.5);
+  const rr = cbw * 0.16, rcy = cbTop + U * 1.05;
+  ctx.fillStyle = GOLD; ctx.beginPath(); ctx.arc(mid, rcy, rr + 2, 0, 7); ctx.fill();
+  ctx.fillStyle = '#4a6ac2'; ctx.beginPath(); ctx.arc(mid, rcy, rr, 0, 7); ctx.fill();
+  ctx.strokeStyle = GOLD; ctx.lineWidth = 0.75; for (let a = 0; a < 6; a++) { const ang = a * Math.PI / 3; ctx.beginPath(); ctx.moveTo(mid, rcy); ctx.lineTo(mid + Math.cos(ang) * rr, rcy + Math.sin(ang) * rr); ctx.stroke(); }
+  for (let a = 0; a < 8; a++) { const ang = a * Math.PI / 4; gem(ctx, mid + Math.cos(ang) * (rr + 2), rcy + Math.sin(ang) * (rr + 2), 1.2, GEMS[a % GEMS.length]); }
+  const domeR = cbw * 0.42, domeTop = cbTop - domeR * 0.98;
+  goldDome(ctx, mid, cbTop, domeR);
+  ctx.fillStyle = MARBLE; ctx.fillRect(mid - domeR * 0.2, domeTop - U * 0.5, domeR * 0.4, U * 0.5);
+  ctx.fillStyle = GOLD; ctx.fillRect(mid - domeR * 0.2, domeTop - U * 0.5, domeR * 0.4, 1);
+  ctx.fillStyle = GOLD; fillPoly(ctx, [[mid - 2, domeTop - U * 0.5], [mid, domeTop - U * 0.5 - 8], [mid + 2, domeTop - U * 0.5]]);
+  gem(ctx, mid, domeTop - U * 0.5 - 11, 2.6, '#d23a5a');
 
-  // pointed corner turrets
-  turret(ctx, L, tw, bodyTop - U * 0.6, sh, stone, roofc, trim, glass, jewel, flag);
-  turret(ctx, R - tw, tw, bodyTop - U * 0.6, sh, stone, roofc, trim, glass, jewel, flag);
-  // extra pinnacles for a multi-spired roofline
-  for (const px of [mid - cbw / 2, mid + cbw / 2, mid - cbw * 0.2, mid + cbw * 0.2]) pinnacle(ctx, px, cbTop, roofc, trim);
-  // wrought-iron cresting along the body eaves
-  ironCrest(ctx, L + tw, mid - cbw / 2, bodyTop, trim); ironCrest(ctx, mid + cbw / 2, R - tw, bodyTop, trim);
+  // gold onion-domed towers: two corners + two inner (multi-spired)
+  palaceTower(ctx, L, tw, bodyTop - U * 0.8, sh, jglass);
+  palaceTower(ctx, R - tw, tw, bodyTop - U * 0.8, sh, jglass);
+  palaceTower(ctx, mid - cbw / 2 - itw, itw, bodyTop - U * 1.4, bodyTop + bh * 0.5, jglass);
+  palaceTower(ctx, mid + cbw / 2, itw, bodyTop - U * 1.4, bodyTop + bh * 0.5, jglass);
 
-  // banners
-  for (const bx of [mid - cbw / 2 - 4, mid + cbw / 2]) { const bhh = bh * 0.42; ctx.fillStyle = '#7a3340'; ctx.fillRect(bx, bodyTop + 4, 4, bhh); ctx.fillStyle = trim; ctx.fillRect(bx + 1, bodyTop + 4 + bhh * 0.45, 2, 2); ctx.fillStyle = '#7a3340'; fillPoly(ctx, [[bx, bodyTop + 4 + bhh], [bx + 2, bodyTop + 4 + bhh + 3], [bx + 4, bodyTop + 4 + bhh]]); }
+  // gold urns on the body roofline
+  for (const ux of [L + tw + 3, R - tw - 5]) { ctx.fillStyle = GOLD; ctx.fillRect(ux, bodyTop - 5, 4, 5); ctx.beginPath(); ctx.arc(ux + 2, bodyTop - 6, 2.4, 0, 7); ctx.fill(); ctx.fillStyle = GOLD_LO; ctx.fillRect(ux + 2, bodyTop - 8, 0.5, 2); }
 
-  // grand portico entrance: pediment, columns, arched door, steps
-  const dw = Math.max(U, W * 0.12);
-  ctx.fillStyle = trim; fillPoly(ctx, [[mid - dw / 2 - 5, sh - U * 2], [mid, sh - U * 2 - 7], [mid + dw / 2 + 5, sh - U * 2]]);
-  ctx.fillStyle = shade(trim, 0.8); ctx.fillRect(mid - dw / 2 - 5, sh - U * 2, dw + 10, 2);
-  for (const colx of [mid - dw / 2 - 4, mid + dw / 2 + 2]) { ctx.fillStyle = shade(stone, 1.12); ctx.fillRect(colx, sh - U * 2, 2, U * 2); ctx.fillStyle = shade(stone, 0.68); ctx.fillRect(colx + 2, sh - U * 2, 1, U * 2); }
-  drawDoor(ctx, mid, sh - 1, dw, U * 1.7, trim);
-  for (let i = 0; i < 3; i++) { ctx.fillStyle = shade(stone, 0.85 - i * 0.06); ctx.fillRect(mid - dw / 2 - 6 - i * 3, sh - 2 + i, dw + 12 + i * 6, 2); }
+  // royal banners
+  for (const bx of [mid - cbw / 2 - 4, mid + cbw / 2 + 1]) { const bhh = bh * 0.4; ctx.fillStyle = '#7a2f44'; ctx.fillRect(bx, bodyTop + 4, 4, bhh); gem(ctx, bx + 2, bodyTop + 4 + bhh * 0.45, 1.4, '#e0a83a'); ctx.fillStyle = '#7a2f44'; fillPoly(ctx, [[bx, bodyTop + 4 + bhh], [bx + 2, bodyTop + 4 + bhh + 3], [bx + 4, bodyTop + 4 + bhh]]); }
+
+  // grand columned portico with a jewelled pediment
+  const dw = Math.max(U * 1.2, W * 0.12);
+  ctx.fillStyle = OUTLINE; fillPoly(ctx, [[mid - dw / 2 - 7, sh - U * 2.2], [mid, sh - U * 2.2 - 9], [mid + dw / 2 + 7, sh - U * 2.2]]);
+  ctx.fillStyle = GOLD; fillPoly(ctx, [[mid - dw / 2 - 6, sh - U * 2.2], [mid, sh - U * 2.2 - 8], [mid + dw / 2 + 6, sh - U * 2.2]]);
+  ctx.fillStyle = MARBLE; fillPoly(ctx, [[mid - dw / 2 - 3, sh - U * 2.2 - 1], [mid, sh - U * 2.2 - 6], [mid + dw / 2 + 3, sh - U * 2.2 - 1]]);
+  gem(ctx, mid, sh - U * 2.2 - 3.5, 2, '#3a6ad2');
+  ctx.fillStyle = GOLD; ctx.fillRect(mid - dw / 2 - 7, sh - U * 2.2, dw + 14, 2);
+  for (const colx of [mid - dw / 2 - 5, mid + dw / 2 + 2]) { ctx.fillStyle = GOLD_HI; ctx.fillRect(colx, sh - U * 2.2, 3, U * 2.2); ctx.fillStyle = GOLD_LO; ctx.fillRect(colx + 2, sh - U * 2.2, 1, U * 2.2); ctx.fillStyle = GOLD; ctx.fillRect(colx - 0.5, sh - U * 2.2, 4, 1.5); ctx.fillRect(colx - 0.5, sh - 3, 4, 1.5); }
+  drawDoor(ctx, mid, sh - 1, dw, U * 1.8, GOLD);
+  gem(ctx, mid, sh - U * 1.2, 1.6, '#d23a5a'); gem(ctx, mid, sh - U * 0.5, 1.6, '#3a6ad2');
+  for (let i = 0; i < 4; i++) { ctx.fillStyle = shade(MARBLE, 0.9 - i * 0.05); ctx.fillRect(mid - dw / 2 - 8 - i * 4, sh - 2 + i, dw + 16 + i * 8, 2); }
 }
 
 // ---- prettiness helpers ----
@@ -600,7 +659,7 @@ function buildVictorian(obj) {
   const W = obj.w * U, bodyH = obj.h * U, PAD = 6, grand = !!cfg.grand, rt = cfg.roofType || 'gable';
   const roofH = grand ? Math.round(U * 2.6) : rt === 'gable' ? Math.round(U * 2.1) : rt === 'mansard' ? Math.round(U * 1.7) : Math.round(U * 1.4);
   const towerH = grand ? Math.round(U * 3.2) : 0;
-  const topExtra = grand ? towerH + roofH + Math.round(U * 1.7) : Math.round(U * 4.4);
+  const topExtra = grand ? towerH + roofH + Math.round(U * 3.2) : Math.round(U * 4.4);
   const sw = W + PAD * 2, sh = bodyH + topExtra;
   const { c: sc, ctx } = makeCanvas(sw, sh);
   const L = PAD, R = PAD + W, mid = L + W / 2, bodyTop = sh - bodyH;

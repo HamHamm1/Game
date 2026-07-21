@@ -65,7 +65,7 @@ function buildTown() {
 
   objects.push({ t: 'prop', x: 29, y: 22, kind: 'statue' });
   // north: palace + academy district
-  objects.push({ t: 'building', x: 24, y: 4, w: 12, h: 7, style: 'palace', name: 'พระราชวังอเล็กเทียร์', door: 6 });
+  objects.push({ t: 'building', x: 22, y: 4, w: 16, h: 8, style: 'palace', name: 'พระราชวังอเล็กเทียร์', door: 8 });
   objects.push({ t: 'building', x: 8, y: 6, w: 8, h: 6, style: 'opera', name: 'โรงละครโอเปร่า', door: 4 });
   objects.push({ t: 'building', x: 40, y: 6, w: 8, h: 6, style: 'library', name: 'หอสมุดแห่งปัญญา', door: 3 });
   // shops row
