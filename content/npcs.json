@@ -1,37 +1,1774 @@
 [
-  {
-    "id": "seraphine", "name": "เซราฟิน", "role": "นางเอกตัวจริงของนิยาย",
-    "x": 27, "y": 28, "romanceable": true,
-    "portrait": { "skin": "#f3d2b3", "hair": "#f2d16b", "eye": "#4aa3ff", "outfit": "#ffd9e6" }
+ {
+  "id": "seraphine",
+  "name": "เซราฟิน",
+  "role": "นางเอกตัวจริงของนิยาย",
+  "map": "school",
+  "hairStyle": "long",
+  "look": {
+   "skin": "#f3d2b3",
+   "hair": "#f2d16b",
+   "eye": "#4aa3ff",
+   "outfit": "#ffd9e6"
   },
-  {
-    "id": "aric", "name": "เจ้าชายอาริค", "role": "รัชทายาทแห่งอเล็กเทียร์",
-    "x": 30, "y": 14, "romanceable": true,
-    "portrait": { "skin": "#e9c39b", "hair": "#8a6bd1", "eye": "#c9a227", "outfit": "#3a2f6b" }
+  "personality": "cheerful"
+ },
+ {
+  "id": "aric",
+  "name": "เจ้าชายอาริค",
+  "role": "รัชทายาทแห่งอเล็กเทียร์",
+  "map": "town",
+  "hairStyle": "short",
+  "look": {
+   "skin": "#e9c39b",
+   "hair": "#8a6bd1",
+   "eye": "#c9a227",
+   "outfit": "#3a2f6b"
   },
-  {
-    "id": "kaeld", "name": "ไคลด์", "role": "อัศวินหน้าเย็นแห่งลานประลอง",
-    "x": 9, "y": 36, "romanceable": true,
-    "portrait": { "skin": "#d8b08a", "hair": "#3a3f4a", "eye": "#7ad1c4", "outfit": "#5a5f6b" }
+  "personality": "noble"
+ },
+ {
+  "id": "kaeld",
+  "name": "ไคลด์",
+  "role": "อัศวินหน้าเย็นแห่งลานประลอง",
+  "map": "school",
+  "hairStyle": "spiky",
+  "look": {
+   "skin": "#d8b08a",
+   "hair": "#3a3f4a",
+   "eye": "#7ad1c4",
+   "outfit": "#5a5f6b"
   },
-  {
-    "id": "lumen", "name": "ลูเมน", "role": "จอมเวทเจ้าเล่ห์แห่งห้องสมุดต้องห้าม",
-    "x": 48, "y": 33, "romanceable": true,
-    "portrait": { "skin": "#f0d6bd", "hair": "#c94f7c", "eye": "#a24aff", "outfit": "#241b3a" }
+  "personality": "knight"
+ },
+ {
+  "id": "lumen",
+  "name": "ลูเมน",
+  "role": "จอมเวทเจ้าเล่ห์แห่งห้องสมุดต้องห้าม",
+  "map": "school",
+  "hairStyle": "ponytail",
+  "look": {
+   "skin": "#f0d6bd",
+   "hair": "#c94f7c",
+   "eye": "#a24aff",
+   "outfit": "#241b3a"
   },
-  {
-    "id": "rosalie", "name": "โรซาลี", "role": "สาวคาเฟ่ไรส์ทาผู้ร่าเริง",
-    "x": 12, "y": 33, "romanceable": true,
-    "portrait": { "skin": "#f6cdae", "hair": "#e08a3c", "eye": "#4fbf6a", "outfit": "#ffe1b0" }
+  "personality": "scholar"
+ },
+ {
+  "id": "rosalie",
+  "name": "โรซาลี",
+  "role": "สาวคาเฟ่ไรส์ทาผู้ร่าเริง",
+  "map": "school",
+  "hairStyle": "bob",
+  "look": {
+   "skin": "#f6cdae",
+   "hair": "#e08a3c",
+   "eye": "#4fbf6a",
+   "outfit": "#ffe1b0"
   },
-  {
-    "id": "thane", "name": "รุ่นพี่เธน", "role": "ดาวโรงเรียน หัวหน้าหอชาย",
-    "x": 47, "y": 24, "romanceable": true,
-    "portrait": { "skin": "#e6bd94", "hair": "#2b2b2b", "eye": "#d13a3a", "outfit": "#1f3a5a" }
+  "personality": "cheerful"
+ },
+ {
+  "id": "thane",
+  "name": "รุ่นพี่เธน",
+  "role": "ดาวโรงเรียน หัวหน้าหอชาย",
+  "map": "town",
+  "hairStyle": "short",
+  "look": {
+   "skin": "#e6bd94",
+   "hair": "#2b2b2b",
+   "eye": "#d13a3a",
+   "outfit": "#1f3a5a"
   },
-  {
-    "id": "nyx", "name": "นิกซ์", "role": "เด็กลึกลับสายมืด (คล้ายกับเธอ)",
-    "x": 44, "y": 36, "romanceable": true,
-    "portrait": { "skin": "#d9c2c8", "hair": "#6a2fb0", "eye": "#ff4a8d", "outfit": "#14121f" }
+  "personality": "flirty"
+ },
+ {
+  "id": "nyx",
+  "name": "นิกซ์",
+  "role": "เด็กลึกลับสายมืด",
+  "map": "world",
+  "hairStyle": "hood",
+  "look": {
+   "skin": "#d9c2c8",
+   "hair": "#6a2fb0",
+   "eye": "#ff4a8d",
+   "outfit": "#14121f"
+  },
+  "personality": "mysterious"
+ },
+ {
+  "id": "npc_school_0",
+  "name": "เลโอ มาร์ควิส",
+  "role": "หมอดูไพ่",
+  "map": "school",
+  "x": 2,
+  "y": 6,
+  "romanceable": true,
+  "personality": "shy",
+  "look": {
+   "skin": "#d8b08a",
+   "hair": "#2b8f6b",
+   "hairStyle": "spiky",
+   "eye": "#4aa3ff",
+   "outfit": "#241b3a",
+   "outfitStyle": "robe"
   }
+ },
+ {
+  "id": "npc_school_1",
+  "name": "ไอริส เคานต์",
+  "role": "นักเรียนเวทศิลป์",
+  "map": "school",
+  "x": 38,
+  "y": 21,
+  "romanceable": true,
+  "personality": "shy",
+  "look": {
+   "skin": "#e6bd94",
+   "hair": "#9fb0c9",
+   "hairStyle": "spiky",
+   "eye": "#a24aff",
+   "outfit": "#5a5f6b",
+   "outfitStyle": "noble"
+  }
+ },
+ {
+  "id": "npc_school_2",
+  "name": "เอนโซ่ โรเซเลีย",
+  "role": "ยาม",
+  "map": "school",
+  "x": 23,
+  "y": 23,
+  "romanceable": true,
+  "personality": "cool",
+  "look": {
+   "skin": "#8d5524",
+   "hair": "#b0413a",
+   "hairStyle": "spiky",
+   "eye": "#a24aff",
+   "outfit": "#1f3a5a",
+   "outfitStyle": "noble"
+  }
+ },
+ {
+  "id": "npc_school_3",
+  "name": "ไคออน เดอเวลิส",
+  "role": "หมอดูไพ่",
+  "map": "school",
+  "x": 4,
+  "y": 11,
+  "romanceable": true,
+  "personality": "flirty",
+  "look": {
+   "skin": "#d9c2c8",
+   "hair": "#3a3f4a",
+   "hairStyle": "bun",
+   "eye": "#7ad1c4",
+   "outfit": "#ffe1b0",
+   "outfitStyle": "noble"
+  }
+ },
+ {
+  "id": "npc_school_4",
+  "name": "วิคเตอร์ นาร์เคีย",
+  "role": "นักผจญภัย",
+  "map": "school",
+  "x": 2,
+  "y": 27,
+  "romanceable": true,
+  "personality": "merchant",
+  "look": {
+   "skin": "#8d5524",
+   "hair": "#2b8f6b",
+   "hairStyle": "bob",
+   "eye": "#c9a227",
+   "outfit": "#241b3a",
+   "outfitStyle": "uniform"
+  }
+ },
+ {
+  "id": "npc_school_5",
+  "name": "วิคเตอร์ แบล็กวูด",
+  "role": "ชาวสวน",
+  "map": "school",
+  "x": 11,
+  "y": 25,
+  "romanceable": true,
+  "personality": "flirty",
+  "look": {
+   "skin": "#d9c2c8",
+   "hair": "#2b2b2b",
+   "hairStyle": "hood",
+   "eye": "#4fbf6a",
+   "outfit": "#334",
+   "outfitStyle": "robe"
+  }
+ },
+ {
+  "id": "npc_school_6",
+  "name": "ยูริ เดอเวลิส",
+  "role": "กวี",
+  "map": "school",
+  "x": 4,
+  "y": 22,
+  "romanceable": true,
+  "personality": "noble",
+  "look": {
+   "skin": "#c68642",
+   "hair": "#c94f3a",
+   "hairStyle": "spiky",
+   "eye": "#4fbf6a",
+   "outfit": "#5a2f6b",
+   "outfitStyle": "noble"
+  }
+ },
+ {
+  "id": "npc_school_7",
+  "name": "มายา เคานต์",
+  "role": "ศิลปินข้างถนน",
+  "map": "school",
+  "x": 44,
+  "y": 5,
+  "romanceable": true,
+  "personality": "cheerful",
+  "look": {
+   "skin": "#e6bd94",
+   "hair": "#3a3f4a",
+   "hairStyle": "short",
+   "eye": "#4aa3ff",
+   "outfit": "#1f3a5a",
+   "outfitStyle": "noble"
+  }
+ },
+ {
+  "id": "npc_school_8",
+  "name": "เวลกา เบลวิน",
+  "role": "พ่อครัว",
+  "map": "school",
+  "x": 18,
+  "y": 32,
+  "romanceable": true,
+  "personality": "cool",
+  "look": {
+   "skin": "#f6cdae",
+   "hair": "#d1a12b",
+   "hairStyle": "bob",
+   "eye": "#d13a3a",
+   "outfit": "#241b3a",
+   "outfitStyle": "noble"
+  }
+ },
+ {
+  "id": "npc_school_9",
+  "name": "ราเวน เบลวิน",
+  "role": "นักดาบพเนจร",
+  "map": "school",
+  "x": 7,
+  "y": 5,
+  "romanceable": true,
+  "personality": "noble",
+  "look": {
+   "skin": "#e9c39b",
+   "hair": "#f2d16b",
+   "hairStyle": "bun",
+   "eye": "#d13a3a",
+   "outfit": "#5a5f6b",
+   "outfitStyle": "dress"
+  }
+ },
+ {
+  "id": "npc_school_10",
+  "name": "ซาช่า เคานต์",
+  "role": "หมอดูไพ่",
+  "map": "school",
+  "x": 36,
+  "y": 28,
+  "romanceable": true,
+  "personality": "cool",
+  "look": {
+   "skin": "#d9c2c8",
+   "hair": "#5a3b22",
+   "hairStyle": "spiky",
+   "eye": "#ff4a8d",
+   "outfit": "#3a2f6b",
+   "outfitStyle": "casual"
+  }
+ },
+ {
+  "id": "npc_school_11",
+  "name": "เอลาร่า ซิลเวอร์",
+  "role": "ทหารองครักษ์",
+  "map": "school",
+  "x": 22,
+  "y": 31,
+  "romanceable": true,
+  "personality": "cheerful",
+  "look": {
+   "skin": "#a9714b",
+   "hair": "#c94f7c",
+   "hairStyle": "bun",
+   "eye": "#c9a227",
+   "outfit": "#7a2f4a",
+   "outfitStyle": "casual"
+  }
+ },
+ {
+  "id": "npc_school_12",
+  "name": "เดเมียน โรเซเลีย",
+  "role": "พ่อมดฝึกหัด",
+  "map": "school",
+  "x": 41,
+  "y": 33,
+  "romanceable": true,
+  "personality": "cheerful",
+  "look": {
+   "skin": "#e9c39b",
+   "hair": "#f2d16b",
+   "hairStyle": "spiky",
+   "eye": "#4aa3ff",
+   "outfit": "#241b3a",
+   "outfitStyle": "uniform"
+  }
+ },
+ {
+  "id": "npc_school_13",
+  "name": "บรูโน เบลวิน",
+  "role": "นักร้องโอเปร่า",
+  "map": "school",
+  "x": 19,
+  "y": 36,
+  "romanceable": true,
+  "personality": "tsundere",
+  "look": {
+   "skin": "#d8b08a",
+   "hair": "#d1a12b",
+   "hairStyle": "hood",
+   "eye": "#4aa3ff",
+   "outfit": "#334",
+   "outfitStyle": "noble"
+  }
+ },
+ {
+  "id": "npc_school_14",
+  "name": "ธีโอ เดอเวลิส",
+  "role": "ขุนนางหนุ่ม",
+  "map": "school",
+  "x": 5,
+  "y": 4,
+  "romanceable": true,
+  "personality": "tsundere",
+  "look": {
+   "skin": "#f3d2b3",
+   "hair": "#c94f7c",
+   "hairStyle": "hood",
+   "eye": "#d13a3a",
+   "outfit": "#3a2f6b",
+   "outfitStyle": "robe"
+  }
+ },
+ {
+  "id": "npc_school_15",
+  "name": "มายา เวเลนไทน์",
+  "role": "แม่มดสาว",
+  "map": "school",
+  "x": 45,
+  "y": 9,
+  "romanceable": true,
+  "personality": "mysterious",
+  "look": {
+   "skin": "#f6cdae",
+   "hair": "#8a6bd1",
+   "hairStyle": "spiky",
+   "eye": "#a24aff",
+   "outfit": "#ffe1b0",
+   "outfitStyle": "dress"
+  }
+ },
+ {
+  "id": "npc_school_16",
+  "name": "ยูริ อยุก",
+  "role": "ขุนนางสาว",
+  "map": "school",
+  "x": 27,
+  "y": 24,
+  "romanceable": true,
+  "personality": "noble",
+  "look": {
+   "skin": "#8d5524",
+   "hair": "#c94f3a",
+   "hairStyle": "long",
+   "eye": "#4aa3ff",
+   "outfit": "#1f3a5a",
+   "outfitStyle": "dress"
+  }
+ },
+ {
+  "id": "npc_school_17",
+  "name": "โรซ่า แบล็กวูด",
+  "role": "แม่มดสาว",
+  "map": "school",
+  "x": 4,
+  "y": 3,
+  "romanceable": true,
+  "personality": "shy",
+  "look": {
+   "skin": "#d9c2c8",
+   "hair": "#d1a12b",
+   "hairStyle": "bob",
+   "eye": "#7ad1c4",
+   "outfit": "#7a2f4a",
+   "outfitStyle": "dress"
+  }
+ },
+ {
+  "id": "npc_school_18",
+  "name": "อีธาน เบลวิน",
+  "role": "พ่อค้าเร่",
+  "map": "school",
+  "x": 44,
+  "y": 9,
+  "romanceable": true,
+  "personality": "cool",
+  "look": {
+   "skin": "#e9c39b",
+   "hair": "#f2d16b",
+   "hairStyle": "ponytail",
+   "eye": "#c9a227",
+   "outfit": "#334",
+   "outfitStyle": "robe"
+  }
+ },
+ {
+  "id": "npc_school_19",
+  "name": "โจเซฟ อยุก",
+  "role": "กวี",
+  "map": "school",
+  "x": 44,
+  "y": 23,
+  "romanceable": true,
+  "personality": "merchant",
+  "look": {
+   "skin": "#c68642",
+   "hair": "#3a3f4a",
+   "hairStyle": "bun",
+   "eye": "#4fbf6a",
+   "outfit": "#5a2f6b",
+   "outfitStyle": "casual"
+  }
+ },
+ {
+  "id": "npc_school_20",
+  "name": "ราเวน แบล็กวูด",
+  "role": "พ่อครัว",
+  "map": "school",
+  "x": 38,
+  "y": 20,
+  "romanceable": true,
+  "personality": "scholar",
+  "look": {
+   "skin": "#e9c39b",
+   "hair": "#3a3f4a",
+   "hairStyle": "ponytail",
+   "eye": "#d13a3a",
+   "outfit": "#8a5a2b",
+   "outfitStyle": "robe"
+  }
+ },
+ {
+  "id": "npc_school_21",
+  "name": "เลโอ ซิลเวอร์",
+  "role": "กวี",
+  "map": "school",
+  "x": 11,
+  "y": 11,
+  "romanceable": true,
+  "personality": "shy",
+  "look": {
+   "skin": "#d8b08a",
+   "hair": "#b0413a",
+   "hairStyle": "bun",
+   "eye": "#a24aff",
+   "outfit": "#1f3a5a",
+   "outfitStyle": "dress"
+  }
+ },
+ {
+  "id": "npc_school_22",
+  "name": "ลีนา คริสตัล",
+  "role": "กวี",
+  "map": "school",
+  "x": 3,
+  "y": 34,
+  "romanceable": true,
+  "personality": "flirty",
+  "look": {
+   "skin": "#c68642",
+   "hair": "#f2d16b",
+   "hairStyle": "short",
+   "eye": "#a24aff",
+   "outfit": "#7a2f4a",
+   "outfitStyle": "casual"
+  }
+ },
+ {
+  "id": "npc_school_23",
+  "name": "อลิซ อยุก",
+  "role": "ช่างตีเหล็ก",
+  "map": "school",
+  "x": 34,
+  "y": 35,
+  "romanceable": true,
+  "personality": "cool",
+  "look": {
+   "skin": "#f3d2b3",
+   "hair": "#3a3f4a",
+   "hairStyle": "ponytail",
+   "eye": "#c9a227",
+   "outfit": "#5a2f6b",
+   "outfitStyle": "noble"
+  }
+ },
+ {
+  "id": "npc_school_24",
+  "name": "อีธาน นาร์เคีย",
+  "role": "พ่อค้าดอกไม้",
+  "map": "school",
+  "x": 10,
+  "y": 23,
+  "romanceable": true,
+  "personality": "cheerful",
+  "look": {
+   "skin": "#f3d2b3",
+   "hair": "#d1a12b",
+   "hairStyle": "bob",
+   "eye": "#6b8cff",
+   "outfit": "#6b2f2f",
+   "outfitStyle": "dress"
+  }
+ },
+ {
+  "id": "npc_school_25",
+  "name": "มารีน เบลวิน",
+  "role": "ทหารองครักษ์",
+  "map": "school",
+  "x": 8,
+  "y": 23,
+  "romanceable": true,
+  "personality": "cheerful",
+  "look": {
+   "skin": "#f3d2b3",
+   "hair": "#e08a3c",
+   "hairStyle": "braids",
+   "eye": "#4fbf6a",
+   "outfit": "#334",
+   "outfitStyle": "uniform"
+  }
+ },
+ {
+  "id": "npc_school_26",
+  "name": "ฟลอรา คริสตัล",
+  "role": "ขุนนางหนุ่ม",
+  "map": "school",
+  "x": 4,
+  "y": 35,
+  "romanceable": true,
+  "personality": "flirty",
+  "look": {
+   "skin": "#e9c39b",
+   "hair": "#8a6bd1",
+   "hairStyle": "long",
+   "eye": "#7ad1c4",
+   "outfit": "#7a2f4a",
+   "outfitStyle": "noble"
+  }
+ },
+ {
+  "id": "npc_school_27",
+  "name": "ฟลอรา เคานต์",
+  "role": "ยาม",
+  "map": "school",
+  "x": 43,
+  "y": 12,
+  "romanceable": true,
+  "personality": "cool",
+  "look": {
+   "skin": "#f6cdae",
+   "hair": "#8a6bd1",
+   "hairStyle": "braids",
+   "eye": "#6b8cff",
+   "outfit": "#1f3a5a",
+   "outfitStyle": "dress"
+  }
+ },
+ {
+  "id": "npc_school_28",
+  "name": "ซีลีน ฮาซาน",
+  "role": "ขุนนางสาว",
+  "map": "school",
+  "x": 18,
+  "y": 5,
+  "romanceable": true,
+  "personality": "knight",
+  "look": {
+   "skin": "#c68642",
+   "hair": "#3a3f4a",
+   "hairStyle": "spiky",
+   "eye": "#c9a227",
+   "outfit": "#7a2f4a",
+   "outfitStyle": "robe"
+  }
+ },
+ {
+  "id": "npc_school_29",
+  "name": "บรูโน โรเซเลีย",
+  "role": "ทหารองครักษ์",
+  "map": "school",
+  "x": 39,
+  "y": 5,
+  "romanceable": true,
+  "personality": "scholar",
+  "look": {
+   "skin": "#c68642",
+   "hair": "#f2d16b",
+   "hairStyle": "long",
+   "eye": "#4fbf6a",
+   "outfit": "#334",
+   "outfitStyle": "uniform"
+  }
+ },
+ {
+  "id": "npc_school_30",
+  "name": "ยูริ คริสตัล",
+  "role": "แม่มดสาว",
+  "map": "school",
+  "x": 10,
+  "y": 19,
+  "romanceable": true,
+  "personality": "noble",
+  "look": {
+   "skin": "#8d5524",
+   "hair": "#b0413a",
+   "hairStyle": "braids",
+   "eye": "#4fbf6a",
+   "outfit": "#8a5a2b",
+   "outfitStyle": "dress"
+  }
+ },
+ {
+  "id": "npc_school_31",
+  "name": "เอสเทล เวเลนไทน์",
+  "role": "ทหารองครักษ์",
+  "map": "school",
+  "x": 36,
+  "y": 6,
+  "romanceable": true,
+  "personality": "mysterious",
+  "look": {
+   "skin": "#c68642",
+   "hair": "#3a3f4a",
+   "hairStyle": "ponytail",
+   "eye": "#4aa3ff",
+   "outfit": "#ffe1b0",
+   "outfitStyle": "casual"
+  }
+ },
+ {
+  "id": "npc_school_32",
+  "name": "โรแลนด์ นิรันดร์",
+  "role": "นักร้องโอเปร่า",
+  "map": "school",
+  "x": 12,
+  "y": 7,
+  "romanceable": true,
+  "personality": "scholar",
+  "look": {
+   "skin": "#e9c39b",
+   "hair": "#c94f3a",
+   "hairStyle": "bob",
+   "eye": "#a24aff",
+   "outfit": "#5a2f6b",
+   "outfitStyle": "robe"
+  }
+ },
+ {
+  "id": "npc_school_33",
+  "name": "เอลาร่า ออสเทรีย",
+  "role": "แม่มดสาว",
+  "map": "school",
+  "x": 22,
+  "y": 14,
+  "romanceable": true,
+  "personality": "tsundere",
+  "look": {
+   "skin": "#e6bd94",
+   "hair": "#6a2fb0",
+   "hairStyle": "long",
+   "eye": "#7ad1c4",
+   "outfit": "#334",
+   "outfitStyle": "robe"
+  }
+ },
+ {
+  "id": "npc_town_0",
+  "name": "อีเดน เคานต์",
+  "role": "พ่อค้าเร่",
+  "map": "town",
+  "x": 9,
+  "y": 27,
+  "romanceable": true,
+  "personality": "knight",
+  "look": {
+   "skin": "#d9c2c8",
+   "hair": "#9fb0c9",
+   "hairStyle": "spiky",
+   "eye": "#4aa3ff",
+   "outfit": "#5a2f6b",
+   "outfitStyle": "robe"
+  }
+ },
+ {
+  "id": "npc_town_1",
+  "name": "มายา เดอเวลิส",
+  "role": "นักผจญภัย",
+  "map": "town",
+  "x": 16,
+  "y": 2,
+  "romanceable": true,
+  "personality": "noble",
+  "look": {
+   "skin": "#f3d2b3",
+   "hair": "#c94f7c",
+   "hairStyle": "bob",
+   "eye": "#d13a3a",
+   "outfit": "#8a5a2b",
+   "outfitStyle": "noble"
+  }
+ },
+ {
+  "id": "npc_town_2",
+  "name": "ซาช่า เวเลนไทน์",
+  "role": "กวี",
+  "map": "town",
+  "x": 6,
+  "y": 34,
+  "romanceable": true,
+  "personality": "noble",
+  "look": {
+   "skin": "#f6cdae",
+   "hair": "#3a3f4a",
+   "hairStyle": "braids",
+   "eye": "#d13a3a",
+   "outfit": "#8a5a2b",
+   "outfitStyle": "uniform"
+  }
+ },
+ {
+  "id": "npc_town_3",
+  "name": "เซฟิร์ โรเซเลีย",
+  "role": "ทหารองครักษ์",
+  "map": "town",
+  "x": 37,
+  "y": 18,
+  "romanceable": true,
+  "personality": "mysterious",
+  "look": {
+   "skin": "#f6cdae",
+   "hair": "#c94f3a",
+   "hairStyle": "spiky",
+   "eye": "#6b8cff",
+   "outfit": "#5a2f6b",
+   "outfitStyle": "noble"
+  }
+ },
+ {
+  "id": "npc_town_4",
+  "name": "โจเซฟ เบลวิน",
+  "role": "ชาวสวน",
+  "map": "town",
+  "x": 5,
+  "y": 42,
+  "romanceable": true,
+  "personality": "noble",
+  "look": {
+   "skin": "#f6cdae",
+   "hair": "#3a3f4a",
+   "hairStyle": "spiky",
+   "eye": "#6b8cff",
+   "outfit": "#5a5f6b",
+   "outfitStyle": "casual"
+  }
+ },
+ {
+  "id": "npc_town_5",
+  "name": "เซเลน เวเลนไทน์",
+  "role": "พ่อมดฝึกหัด",
+  "map": "town",
+  "x": 34,
+  "y": 38,
+  "romanceable": true,
+  "personality": "scholar",
+  "look": {
+   "skin": "#a9714b",
+   "hair": "#3a3f4a",
+   "hairStyle": "ponytail",
+   "eye": "#4aa3ff",
+   "outfit": "#1f3a5a",
+   "outfitStyle": "robe"
+  }
+ },
+ {
+  "id": "npc_town_6",
+  "name": "ลูน่า เวเลนไทน์",
+  "role": "บรรณารักษ์",
+  "map": "town",
+  "x": 14,
+  "y": 21,
+  "romanceable": true,
+  "personality": "knight",
+  "look": {
+   "skin": "#d8b08a",
+   "hair": "#f2d16b",
+   "hairStyle": "braids",
+   "eye": "#ff4a8d",
+   "outfit": "#5a2f6b",
+   "outfitStyle": "casual"
+  }
+ },
+ {
+  "id": "npc_town_7",
+  "name": "ลีนา เดอเวลิส",
+  "role": "ชาวสวน",
+  "map": "town",
+  "x": 19,
+  "y": 26,
+  "romanceable": true,
+  "personality": "cool",
+  "look": {
+   "skin": "#f3d2b3",
+   "hair": "#8a6bd1",
+   "hairStyle": "bun",
+   "eye": "#c9a227",
+   "outfit": "#1f3a5a",
+   "outfitStyle": "casual"
+  }
+ },
+ {
+  "id": "npc_town_8",
+  "name": "เซฟิร์ ซิลเวอร์",
+  "role": "พ่อค้าดอกไม้",
+  "map": "town",
+  "x": 3,
+  "y": 29,
+  "romanceable": true,
+  "personality": "mysterious",
+  "look": {
+   "skin": "#a9714b",
+   "hair": "#2b8f6b",
+   "hairStyle": "hood",
+   "eye": "#6b8cff",
+   "outfit": "#ffe1b0",
+   "outfitStyle": "uniform"
+  }
+ },
+ {
+  "id": "npc_town_9",
+  "name": "ลิอาน ซิลเวอร์",
+  "role": "หมอดูไพ่",
+  "map": "town",
+  "x": 35,
+  "y": 2,
+  "romanceable": true,
+  "personality": "scholar",
+  "look": {
+   "skin": "#f6cdae",
+   "hair": "#d1a12b",
+   "hairStyle": "bob",
+   "eye": "#c9a227",
+   "outfit": "#2b5a3a",
+   "outfitStyle": "robe"
+  }
+ },
+ {
+  "id": "npc_town_10",
+  "name": "เพิร์ล ออสเทรีย",
+  "role": "พ่อครัว",
+  "map": "town",
+  "x": 25,
+  "y": 38,
+  "romanceable": true,
+  "personality": "cheerful",
+  "look": {
+   "skin": "#a9714b",
+   "hair": "#f2d16b",
+   "hairStyle": "bob",
+   "eye": "#d13a3a",
+   "outfit": "#ffe1b0",
+   "outfitStyle": "casual"
+  }
+ },
+ {
+  "id": "npc_town_11",
+  "name": "ลิอาน คริสตัล",
+  "role": "นักผจญภัย",
+  "map": "town",
+  "x": 37,
+  "y": 16,
+  "romanceable": true,
+  "personality": "shy",
+  "look": {
+   "skin": "#e6bd94",
+   "hair": "#2b2b2b",
+   "hairStyle": "short",
+   "eye": "#6b8cff",
+   "outfit": "#5a2f6b",
+   "outfitStyle": "dress"
+  }
+ },
+ {
+  "id": "npc_town_12",
+  "name": "เอลาร่า เดอเวลิส",
+  "role": "นักดาบพเนจร",
+  "map": "town",
+  "x": 33,
+  "y": 18,
+  "romanceable": true,
+  "personality": "mysterious",
+  "look": {
+   "skin": "#e9c39b",
+   "hair": "#6a2fb0",
+   "hairStyle": "long",
+   "eye": "#d13a3a",
+   "outfit": "#5a2f6b",
+   "outfitStyle": "dress"
+  }
+ },
+ {
+  "id": "npc_town_13",
+  "name": "ออกัส เคานต์",
+  "role": "ศิลปินข้างถนน",
+  "map": "town",
+  "x": 19,
+  "y": 24,
+  "romanceable": true,
+  "personality": "knight",
+  "look": {
+   "skin": "#a9714b",
+   "hair": "#3a3f4a",
+   "hairStyle": "hood",
+   "eye": "#4aa3ff",
+   "outfit": "#241b3a",
+   "outfitStyle": "noble"
+  }
+ },
+ {
+  "id": "npc_town_14",
+  "name": "เซฟิร์ นิรันดร์",
+  "role": "กวี",
+  "map": "town",
+  "x": 27,
+  "y": 16,
+  "romanceable": true,
+  "personality": "merchant",
+  "look": {
+   "skin": "#c68642",
+   "hair": "#2b8f6b",
+   "hairStyle": "ponytail",
+   "eye": "#a24aff",
+   "outfit": "#5a5f6b",
+   "outfitStyle": "uniform"
+  }
+ },
+ {
+  "id": "npc_town_15",
+  "name": "เอนโซ่ คริสตัล",
+  "role": "กวี",
+  "map": "town",
+  "x": 33,
+  "y": 12,
+  "romanceable": true,
+  "personality": "merchant",
+  "look": {
+   "skin": "#8d5524",
+   "hair": "#5a3b22",
+   "hairStyle": "short",
+   "eye": "#4fbf6a",
+   "outfit": "#5a2f6b",
+   "outfitStyle": "dress"
+  }
+ },
+ {
+  "id": "npc_town_16",
+  "name": "โจเซฟ เคานต์",
+  "role": "พ่อครัว",
+  "map": "town",
+  "x": 21,
+  "y": 19,
+  "romanceable": true,
+  "personality": "tsundere",
+  "look": {
+   "skin": "#8d5524",
+   "hair": "#6a2fb0",
+   "hairStyle": "spiky",
+   "eye": "#a24aff",
+   "outfit": "#5a2f6b",
+   "outfitStyle": "dress"
+  }
+ },
+ {
+  "id": "npc_town_17",
+  "name": "มารีน ซิลเวอร์",
+  "role": "นักผจญภัย",
+  "map": "town",
+  "x": 42,
+  "y": 14,
+  "romanceable": true,
+  "personality": "cheerful",
+  "look": {
+   "skin": "#f3d2b3",
+   "hair": "#5a3b22",
+   "hairStyle": "bun",
+   "eye": "#4fbf6a",
+   "outfit": "#ffe1b0",
+   "outfitStyle": "robe"
+  }
+ },
+ {
+  "id": "npc_town_18",
+  "name": "เอนโซ่ ออสเทรีย",
+  "role": "ศิลปินข้างถนน",
+  "map": "town",
+  "x": 2,
+  "y": 36,
+  "romanceable": true,
+  "personality": "tsundere",
+  "look": {
+   "skin": "#f3d2b3",
+   "hair": "#9fb0c9",
+   "hairStyle": "bob",
+   "eye": "#c9a227",
+   "outfit": "#1f3a5a",
+   "outfitStyle": "casual"
+  }
+ },
+ {
+  "id": "npc_town_19",
+  "name": "ลิอาน นาร์เคีย",
+  "role": "ขุนนางหนุ่ม",
+  "map": "town",
+  "x": 42,
+  "y": 22,
+  "romanceable": true,
+  "personality": "cool",
+  "look": {
+   "skin": "#d9c2c8",
+   "hair": "#8a6bd1",
+   "hairStyle": "braids",
+   "eye": "#4aa3ff",
+   "outfit": "#241b3a",
+   "outfitStyle": "casual"
+  }
+ },
+ {
+  "id": "npc_town_20",
+  "name": "เซเลน ออสเทรีย",
+  "role": "นักเล่นแร่แปรธาตุ",
+  "map": "town",
+  "x": 40,
+  "y": 45,
+  "romanceable": true,
+  "personality": "mysterious",
+  "look": {
+   "skin": "#d8b08a",
+   "hair": "#6a2fb0",
+   "hairStyle": "short",
+   "eye": "#4aa3ff",
+   "outfit": "#6b2f2f",
+   "outfitStyle": "noble"
+  }
+ },
+ {
+  "id": "npc_town_21",
+  "name": "ซาช่า โรเซเลีย",
+  "role": "นักร้องโอเปร่า",
+  "map": "town",
+  "x": 15,
+  "y": 37,
+  "romanceable": true,
+  "personality": "cool",
+  "look": {
+   "skin": "#8d5524",
+   "hair": "#d1a12b",
+   "hairStyle": "bob",
+   "eye": "#a24aff",
+   "outfit": "#241b3a",
+   "outfitStyle": "casual"
+  }
+ },
+ {
+  "id": "npc_town_22",
+  "name": "มิลก้า คริสตัล",
+  "role": "นักร้องโอเปร่า",
+  "map": "town",
+  "x": 35,
+  "y": 25,
+  "romanceable": true,
+  "personality": "cheerful",
+  "look": {
+   "skin": "#e9c39b",
+   "hair": "#b0413a",
+   "hairStyle": "bun",
+   "eye": "#c9a227",
+   "outfit": "#5a2f6b",
+   "outfitStyle": "uniform"
+  }
+ },
+ {
+  "id": "npc_town_23",
+  "name": "เพิร์ล แบล็กวูด",
+  "role": "ทหารองครักษ์",
+  "map": "town",
+  "x": 41,
+  "y": 20,
+  "romanceable": true,
+  "personality": "mysterious",
+  "look": {
+   "skin": "#8d5524",
+   "hair": "#f2d16b",
+   "hairStyle": "hood",
+   "eye": "#d13a3a",
+   "outfit": "#1f3a5a",
+   "outfitStyle": "uniform"
+  }
+ },
+ {
+  "id": "npc_town_24",
+  "name": "กาเบรียล มาร์ควิส",
+  "role": "นักร้องโอเปร่า",
+  "map": "town",
+  "x": 31,
+  "y": 39,
+  "romanceable": true,
+  "personality": "tsundere",
+  "look": {
+   "skin": "#d9c2c8",
+   "hair": "#c94f7c",
+   "hairStyle": "braids",
+   "eye": "#7ad1c4",
+   "outfit": "#ffe1b0",
+   "outfitStyle": "noble"
+  }
+ },
+ {
+  "id": "npc_town_25",
+  "name": "อีวา โรเซเลีย",
+  "role": "ชาวสวน",
+  "map": "town",
+  "x": 18,
+  "y": 45,
+  "romanceable": true,
+  "personality": "tsundere",
+  "look": {
+   "skin": "#f6cdae",
+   "hair": "#c94f7c",
+   "hairStyle": "bob",
+   "eye": "#7ad1c4",
+   "outfit": "#3a2f6b",
+   "outfitStyle": "noble"
+  }
+ },
+ {
+  "id": "npc_town_26",
+  "name": "เซเลน อยุก",
+  "role": "พ่อค้าเร่",
+  "map": "town",
+  "x": 35,
+  "y": 14,
+  "romanceable": true,
+  "personality": "merchant",
+  "look": {
+   "skin": "#d8b08a",
+   "hair": "#c94f3a",
+   "hairStyle": "ponytail",
+   "eye": "#4aa3ff",
+   "outfit": "#5a2f6b",
+   "outfitStyle": "uniform"
+  }
+ },
+ {
+  "id": "npc_town_27",
+  "name": "เฟลิกซ์ เดอเวลิส",
+  "role": "นักผจญภัย",
+  "map": "town",
+  "x": 18,
+  "y": 5,
+  "romanceable": true,
+  "personality": "knight",
+  "look": {
+   "skin": "#d8b08a",
+   "hair": "#c94f7c",
+   "hairStyle": "hood",
+   "eye": "#4aa3ff",
+   "outfit": "#3a2f6b",
+   "outfitStyle": "casual"
+  }
+ },
+ {
+  "id": "npc_town_28",
+  "name": "ธีโอ เคานต์",
+  "role": "บรรณารักษ์",
+  "map": "town",
+  "x": 32,
+  "y": 2,
+  "romanceable": true,
+  "personality": "mysterious",
+  "look": {
+   "skin": "#8d5524",
+   "hair": "#9fb0c9",
+   "hairStyle": "long",
+   "eye": "#ff4a8d",
+   "outfit": "#5a5f6b",
+   "outfitStyle": "casual"
+  }
+ },
+ {
+  "id": "npc_town_29",
+  "name": "ไคออน ออสเทรีย",
+  "role": "นักร้องโอเปร่า",
+  "map": "town",
+  "x": 36,
+  "y": 2,
+  "romanceable": true,
+  "personality": "noble",
+  "look": {
+   "skin": "#e9c39b",
+   "hair": "#c94f3a",
+   "hairStyle": "braids",
+   "eye": "#6b8cff",
+   "outfit": "#5a2f6b",
+   "outfitStyle": "uniform"
+  }
+ },
+ {
+  "id": "npc_town_30",
+  "name": "เอลาร่า เบลวิน",
+  "role": "ชาวสวน",
+  "map": "town",
+  "x": 16,
+  "y": 34,
+  "romanceable": true,
+  "personality": "scholar",
+  "look": {
+   "skin": "#a9714b",
+   "hair": "#3a3f4a",
+   "hairStyle": "bun",
+   "eye": "#6b8cff",
+   "outfit": "#6b2f2f",
+   "outfitStyle": "casual"
+  }
+ },
+ {
+  "id": "npc_town_31",
+  "name": "ลิอาน เวเลนไทน์",
+  "role": "ขุนนางหนุ่ม",
+  "map": "town",
+  "x": 34,
+  "y": 23,
+  "romanceable": true,
+  "personality": "shy",
+  "look": {
+   "skin": "#e9c39b",
+   "hair": "#3a3f4a",
+   "hairStyle": "bob",
+   "eye": "#ff4a8d",
+   "outfit": "#8a5a2b",
+   "outfitStyle": "uniform"
+  }
+ },
+ {
+  "id": "npc_town_32",
+  "name": "แคสเปียน นาร์เคีย",
+  "role": "บรรณารักษ์",
+  "map": "town",
+  "x": 7,
+  "y": 22,
+  "romanceable": true,
+  "personality": "merchant",
+  "look": {
+   "skin": "#f6cdae",
+   "hair": "#d1a12b",
+   "hairStyle": "bun",
+   "eye": "#ff4a8d",
+   "outfit": "#5a2f6b",
+   "outfitStyle": "robe"
+  }
+ },
+ {
+  "id": "npc_town_33",
+  "name": "เอลาร่า นาร์เคีย",
+  "role": "กวี",
+  "map": "town",
+  "x": 3,
+  "y": 10,
+  "romanceable": true,
+  "personality": "cheerful",
+  "look": {
+   "skin": "#8d5524",
+   "hair": "#6a2fb0",
+   "hairStyle": "bun",
+   "eye": "#a24aff",
+   "outfit": "#1f3a5a",
+   "outfitStyle": "casual"
+  }
+ },
+ {
+  "id": "npc_town_34",
+  "name": "มายา มาร์ควิส",
+  "role": "ทหารองครักษ์",
+  "map": "town",
+  "x": 32,
+  "y": 39,
+  "romanceable": true,
+  "personality": "flirty",
+  "look": {
+   "skin": "#f3d2b3",
+   "hair": "#5a3b22",
+   "hairStyle": "spiky",
+   "eye": "#c9a227",
+   "outfit": "#3a2f6b",
+   "outfitStyle": "noble"
+  }
+ },
+ {
+  "id": "npc_town_35",
+  "name": "ซินเธีย แบล็กวูด",
+  "role": "ขุนนางหนุ่ม",
+  "map": "town",
+  "x": 30,
+  "y": 40,
+  "romanceable": true,
+  "personality": "tsundere",
+  "look": {
+   "skin": "#c68642",
+   "hair": "#2b8f6b",
+   "hairStyle": "long",
+   "eye": "#c9a227",
+   "outfit": "#6b2f2f",
+   "outfitStyle": "casual"
+  }
+ },
+ {
+  "id": "npc_town_36",
+  "name": "เพิร์ล ซิลเวอร์",
+  "role": "หมอดูไพ่",
+  "map": "town",
+  "x": 31,
+  "y": 27,
+  "romanceable": true,
+  "personality": "mysterious",
+  "look": {
+   "skin": "#d8b08a",
+   "hair": "#3a3f4a",
+   "hairStyle": "braids",
+   "eye": "#4aa3ff",
+   "outfit": "#241b3a",
+   "outfitStyle": "casual"
+  }
+ },
+ {
+  "id": "npc_town_37",
+  "name": "ดันเต้ ซิลเวอร์",
+  "role": "พ่อค้าดอกไม้",
+  "map": "town",
+  "x": 44,
+  "y": 43,
+  "romanceable": true,
+  "personality": "shy",
+  "look": {
+   "skin": "#8d5524",
+   "hair": "#5a3b22",
+   "hairStyle": "bun",
+   "eye": "#c9a227",
+   "outfit": "#6b2f2f",
+   "outfitStyle": "uniform"
+  }
+ },
+ {
+  "id": "npc_town_38",
+  "name": "เอลาร่า คริสตัล",
+  "role": "ขุนนางสาว",
+  "map": "town",
+  "x": 43,
+  "y": 27,
+  "romanceable": true,
+  "personality": "tsundere",
+  "look": {
+   "skin": "#d9c2c8",
+   "hair": "#c94f7c",
+   "hairStyle": "bun",
+   "eye": "#4fbf6a",
+   "outfit": "#241b3a",
+   "outfitStyle": "noble"
+  }
+ },
+ {
+  "id": "npc_town_39",
+  "name": "เฟลิกซ์ ซิลเวอร์",
+  "role": "แม่มดสาว",
+  "map": "town",
+  "x": 16,
+  "y": 13,
+  "romanceable": true,
+  "personality": "mysterious",
+  "look": {
+   "skin": "#f3d2b3",
+   "hair": "#c94f7c",
+   "hairStyle": "short",
+   "eye": "#a24aff",
+   "outfit": "#1f3a5a",
+   "outfitStyle": "casual"
+  }
+ },
+ {
+  "id": "npc_world_0",
+  "name": "ดันเต้ แบล็กวูด",
+  "role": "ยาม",
+  "map": "world",
+  "x": 37,
+  "y": 15,
+  "romanceable": true,
+  "personality": "tsundere",
+  "look": {
+   "skin": "#8d5524",
+   "hair": "#8a6bd1",
+   "hairStyle": "spiky",
+   "eye": "#4aa3ff",
+   "outfit": "#334",
+   "outfitStyle": "dress"
+  }
+ },
+ {
+  "id": "npc_world_1",
+  "name": "ธีโอ อยุก",
+  "role": "นักเรียนเวทศิลป์",
+  "map": "world",
+  "x": 37,
+  "y": 10,
+  "romanceable": true,
+  "personality": "cheerful",
+  "look": {
+   "skin": "#e9c39b",
+   "hair": "#c94f7c",
+   "hairStyle": "spiky",
+   "eye": "#d13a3a",
+   "outfit": "#1f3a5a",
+   "outfitStyle": "robe"
+  }
+ },
+ {
+  "id": "npc_world_2",
+  "name": "เพิร์ล เคานต์",
+  "role": "นักเล่นแร่แปรธาตุ",
+  "map": "world",
+  "x": 39,
+  "y": 30,
+  "romanceable": true,
+  "personality": "mysterious",
+  "look": {
+   "skin": "#f6cdae",
+   "hair": "#2b8f6b",
+   "hairStyle": "hood",
+   "eye": "#ff4a8d",
+   "outfit": "#7a2f4a",
+   "outfitStyle": "casual"
+  }
+ },
+ {
+  "id": "npc_world_3",
+  "name": "โรซ่า คริสตัล",
+  "role": "ชาวสวน",
+  "map": "world",
+  "x": 49,
+  "y": 28,
+  "romanceable": true,
+  "personality": "scholar",
+  "look": {
+   "skin": "#f6cdae",
+   "hair": "#9fb0c9",
+   "hairStyle": "bun",
+   "eye": "#c9a227",
+   "outfit": "#334",
+   "outfitStyle": "noble"
+  }
+ },
+ {
+  "id": "npc_world_4",
+  "name": "เดเมียน ซิลเวอร์",
+  "role": "ชาวสวน",
+  "map": "world",
+  "x": 25,
+  "y": 22,
+  "romanceable": true,
+  "personality": "tsundere",
+  "look": {
+   "skin": "#f3d2b3",
+   "hair": "#c94f3a",
+   "hairStyle": "ponytail",
+   "eye": "#d13a3a",
+   "outfit": "#3a2f6b",
+   "outfitStyle": "robe"
+  }
+ },
+ {
+  "id": "npc_world_5",
+  "name": "เลโอ เบลวิน",
+  "role": "บรรณารักษ์",
+  "map": "world",
+  "x": 24,
+  "y": 36,
+  "romanceable": true,
+  "personality": "knight",
+  "look": {
+   "skin": "#d8b08a",
+   "hair": "#6a2fb0",
+   "hairStyle": "ponytail",
+   "eye": "#4aa3ff",
+   "outfit": "#3a2f6b",
+   "outfitStyle": "dress"
+  }
+ },
+ {
+  "id": "npc_world_6",
+  "name": "กาเบรียล ฮาซาน",
+  "role": "ศิลปินข้างถนน",
+  "map": "world",
+  "x": 9,
+  "y": 14,
+  "romanceable": true,
+  "personality": "tsundere",
+  "look": {
+   "skin": "#f6cdae",
+   "hair": "#c94f7c",
+   "hairStyle": "long",
+   "eye": "#4aa3ff",
+   "outfit": "#241b3a",
+   "outfitStyle": "dress"
+  }
+ },
+ {
+  "id": "npc_world_7",
+  "name": "เดเมียน ฮาซาน",
+  "role": "ช่างตีเหล็ก",
+  "map": "world",
+  "x": 15,
+  "y": 30,
+  "romanceable": true,
+  "personality": "cheerful",
+  "look": {
+   "skin": "#a9714b",
+   "hair": "#3a3f4a",
+   "hairStyle": "ponytail",
+   "eye": "#c9a227",
+   "outfit": "#7a2f4a",
+   "outfitStyle": "noble"
+  }
+ },
+ {
+  "id": "npc_world_8",
+  "name": "ออร์ริน เดอเวลิส",
+  "role": "หมอดูไพ่",
+  "map": "world",
+  "x": 47,
+  "y": 13,
+  "romanceable": true,
+  "personality": "cheerful",
+  "look": {
+   "skin": "#d8b08a",
+   "hair": "#2b8f6b",
+   "hairStyle": "short",
+   "eye": "#4aa3ff",
+   "outfit": "#1f3a5a",
+   "outfitStyle": "dress"
+  }
+ },
+ {
+  "id": "npc_world_9",
+  "name": "เอสเทล ดอว์น",
+  "role": "ยาม",
+  "map": "world",
+  "x": 34,
+  "y": 22,
+  "romanceable": true,
+  "personality": "cool",
+  "look": {
+   "skin": "#c68642",
+   "hair": "#c94f7c",
+   "hairStyle": "long",
+   "eye": "#a24aff",
+   "outfit": "#1f3a5a",
+   "outfitStyle": "robe"
+  }
+ },
+ {
+  "id": "npc_world_10",
+  "name": "มิรา โรเซเลีย",
+  "role": "ศิลปินข้างถนน",
+  "map": "world",
+  "x": 49,
+  "y": 7,
+  "romanceable": true,
+  "personality": "noble",
+  "look": {
+   "skin": "#f3d2b3",
+   "hair": "#8a6bd1",
+   "hairStyle": "ponytail",
+   "eye": "#7ad1c4",
+   "outfit": "#334",
+   "outfitStyle": "uniform"
+  }
+ },
+ {
+  "id": "npc_world_11",
+  "name": "ไวโอเล็ต เคานต์",
+  "role": "พ่อมดฝึกหัด",
+  "map": "world",
+  "x": 8,
+  "y": 12,
+  "romanceable": true,
+  "personality": "merchant",
+  "look": {
+   "skin": "#d9c2c8",
+   "hair": "#c94f3a",
+   "hairStyle": "spiky",
+   "eye": "#ff4a8d",
+   "outfit": "#5a5f6b",
+   "outfitStyle": "noble"
+  }
+ },
+ {
+  "id": "npc_world_12",
+  "name": "โรแลนด์ ดอว์น",
+  "role": "ศิลปินข้างถนน",
+  "map": "world",
+  "x": 44,
+  "y": 28,
+  "romanceable": true,
+  "personality": "knight",
+  "look": {
+   "skin": "#f3d2b3",
+   "hair": "#2b8f6b",
+   "hairStyle": "bun",
+   "eye": "#d13a3a",
+   "outfit": "#3a2f6b",
+   "outfitStyle": "casual"
+  }
+ },
+ {
+  "id": "npc_world_13",
+  "name": "ลีนา เบลวิน",
+  "role": "ช่างตีเหล็ก",
+  "map": "world",
+  "x": 21,
+  "y": 25,
+  "romanceable": true,
+  "personality": "cheerful",
+  "look": {
+   "skin": "#8d5524",
+   "hair": "#5a3b22",
+   "hairStyle": "short",
+   "eye": "#d13a3a",
+   "outfit": "#334",
+   "outfitStyle": "dress"
+  }
+ },
+ {
+  "id": "npc_world_14",
+  "name": "แคสเปียน ออสเทรีย",
+  "role": "กวี",
+  "map": "world",
+  "x": 51,
+  "y": 17,
+  "romanceable": true,
+  "personality": "noble",
+  "look": {
+   "skin": "#f3d2b3",
+   "hair": "#b0413a",
+   "hairStyle": "long",
+   "eye": "#d13a3a",
+   "outfit": "#5a5f6b",
+   "outfitStyle": "noble"
+  }
+ },
+ {
+  "id": "npc_world_15",
+  "name": "นวล เดอเวลิส",
+  "role": "ยาม",
+  "map": "world",
+  "x": 38,
+  "y": 10,
+  "romanceable": true,
+  "personality": "merchant",
+  "look": {
+   "skin": "#c68642",
+   "hair": "#b0413a",
+   "hairStyle": "ponytail",
+   "eye": "#d13a3a",
+   "outfit": "#6b2f2f",
+   "outfitStyle": "robe"
+  }
+ },
+ {
+  "id": "npc_world_16",
+  "name": "เฟลิกซ์ ดอว์น",
+  "role": "พ่อครัว",
+  "map": "world",
+  "x": 35,
+  "y": 22,
+  "romanceable": true,
+  "personality": "shy",
+  "look": {
+   "skin": "#e9c39b",
+   "hair": "#5a3b22",
+   "hairStyle": "long",
+   "eye": "#4fbf6a",
+   "outfit": "#8a5a2b",
+   "outfitStyle": "noble"
+  }
+ },
+ {
+  "id": "npc_world_17",
+  "name": "ลิอาน เคานต์",
+  "role": "พ่อครัว",
+  "map": "world",
+  "x": 42,
+  "y": 23,
+  "romanceable": true,
+  "personality": "noble",
+  "look": {
+   "skin": "#e6bd94",
+   "hair": "#2b8f6b",
+   "hairStyle": "bun",
+   "eye": "#6b8cff",
+   "outfit": "#2b5a3a",
+   "outfitStyle": "robe"
+  }
+ },
+ {
+  "id": "npc_world_18",
+  "name": "มายา เบลวิน",
+  "role": "หมอดูไพ่",
+  "map": "world",
+  "x": 17,
+  "y": 38,
+  "romanceable": true,
+  "personality": "merchant",
+  "look": {
+   "skin": "#a9714b",
+   "hair": "#8a6bd1",
+   "hairStyle": "ponytail",
+   "eye": "#d13a3a",
+   "outfit": "#7a2f4a",
+   "outfitStyle": "noble"
+  }
+ }
 ]

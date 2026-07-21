@@ -9,14 +9,31 @@
 <body>
   <canvas id="game"></canvas>
 
+  <!-- Character creator -->
+  <div id="creator-screen" class="overlay show">
+    <div class="panel wide creator">
+      <h1>✦ สร้างตัวละคร ✦</h1>
+      <p class="subtitle">แต่งตัวร้ายในแบบของคุณ</p>
+      <div class="creator-body">
+        <canvas id="creator-preview" width="156" height="168"></canvas>
+        <div id="creator-options"></div>
+      </div>
+      <div class="creator-actions">
+        <button id="creator-random" class="ghost">🎲 สุ่ม</button>
+        <button id="creator-next">ถัดไป →</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Join gate -->
-  <div id="join-screen" class="overlay show">
+  <div id="join-screen" class="overlay">
     <div class="panel">
       <h1>✦ Spirit World ✦</h1>
       <p class="subtitle">วิญญาณข้ามมิติ: วายร้ายแห่งอเล็กเทียร์</p>
       <p class="lore">เธอตื่นขึ้นในร่างของ “ตัวร้ายที่ใคร ๆ ก็รังเกียจ”<br>ในนิยายแฟนตาซีธีมโรงเรียนเวทศิลป์…<br>จะพลิกชะตา และจีบใครก็ได้ในโลกใบนี้</p>
       <input id="name-input" maxlength="24" placeholder="ตั้งชื่อตัวละครของเธอ" />
       <button id="join-btn">เข้าสู่โลกอเล็กเทียร์</button>
+      <button id="back-to-creator" class="ghost">← แก้ไขตัวละคร</button>
       <p class="hint">แอดมินต้องอนุมัติก่อนถึงจะเล่นได้ • WASD/ลูกศร หรือจอยสติ๊กเพื่อเดิน</p>
     </div>
   </div>

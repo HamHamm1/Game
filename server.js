@@ -119,7 +119,7 @@ const server = http.createServer((req, res) => {
 
 content.reload();
 content.watch();
-game.attach(server, { onPresence: () => {} });
+game.attach(server);
 
 server.listen(PORT, () => {
   console.log(`\n  🌸 Spirit World MMORPG — วายร้ายแห่งอเล็กเทียร์`);

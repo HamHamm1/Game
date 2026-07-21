@@ -4,7 +4,7 @@ import { drawPortrait } from './renderer.js';
 const $ = (id) => document.getElementById(id);
 
 export function screen(name) {
-  for (const s of ['join-screen', 'pending-screen', 'banned-screen'])
+  for (const s of ['creator-screen', 'join-screen', 'pending-screen', 'banned-screen'])
     $(s).classList.toggle('show', s === name);
   $('game-ui').classList.toggle('show', name === null);
 }

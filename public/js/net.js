@@ -1,14 +1,13 @@
 // WebSocket client wrapper.
 import { MSG } from '/shared/constants.js';
 
-export function connect({ id, name, handlers }) {
+export function connect({ id, name, look, handlers }) {
   const proto = location.protocol === 'https:' ? 'wss' : 'ws';
   const ws = new WebSocket(`${proto}://${location.host}/ws`);
-  let moveTimer = null;
   const lastInput = { up: 0, down: 0, left: 0, right: 0 };
 
   ws.addEventListener('open', () => {
-    ws.send(JSON.stringify({ type: MSG.HELLO, id, name }));
+    ws.send(JSON.stringify({ type: MSG.HELLO, id, name, look }));
   });
   ws.addEventListener('message', (ev) => {
     let m; try { m = JSON.parse(ev.data); } catch { return; }

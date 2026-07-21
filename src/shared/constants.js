@@ -1,8 +1,6 @@
 // Shared gameplay constants (server-side copy).
 // Keep in sync with public/js/shared.js on the client.
-export const TILE = 32;              // pixel size of one tile
-export const MAP_W = 60;             // map width in tiles
-export const MAP_H = 44;             // map height in tiles
+export const TILE = 32;              // pixel size of one tile (see src/shared/maps.js for per-map dims)
 export const TICK_HZ = 15;           // server broadcast rate
 export const PLAYER_SPEED = 6;       // pixels per server tick (~90 px/s)
 export const MAX_CHAT_LEN = 200;

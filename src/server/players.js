@@ -10,7 +10,9 @@ export function persist() { save('players', accounts); }
 export function get(id) { return accounts[id]; }
 export function all() { return Object.values(accounts); }
 
-export function upsert(id, name) {
+const DEFAULT_LOOK = { skin: '#e9c39b', hair: '#6a2fb0', hairStyle: 'short', eye: '#ff4a8d', outfit: '#2a1f3a', outfitStyle: 'uniform' };
+
+export function upsert(id, name, look) {
   let acc = accounts[id];
   if (!acc) {
     acc = accounts[id] = {
@@ -19,16 +21,20 @@ export function upsert(id, name) {
       status: STATUS.PENDING,
       canChat: false,
       createdAt: Date.now(),
-      // Spawn near the academy gate.
-      x: 30 * 32, y: 34 * 32, dir: 'down',
+      map: 'school',
+      x: 26 * 32, y: 36 * 32, dir: 'down',   // school south gate
+      look: { ...DEFAULT_LOOK, ...(look || {}) },
       affection: {},   // npcId -> points
       quests: {},      // questId -> { state, progress }
       flags: {},       // story flags
       reputation: 0,   // starts hated; rises as you win people over
     };
     persist();
-  } else if (name && acc.status === STATUS.PENDING) {
-    acc.name = name;
+  } else {
+    if (name && acc.status === STATUS.PENDING) acc.name = name;
+    if (look) acc.look = { ...DEFAULT_LOOK, ...acc.look, ...look };
+    if (!acc.map) { acc.map = 'school'; acc.x = 26 * 32; acc.y = 36 * 32; }
+    persist();
   }
   return acc;
 }
