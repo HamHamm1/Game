@@ -69,6 +69,10 @@ export function draw(ctx, view, mapId, remotes, self, npcs, frameTick) {
     const idx = p.moving ? [1, 0, 2, 0][Math.floor(frameTick / 5) % 4] : 0;
     D.push({ y: p.y + TILE * 0.1, char: sheet, frame: frames[idx], cx: p.x, cy: p.y, name: p.name, self: p.id === self?.id, flip });
   }
+  // lamp light positions (for night glow)
+  const lamps = [];
+  for (const o of m.objects) if (o.t === 'prop' && o.kind === 'lamp') lamps.push([o.x * TILE + TILE / 2, (o.y - 1) * TILE + 16]);
+
   D.sort((a, b) => a.y - b.y);
 
   for (const d of D) {
@@ -88,6 +92,26 @@ export function draw(ctx, view, mapId, remotes, self, npcs, frameTick) {
     }
   }
 
+  // ---- ambient light tint (day/night) ----
+  const amb = ambient();
+  if (amb.a > 0.001) {
+    ctx.save();
+    ctx.globalCompositeOperation = 'multiply'; ctx.globalAlpha = amb.a;
+    ctx.fillStyle = `rgb(${amb.c[0]},${amb.c[1]},${amb.c[2]})`; ctx.fillRect(0, 0, view.w, view.h);
+    ctx.restore();
+  }
+  if (amb.dark > 0.04) { // warm lamp pools at night
+    ctx.save(); ctx.globalCompositeOperation = 'lighter';
+    for (const [lx, ly] of lamps) {
+      const sx = lx - camera.x, sy = ly - camera.y;
+      if (sx < -80 || sx > view.w + 80 || sy < -80 || sy > view.h + 80) continue;
+      const g = ctx.createRadialGradient(sx, sy, 4, sx, sy, 66);
+      g.addColorStop(0, `rgba(255,214,140,${0.55 * amb.dark})`); g.addColorStop(1, 'rgba(255,214,140,0)');
+      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(sx, sy, 66, 0, 7); ctx.fill();
+    }
+    ctx.restore();
+  }
+
   // Building banners (drawn above everything)
   ctx.textAlign = 'center';
   for (const o of m.objects) {
@@ -96,12 +120,45 @@ export function draw(ctx, view, mapId, remotes, self, npcs, frameTick) {
     if (bx < -80 || bx > view.w + 80 || by < -20 || by > view.h + 20) continue;
     ctx.font = 'bold 11px system-ui'; label(ctx, o.name, bx, by);
   }
-  // Map name (top center)
+  // Map name + time of day (top center)
   ctx.font = 'bold 13px system-ui'; ctx.fillStyle = 'rgba(20,16,30,0.6)';
-  const tw = ctx.measureText('📍 ' + m.name).width + 16;
+  const nameStr = phaseEmoji(amb.phase) + ' ' + m.name;
+  const tw = ctx.measureText(nameStr).width + 16;
   ctx.fillRect(view.w / 2 - tw / 2, 8, tw, 22); ctx.fillStyle = '#ffd98a';
-  ctx.fillText('📍 ' + m.name, view.w / 2, 23);
+  ctx.fillText(nameStr, view.w / 2, 23);
 }
+
+// ---- day/night cycle ----
+const CYCLE_MS = 6 * 60 * 1000;  // a full day every 6 minutes
+const SKY = [
+  { t: 0.00, c: [58, 74, 150], a: 0.55 },   // deep night
+  { t: 0.15, c: [78, 88, 150], a: 0.46 },
+  { t: 0.21, c: [255, 196, 148], a: 0.32 },  // dawn (warm)
+  { t: 0.30, c: [255, 252, 245], a: 0.05 },  // morning
+  { t: 0.50, c: [255, 255, 255], a: 0.00 },  // noon
+  { t: 0.66, c: [255, 238, 210], a: 0.10 },  // afternoon
+  { t: 0.76, c: [255, 150, 100], a: 0.34 },  // dusk (orange)
+  { t: 0.85, c: [128, 96, 150], a: 0.40 },   // twilight
+  { t: 0.93, c: [58, 74, 150], a: 0.52 },    // nightfall
+  { t: 1.00, c: [58, 74, 150], a: 0.55 },
+];
+const lerp = (a, b, t) => a + (b - a) * t;
+function phaseNow() {
+  const q = new URLSearchParams(location.search).get('phase');
+  if (q !== null && !isNaN(parseFloat(q))) return ((parseFloat(q) % 1) + 1) % 1;
+  return (Date.now() % CYCLE_MS) / CYCLE_MS;
+}
+function ambient() {
+  const p = phaseNow();
+  let k0 = SKY[0], k1 = SKY[SKY.length - 1];
+  for (let i = 0; i < SKY.length - 1; i++) if (p >= SKY[i].t && p <= SKY[i + 1].t) { k0 = SKY[i]; k1 = SKY[i + 1]; break; }
+  const t = k1.t === k0.t ? 0 : (p - k0.t) / (k1.t - k0.t);
+  const c = [0, 1, 2].map((i) => Math.round(lerp(k0.c[i], k1.c[i], t)));
+  const a = lerp(k0.a, k1.a, t);
+  const dark = c[2] > c[0] + 8 ? Math.max(0, (a - 0.12) / 0.5) : 0;   // cool tint → lamps glow
+  return { c, a, dark, phase: p };
+}
+const phaseEmoji = (p) => p < 0.2 ? '🌙' : p < 0.3 ? '🌅' : p < 0.66 ? '☀️' : p < 0.82 ? '🌆' : '🌙';
 
 // Soft, directional drop shadow (sun from upper-left → offset toward lower-right).
 function shadow(ctx, cx, cy, w) {
