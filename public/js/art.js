@@ -652,7 +652,133 @@ function drawAcademy(ctx, obj, cfg, L, R, mid, bodyTop, sh) {
   ctx.fillStyle = '#57cfe0'; fillPoly(ctx, [[mid, y0 - sH - 9], [mid + 8, y0 - sH - 6], [mid, y0 - sH - 3]]);
 }
 
-const BESPOKE = { cafe: drawCafe, library: drawLibrary, inn: drawInn };
+// Baroque opera house: rusticated arched loggia, tall arched upper windows,
+// central pediment with a low dome and gold urns along a balustraded roofline.
+function drawOpera(ctx, obj, cfg, L, R, mid, bodyTop, sh) {
+  const W = R - L, bh = sh - bodyTop, stone = cfg.wall, roofc = cfg.roof, trim = cfg.trim, glass = cfg.glass, gold = '#c2a24a';
+  ctx.fillStyle = OUTLINE; ctx.fillRect(L - 1, bodyTop - 1, W + 2, bh + 1);
+  matFill(ctx, 'stone', L, bodyTop, W, bh, stone, trim);
+  ctx.fillStyle = shade(stone, 0.82); for (let x = L; x < R; x += 6) ctx.fillRect(x, sh - U * 1.7, 1, U * 1.7);  // rusticated base
+  const arches = 3;
+  for (let i = 0; i < arches; i++) {
+    const acx = L + W * (i + 1) / (arches + 1), aw = (i === 1 ? U * 1.4 : U), ah = U * 1.6;
+    ctx.fillStyle = OUTLINE; ctx.beginPath(); ctx.moveTo(acx - aw / 2, sh - 2); ctx.lineTo(acx - aw / 2, sh - ah + aw / 2); ctx.quadraticCurveTo(acx - aw / 2, sh - ah, acx, sh - ah); ctx.quadraticCurveTo(acx + aw / 2, sh - ah, acx + aw / 2, sh - ah + aw / 2); ctx.lineTo(acx + aw / 2, sh - 2); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = i === 1 ? '#2a1a0e' : glass; ctx.beginPath(); ctx.moveTo(acx - aw / 2 + 1, sh - 2); ctx.lineTo(acx - aw / 2 + 1, sh - ah + aw / 2); ctx.quadraticCurveTo(acx - aw / 2 + 1, sh - ah + 1, acx, sh - ah + 1); ctx.quadraticCurveTo(acx + aw / 2 - 1, sh - ah + 1, acx + aw / 2 - 1, sh - ah + aw / 2); ctx.lineTo(acx + aw / 2 - 1, sh - 2); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = gold; ctx.fillRect(acx - 1, sh - ah - 1, 2, 3);
+  }
+  ctx.fillStyle = gold; ctx.fillRect(L, sh - U * 1.8, W, 1); ctx.fillStyle = shade(gold, 0.7); ctx.fillRect(L, sh - U * 1.8 + 1, W, 1);
+  const uw = Math.max(3, obj.w - 2);
+  for (let i = 0; i < uw; i++) { const wx = L + W * (i + 0.5) / uw - 3; litArch(ctx, wx, bodyTop + 9, 6, U * 1.1, trim, i % 2 === 0); }
+  ctx.fillStyle = gold; ctx.fillRect(L, bodyTop + 3, W, 1);
+  // central pediment + emblem + low dome
+  const pw = W * 0.4, pApex = bodyTop - U * 1.1;
+  ctx.fillStyle = OUTLINE; fillPoly(ctx, [[mid - pw / 2 - 2, bodyTop], [mid, pApex - 2], [mid + pw / 2 + 2, bodyTop]]);
+  ctx.fillStyle = roofc; fillPoly(ctx, [[mid - pw / 2 - 1, bodyTop], [mid, pApex], [mid + pw / 2 + 1, bodyTop]]);
+  ctx.fillStyle = shade(roofc, 0.82); fillPoly(ctx, [[mid, pApex], [mid + pw / 2 + 1, bodyTop], [mid, bodyTop]]);
+  ctx.fillStyle = stone; fillPoly(ctx, [[mid - pw * 0.4, bodyTop - 1], [mid, pApex + U * 0.4], [mid + pw * 0.4, bodyTop - 1]]);
+  ctx.fillStyle = gold; ctx.beginPath(); ctx.arc(mid, bodyTop - U * 0.35, U * 0.26, 0, 7); ctx.fill(); ctx.fillStyle = glass; ctx.beginPath(); ctx.arc(mid, bodyTop - U * 0.35, U * 0.18, 0, 7); ctx.fill();
+  ctx.fillStyle = OUTLINE; ctx.beginPath(); ctx.ellipse(mid, pApex, U * 1.15 + 1, U * 0.82 + 1, 0, Math.PI, 0); ctx.fill();
+  ctx.fillStyle = shade(roofc, 1.15); ctx.beginPath(); ctx.ellipse(mid, pApex, U * 1.15, U * 0.82, 0, Math.PI, 0); ctx.fill();
+  ctx.fillStyle = shade(roofc, 0.85); ctx.beginPath(); ctx.ellipse(mid, pApex, U * 1.15, U * 0.82, 0, Math.PI * 1.5, Math.PI * 2); ctx.lineTo(mid, pApex); ctx.fill();
+  ctx.fillStyle = gold; ctx.fillRect(mid - 1, pApex - U * 0.82 - 4, 2, 4); ctx.beginPath(); ctx.arc(mid, pApex - U * 0.82 - 4, 1.5, 0, 7); ctx.fill();
+  for (const ux of [L + 3, mid - pw / 2 - 6, mid + pw / 2 + 3, R - 7]) { ctx.fillStyle = gold; ctx.fillRect(ux, bodyTop - 6, 4, 6); ctx.beginPath(); ctx.arc(ux + 2, bodyTop - 7, 2.4, 0, 7); ctx.fill(); }
+  for (let i = 0; i < 2; i++) { const cx2 = i ? R - U * 2 : L + U * 1.5; chimneyDraw(ctx, cx2, bodyTop - U * 2.2, U * 1.8, shade(stone, 0.88)); }
+}
+
+// Victorian townhouse: projecting gabled wing with a two-storey bay window and
+// gingerbread bargeboard, an entry porch, and a big chimney. house2 mirrors it
+// and swaps the main roof to a dormered mansard.
+function drawHouse(ctx, obj, cfg, L, R, mid, bodyTop, sh) {
+  const W = R - L, bh = sh - bodyTop, wall = cfg.wall, roofc = cfg.roof, trim = cfg.trim, mat = cfg.mat, glass = cfg.glass;
+  const mir = obj.style === 'house2', wingW = Math.round(W * 0.46);
+  const wX0 = mir ? R - wingW : L, wX1 = wX0 + wingW, wc = (wX0 + wX1) / 2;
+  const rx0 = mir ? L : wX1, restW = mir ? (wX0 - L) : (R - wX1);
+  ctx.fillStyle = OUTLINE; ctx.fillRect(L - 1, bodyTop - 1, W + 2, bh + 1);
+  matFill(ctx, mat, L, bodyTop, W, bh, wall, trim);
+  for (let r = 0; r < 2; r++) for (let i = 0; i < 2; i++) { const wx = rx0 + restW * (i + 0.5) / 2 - 3, wy = bodyTop + 9 + r * (bh * 0.42); if (wx > rx0 + 2 && wx < rx0 + restW - 8) winDraw(ctx, 'sash', wx, wy, 6, 9, trim, (r + i) % 2 ? glass : '#f2cf88'); }
+  const dcx = rx0 + restW * 0.5;
+  ctx.fillStyle = roofc; fillPoly(ctx, [[dcx - U * 0.9, sh - U * 1.5], [dcx, sh - U * 1.5 - 6], [dcx + U * 0.9, sh - U * 1.5]]);
+  ctx.fillStyle = trim; ctx.fillRect(dcx - U * 0.85, sh - U * 1.5, U * 1.7, 1);
+  ctx.fillStyle = shade(wall, 1.12); ctx.fillRect(dcx - U * 0.78, sh - U * 1.5, 1.5, U * 1.5); ctx.fillRect(dcx + U * 0.78 - 1.5, sh - U * 1.5, 1.5, U * 1.5);
+  drawDoor(ctx, dcx, sh - 1, U * 0.8, U * 1.3, trim);
+  // two-storey bay window on the wing
+  const bw = wingW * 0.72;
+  for (let f = 0; f < 2; f++) { const byB = sh - 2 - f * Math.round(bh * 0.44), bhh = Math.round(bh * 0.4); ctx.fillStyle = OUTLINE; ctx.fillRect(wc - bw / 2 - 1, byB - bhh - 1, bw + 2, bhh + 1); matFill(ctx, mat, wc - bw / 2, byB - bhh, bw, bhh, wall, trim); for (let i = 0; i < 3; i++) { const pwd = (bw - 4) / 3, px = wc - bw / 2 + 2 + i * pwd, lit = (i + f) % 2 === 0; ctx.fillStyle = shade(trim, 0.7); ctx.fillRect(px - 1, byB - bhh + 2, pwd - 1, bhh - 5); ctx.fillStyle = lit ? '#f2cf88' : glass; ctx.fillRect(px, byB - bhh + 3, pwd - 3, bhh - 7); } ctx.fillStyle = roofc; ctx.fillRect(wc - bw / 2 - 2, byB - bhh - 1, bw + 4, 2); }
+  // front gable with bargeboard + attic window + finial
+  const gApex = bodyTop - U * 1.7;
+  ctx.fillStyle = OUTLINE; fillPoly(ctx, [[wX0 - 3, bodyTop], [wc, gApex - 2], [wX1 + 3, bodyTop]]);
+  ctx.fillStyle = roofc; fillPoly(ctx, [[wX0 - 1, bodyTop], [wc, gApex], [wX1 + 1, bodyTop]]);
+  ctx.fillStyle = shade(roofc, 0.8); fillPoly(ctx, [[wc, gApex], [wX1 + 1, bodyTop], [wc, bodyTop]]);
+  ctx.fillStyle = trim; for (let t = 0; t <= 9; t++) { const py = bodyTop - (bodyTop - gApex) * t / 9; const px = wX0 - 1 + (wc - wX0 + 1) * t / 9; fillPoly(ctx, [[px, py], [px + 3, py + 1], [px + 1, py + 3]]); const px2 = wX1 + 1 - (wX1 + 1 - wc) * t / 9; fillPoly(ctx, [[px2, py], [px2 - 3, py + 1], [px2 - 1, py + 3]]); }
+  winDraw(ctx, mir ? 'sash' : 'arch', wc - 2.5, gApex + U * 0.5, 5, 7, trim, '#f2cf88');
+  ctx.fillStyle = trim; ctx.fillRect(wc - 0.5, gApex - 4, 1, 4); ctx.beginPath(); ctx.arc(wc, gApex - 4, 1.5, 0, 7); ctx.fill();
+  // main roof over the rest: hip (house) or mansard+dormer (house2)
+  const rL = mir ? L : wX1, rR = mir ? wX0 : R, rApex = bodyTop - (mir ? U * 1.2 : U * 1.3);
+  if (mir) { const ins = (rR - rL) * 0.16; ctx.fillStyle = OUTLINE; fillPoly(ctx, [[rL - 2, bodyTop], [rL + ins, rApex], [rR - ins, rApex], [rR + 2, bodyTop]]); ctx.fillStyle = roofc; fillPoly(ctx, [[rL - 1, bodyTop], [rL + ins, rApex], [rR - ins, rApex], [rR + 1, bodyTop]]); dormerDraw(ctx, (rL + rR) / 2, bodyTop - U * 0.4, roofc, trim, glass); ctx.fillStyle = trim; ctx.fillRect(rL + ins, rApex - 1, rR - rL - 2 * ins, 1); }
+  else { const ins = (rR - rL) * 0.22; ctx.fillStyle = OUTLINE; fillPoly(ctx, [[rL - 2, bodyTop], [rL + ins, rApex], [rR - ins, rApex], [rR + 2, bodyTop]]); ctx.fillStyle = roofc; fillPoly(ctx, [[rL - 1, bodyTop], [rL + ins, rApex], [rR - ins, rApex], [rR + 1, bodyTop]]); ctx.fillStyle = shade(roofc, 0.8); fillPoly(ctx, [[(rL + rR) / 2, rApex], [rR - ins, rApex], [rR + 1, bodyTop], [(rL + rR) / 2, bodyTop]]); }
+  const chx = mir ? L + U * 0.6 : R - U * 1.4; chimneyDraw(ctx, chx, bodyTop - U * 2.4, U * 2, shade(wall, 0.9)); smoke(ctx, chx + 2, bodyTop - U * 2.4);
+}
+
+// Victorian shopfront: fascia sign board over warm-lit display windows and a
+// door, sash windows above. shop = dormered mansard, shop2 = steep gable + sign.
+function drawShop(ctx, obj, cfg, L, R, mid, bodyTop, sh) {
+  const W = R - L, bh = sh - bodyTop, wall = cfg.wall, roofc = cfg.roof, trim = cfg.trim, mat = cfg.mat, glass = cfg.glass, gable = obj.style === 'shop2';
+  ctx.fillStyle = OUTLINE; ctx.fillRect(L - 1, bodyTop - 1, W + 2, bh + 1);
+  matFill(ctx, mat, L, bodyTop, W, bh, wall, trim);
+  const rows = Math.max(1, obj.h - 3), cols = Math.max(2, obj.w - 2);
+  for (let r = 0; r < rows; r++) for (let i = 0; i < cols; i++) { const wx = L + W * (i + 0.5) / cols - 3, wy = bodyTop + 8 + r * ((bh - U * 1.9 - 8) / rows); winDraw(ctx, 'sash', wx, wy, 6, 9, trim, (r + i) % 2 ? glass : '#f2cf88'); }
+  const fy = sh - U * 1.7;
+  ctx.fillStyle = shade(roofc, 1.05); ctx.fillRect(L + 1, fy - 4, W - 2, 5); ctx.fillStyle = trim; ctx.fillRect(L + 1, fy - 4, W - 2, 1); ctx.fillRect(L + 1, fy, W - 2, 1);
+  ctx.fillStyle = trim; for (let x = L + 6; x < R - 6; x += 5) ctx.fillRect(x, fy - 2.5, 3, 1.5);
+  ctx.fillStyle = OUTLINE; ctx.fillRect(L + 2, fy, W - 4, sh - fy - 1);
+  const dcx = R - U * 1.3, dw = U;
+  const panes = Math.max(3, obj.w - 2), pw = (dcx - dw / 2 - 2 - (L + 3)) / panes;
+  for (let i = 0; i < panes; i++) { const px = L + 3 + i * pw; ctx.fillStyle = '#f2cf88'; ctx.fillRect(px, fy + 2, pw - 1, sh - fy - 4); ctx.fillStyle = 'rgba(255,255,255,0.25)'; ctx.fillRect(px, fy + 2, pw - 1, 2); ctx.fillStyle = shade(trim, 0.7); ctx.fillRect(px - 1, fy + 2, 1, sh - fy - 4); }
+  const ay = fy + 1; for (let i = 0; i * 4 < (dcx - dw / 2 - L - 2); i++) { ctx.fillStyle = i & 1 ? shade(trim, 1.05) : '#8a4a4a'; fillPoly(ctx, [[L + 2 + i * 4, ay], [L + 2 + i * 4 + 4, ay], [L + 2 + i * 4 + 2, ay + 4]]); }
+  drawDoor(ctx, dcx, sh - 1, dw, U * 1.4, trim);
+  if (gable) { const sg = L + 3; ctx.fillStyle = trim; ctx.fillRect(sg, bodyTop + 4, 1, 7); ctx.fillRect(sg, bodyTop + 4, 7, 1); ctx.fillStyle = '#5a3a2a'; ctx.fillRect(sg + 4, bodyTop + 10, 7, 6); ctx.fillStyle = glass; ctx.fillRect(sg + 5, bodyTop + 11, 5, 4); }
+  if (gable) { const apexY = bodyTop - U * 1.9; ctx.fillStyle = OUTLINE; fillPoly(ctx, [[L - 3, bodyTop], [mid, apexY - 2], [R + 3, bodyTop]]); ctx.fillStyle = roofc; fillPoly(ctx, [[L - 1, bodyTop], [mid, apexY], [R + 1, bodyTop]]); ctx.fillStyle = shade(roofc, 0.8); fillPoly(ctx, [[mid, apexY], [R + 1, bodyTop], [mid, bodyTop]]); ctx.fillStyle = trim; for (let gx = L - 2; gx < R + 2; gx += 4) fillPoly(ctx, [[gx, bodyTop], [gx + 4, bodyTop], [gx + 2, bodyTop + 2]]); ctx.fillStyle = trim; ctx.fillRect(mid - 0.5, apexY - 4, 1, 4); }
+  else { const ins = W * 0.14, apexY = bodyTop - U * 1.6; ctx.fillStyle = OUTLINE; fillPoly(ctx, [[L - 3, bodyTop], [L + ins, apexY], [R - ins, apexY], [R + 3, bodyTop]]); ctx.fillStyle = roofc; fillPoly(ctx, [[L - 1, bodyTop], [L + ins, apexY], [R - ins, apexY], [R + 1, bodyTop]]); ctx.fillStyle = shade(roofc, 0.8); fillPoly(ctx, [[mid, apexY], [R - ins, apexY], [R + 1, bodyTop], [mid, bodyTop]]); const nd = Math.max(1, obj.w - 3); for (let i = 0; i < nd; i++) dormerDraw(ctx, L + W * (i + 0.5) / nd, bodyTop - U * 0.5, roofc, trim, glass); ctx.fillStyle = trim; ctx.fillRect(L + ins, apexY - 1, W - 2 * ins, 1); }
+  const chx = R - U * 1.6; chimneyDraw(ctx, chx, bodyTop - U * 2.2, U * 1.8, shade(wall, 0.9)); smoke(ctx, chx + 2, bodyTop - U * 2.2);
+}
+
+// Collegiate boarding house: long brick block, central porch, rows of sash
+// windows. dorm = a row of gabled dormer-gables; dorm2 = hip roof + cupola.
+function drawDorm(ctx, obj, cfg, L, R, mid, bodyTop, sh) {
+  const W = R - L, bh = sh - bodyTop, wall = cfg.wall, roofc = cfg.roof, trim = cfg.trim, mat = cfg.mat, glass = cfg.glass, hip = obj.style === 'dorm2';
+  ctx.fillStyle = OUTLINE; ctx.fillRect(L - 1, bodyTop - 1, W + 2, bh + 1);
+  matFill(ctx, mat, L, bodyTop, W, bh, wall, trim);
+  const rows = Math.max(2, obj.h - 3), cols = Math.max(3, obj.w - 2);
+  for (let r = 0; r < rows; r++) for (let i = 0; i < cols; i++) { const wx = L + W * (i + 0.5) / cols - 3, wy = bodyTop + 8 + r * ((bh - 14) / rows); if (r === rows - 1 && Math.abs(wx + 3 - mid) < U) continue; winDraw(ctx, 'sash', wx, wy, 6, 8, trim, (r * 3 + i) % 3 ? glass : '#f2cf88'); }
+  ctx.fillStyle = roofc; fillPoly(ctx, [[mid - U, sh - U * 1.5], [mid, sh - U * 1.5 - 6], [mid + U, sh - U * 1.5]]);
+  ctx.fillStyle = trim; ctx.fillRect(mid - U * 0.9, sh - U * 1.5, U * 1.8, 1);
+  drawDoor(ctx, mid, sh - 1, U * 0.9, U * 1.4, trim);
+  ctx.fillStyle = trim; ctx.fillRect(L - 1, bodyTop - 1, W + 2, 2);
+  if (hip) {
+    const ins = W * 0.08, apexY = bodyTop - U * 1.3;
+    ctx.fillStyle = OUTLINE; fillPoly(ctx, [[L - 3, bodyTop], [L + ins, apexY], [R - ins, apexY], [R + 3, bodyTop]]);
+    ctx.fillStyle = roofc; fillPoly(ctx, [[L - 1, bodyTop], [L + ins, apexY], [R - ins, apexY], [R + 1, bodyTop]]);
+    ctx.fillStyle = shade(roofc, 0.85); fillPoly(ctx, [[mid, apexY], [R - ins, apexY], [R + 1, bodyTop], [mid, bodyTop]]);
+    const nd = Math.max(3, obj.w - 3); for (let i = 0; i < nd; i++) dormerDraw(ctx, L + W * (i + 0.5) / nd, bodyTop - U * 0.5, roofc, trim, glass);
+    const cw = U * 1.3; ctx.fillStyle = OUTLINE; ctx.fillRect(mid - cw / 2 - 1, apexY - U * 0.9 - 1, cw + 2, U * 0.9 + 1); ctx.fillStyle = wall; ctx.fillRect(mid - cw / 2, apexY - U * 0.9, cw, U * 0.9); ctx.fillStyle = glass; ctx.fillRect(mid - cw / 2 + 1, apexY - U * 0.9 + 2, cw - 2, U * 0.9 - 3); ctx.fillStyle = trim; ctx.beginPath(); ctx.ellipse(mid, apexY - U * 0.9, cw / 2, U * 0.6, 0, Math.PI, 0); ctx.fill(); ctx.fillStyle = OUTLINE; ctx.fillRect(mid - 0.5, apexY - U * 0.9 - U * 0.6 - 3, 1, 3);
+    for (let i = 0; i < 3; i++) chimneyDraw(ctx, L + W * (i + 1) / 4 - 2, bodyTop - U * 2.2, U * 1.8, shade(wall, 0.9));
+  } else {
+    const eaveApex = bodyTop - U * 0.7; ctx.fillStyle = OUTLINE; fillPoly(ctx, [[L - 2, bodyTop], [L, eaveApex - 1], [R, eaveApex - 1], [R + 2, bodyTop]]); ctx.fillStyle = shade(roofc, 0.9); fillPoly(ctx, [[L - 1, bodyTop], [L, eaveApex], [R, eaveApex], [R + 1, bodyTop]]);
+    const ng = Math.max(3, Math.round(obj.w / 3));
+    for (let g = 0; g < ng; g++) {
+      const gcx = L + W * (g + 0.5) / ng, gw = W / ng * 0.72, gA = bodyTop - U * 1.5;
+      ctx.fillStyle = OUTLINE; fillPoly(ctx, [[gcx - gw / 2 - 1, bodyTop], [gcx, gA - 2], [gcx + gw / 2 + 1, bodyTop]]);
+      ctx.fillStyle = roofc; fillPoly(ctx, [[gcx - gw / 2, bodyTop], [gcx, gA], [gcx + gw / 2, bodyTop]]);
+      ctx.fillStyle = shade(roofc, 0.8); fillPoly(ctx, [[gcx, gA], [gcx + gw / 2, bodyTop], [gcx, bodyTop]]);
+      ctx.fillStyle = trim; for (let t = 0; t <= 6; t++) { const py = bodyTop - (bodyTop - gA) * t / 6, px = gcx - gw / 2 + (gw / 2) * t / 6; fillPoly(ctx, [[px, py], [px + 2, py + 1], [px + 1, py + 2]]); const px2 = gcx + gw / 2 - (gw / 2) * t / 6; fillPoly(ctx, [[px2, py], [px2 - 2, py + 1], [px2 - 1, py + 2]]); }
+      winDraw(ctx, 'arch', gcx - 2, gA + U * 0.4, 4, 5, trim, '#f2cf88');
+      ctx.fillStyle = trim; ctx.fillRect(gcx - 0.5, gA - 3, 1, 3);
+    }
+    for (let g = 0; g < ng - 1; g++) chimneyDraw(ctx, L + W * (g + 1) / ng - 2, bodyTop - U * 2, U * 1.6, shade(wall, 0.9));
+  }
+}
+
+const BESPOKE = { cafe: drawCafe, library: drawLibrary, inn: drawInn, opera: drawOpera, house: drawHouse, house2: drawHouse, shop: drawShop, shop2: drawShop, dorm: drawDorm, dorm2: drawDorm };
 
 function buildVictorian(obj) {
   const cfg = VST[obj.style] || VST.house;
