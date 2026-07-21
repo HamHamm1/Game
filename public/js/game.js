@@ -84,6 +84,7 @@ document.getElementById('join-btn').addEventListener('click', join);
 document.getElementById('name-input').addEventListener('keydown', (e) => { if (e.key === 'Enter') join(); });
 
 async function join() {
+  enterFullscreen();   // tap-to-join is a user gesture → allowed to hide the URL bar
   const name = document.getElementById('name-input').value.trim().slice(0, 24) || 'วายร้าย';
   localStorage.setItem('sw_name', name); localStorage.setItem('sw_look', JSON.stringify(look));
   try { await fetch('/api/join', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: playerId, name, look }) }); } catch {}
@@ -190,6 +191,23 @@ document.getElementById('quest-close')?.addEventListener('click', ui.togglePanel
 document.getElementById('dlg-send')?.addEventListener('click', () => ui.sendDialogue());
 document.getElementById('dlg-close')?.addEventListener('click', () => ui.hideDialogue());
 document.getElementById('dlg-input')?.addEventListener('keydown', (e) => { if (e.key === 'Enter') ui.sendDialogue(); e.stopPropagation(); });
+
+// ---- Fullscreen (hides the browser URL bar) ----
+function enterFullscreen() {
+  const el = document.documentElement;
+  const req = el.requestFullscreen || el.webkitRequestFullscreen;
+  if (req) { try { const p = req.call(el); if (p?.catch) p.catch(() => {}); } catch {} }
+}
+function toggleFullscreen() {
+  const fsEl = document.fullscreenElement || document.webkitFullscreenElement;
+  if (fsEl) { (document.exitFullscreen || document.webkitExitFullscreen)?.call(document); }
+  else enterFullscreen();
+}
+const fsBtn = document.getElementById('fs-btn');
+fsBtn?.addEventListener('click', toggleFullscreen);
+document.addEventListener('fullscreenchange', () => {
+  if (fsBtn) fsBtn.textContent = document.fullscreenElement ? '⤡' : '⛶';
+});
 
 // ---- Main loop ----
 let last = performance.now(), tick = 0;
