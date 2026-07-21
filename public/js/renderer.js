@@ -50,11 +50,12 @@ export function draw(ctx, view, mapId, remotes, self, npcs, frameTick) {
 
   // Depth-sorted drawables: objects + npcs + players by feet Y.
   const D = [];
+  const PROP_SW = { fountain: TILE * 1.3, statue: TILE * 1.2, well: TILE * 1.1, stall: TILE * 1.5, boat: TILE * 1.4, lamp: TILE * 0.4, signpost: TILE * 0.5 };
   for (const o of m.objects) {
-    if (o.t === 'building') { const s = buildingSprite(o); D.push({ y: (o.y + o.h) * TILE, spr: s.canvas, dx: o.x * TILE + s.ox, dy: (o.y + o.h) * TILE - s.canvas.height }); }
-    else if (o.t === 'tree') { const s = treeSprite(o.variant, o.code === T.SNOW); D.push({ y: (o.y + 1) * TILE, spr: s.canvas, dx: o.x * TILE + s.ox, dy: (o.y + 1) * TILE - s.canvas.height }); }
-    else if (o.t === 'mountain') { const s = mountainSprite(o); D.push({ y: (o.y + o.h) * TILE, spr: s.canvas, dx: o.x * TILE + s.ox, dy: (o.y + o.h) * TILE - s.canvas.height }); }
-    else if (o.t === 'prop') { const s = propSprite(o); const fh = s.canvas.height; D.push({ y: (o.y + 1) * TILE, spr: s.canvas, dx: o.x * TILE + s.ox, dy: (o.y + 1) * TILE - fh, shadow: o.kind !== 'flowerbed' && o.kind !== 'bench' }); }
+    if (o.t === 'building') { const s = buildingSprite(o); D.push({ y: (o.y + o.h) * TILE, spr: s.canvas, dx: o.x * TILE + s.ox, dy: (o.y + o.h) * TILE - s.canvas.height, sw: o.w * TILE * 0.9, scx: (o.x + o.w / 2) * TILE, scy: (o.y + o.h) * TILE - 3 }); }
+    else if (o.t === 'tree') { const s = treeSprite(o.variant, o.code === T.SNOW); D.push({ y: (o.y + 1) * TILE, spr: s.canvas, dx: o.x * TILE + s.ox, dy: (o.y + 1) * TILE - s.canvas.height, sw: TILE * 0.85, scx: (o.x + 0.5) * TILE, scy: (o.y + 1) * TILE - 2 }); }
+    else if (o.t === 'mountain') { const s = mountainSprite(o); D.push({ y: (o.y + o.h) * TILE, spr: s.canvas, dx: o.x * TILE + s.ox, dy: (o.y + o.h) * TILE - s.canvas.height, sw: o.w * TILE * 0.75, scx: (o.x + o.w / 2) * TILE, scy: (o.y + o.h) * TILE - 3 }); }
+    else if (o.t === 'prop') { const s = propSprite(o); const fh = s.canvas.height; const flat = o.kind === 'flowerbed' || o.kind === 'bench'; D.push({ y: (o.y + 1) * TILE, spr: s.canvas, dx: o.x * TILE + s.ox, dy: (o.y + 1) * TILE - fh, sw: flat ? 0 : (PROP_SW[o.kind] || TILE * 0.7), scx: o.x * TILE + s.ox + s.canvas.width / 2, scy: (o.y + 1) * TILE - 2 }); }
   }
   for (const n of npcs) {
     const sheet = sheetFor(n.look || { skin: '#e9c39b', hair: '#5a3b22', hairStyle: 'short', eye: '#333', outfit: '#556' });
@@ -72,13 +73,13 @@ export function draw(ctx, view, mapId, remotes, self, npcs, frameTick) {
 
   for (const d of D) {
     if (d.spr) {
-      if (d.shadow) shadow(ctx, d.dx + d.spr.width / 2 - camera.x, (d.y) - camera.y - 2, d.spr.width * 0.28);
+      if (d.sw) shadow(ctx, d.scx - camera.x, d.scy - camera.y, d.sw);
       ctx.drawImage(d.spr, Math.round(d.dx - camera.x), Math.round(d.dy - camera.y));
       if (d.name) { ctx.font = 'bold 11px system-ui'; ctx.textAlign = 'center'; ctx.fillStyle = 'rgba(20,16,30,0.7)'; }
     } else if (d.char) {
       const w = d.char.w, h = d.char.h;
       const sx = Math.round(d.cx - camera.x - w / 2), sy = Math.round(d.cy - camera.y - h);
-      shadow(ctx, d.cx - camera.x, d.cy - camera.y - 3, w * 0.28);
+      shadow(ctx, d.cx - camera.x, d.cy - camera.y - 3, w * 0.5);
       const fr = d.frame || d.frames[d.idx];
       if (d.flip) { ctx.save(); ctx.translate(sx + w, sy); ctx.scale(-1, 1); ctx.drawImage(fr, 0, 0); ctx.restore(); }
       else ctx.drawImage(fr, sx, sy);
@@ -102,7 +103,13 @@ export function draw(ctx, view, mapId, remotes, self, npcs, frameTick) {
   ctx.fillText('📍 ' + m.name, view.w / 2, 23);
 }
 
-function shadow(ctx, cx, cy, r) { ctx.fillStyle = 'rgba(0,0,0,0.22)'; ctx.beginPath(); ctx.ellipse(cx, cy, r, r * 0.4, 0, 0, 7); ctx.fill(); }
+// Soft, directional drop shadow (sun from upper-left → offset toward lower-right).
+function shadow(ctx, cx, cy, w) {
+  const rx = w / 2, ry = Math.max(3, Math.min(13, w * 0.17));
+  const x = cx + 2, y = cy + 1;
+  ctx.fillStyle = 'rgba(0,0,0,0.10)'; ctx.beginPath(); ctx.ellipse(x, y, rx * 1.2, ry * 1.2, 0, 0, 7); ctx.fill();
+  ctx.fillStyle = 'rgba(0,0,0,0.20)'; ctx.beginPath(); ctx.ellipse(x, y, rx, ry, 0, 0, 7); ctx.fill();
+}
 function label(ctx, text, cx, y) {
   const tw = ctx.measureText(text).width + 12;
   ctx.fillStyle = 'rgba(20,16,30,0.72)'; ctx.fillRect(cx - tw / 2, y - 11, tw, 16);
