@@ -17,16 +17,25 @@ function affTier(a) {
 }
 
 // Dynamic, game-specific identity injected ahead of the editable brain modules.
+// Per-NPC fields (persona/speech/goal/secret) make each character's brain its
+// own — edit them live in the admin NPC editor.
 function identityBlock(npc, player) {
   const aff = (player.affection && player.affection[npc.id]) || 0;
-  return [
+  const lines = [
     `คุณกำลังสวมบทเป็น "${npc.name}" — ${npc.role || 'ผู้อยู่อาศัยคนหนึ่ง'} ในโลกของอเล็กเทียร์`,
     `โลกนี้คือสถาบันเวทมนตร์แฟนตาซีวิกตอเรียนในนิยายจีบสาว/หนุ่ม เป็นการโรลเพลย์ปลายเปิด ไม่มีฉากจบตายตัว`,
     `นิสัยหลักของ ${npc.name}: ${npc.personality || 'เป็นมิตร'}`,
+  ];
+  if (npc.persona) lines.push(`ตัวตน/ภูมิหลังของ ${npc.name}: ${npc.persona}`);
+  if (npc.speech) lines.push(`สไตล์การพูดของ ${npc.name}: ${npc.speech}`);
+  if (npc.goal) lines.push(`เป้าหมาย/สิ่งที่ ${npc.name} ต้องการ: ${npc.goal}`);
+  if (npc.secret) lines.push(`ความลับที่ ${npc.name} ปิดไว้ (เปิดเผยเองไม่ได้ง่าย ๆ ต้องให้ผู้เล่นสนิทพอ): ${npc.secret}`);
+  lines.push(
     `คุณกำลังคุยกับ "${player.name || 'ผู้พเนจร'}" ผู้ตื่นมาพบว่าตัวเองกลายเป็น "วายร้ายที่ทุกคนเกลียดชัง" จากนิยายแฟนตาซีเกรดต่ำ และกำลังพยายามลิขิตชะตาตัวเองใหม่`,
     `ระดับความสัมพันธ์ที่ ${npc.name} มีต่อผู้เล่นตอนนี้: ${aff} — ${affTier(aff)}`,
     `คุณจำทุกอย่างที่เคยเกิดขึ้นในบทสนทนานี้ได้ อ้างอิงถึงเรื่องเก่า ๆ ที่เคยคุยกันเมื่อเหมาะสม`,
-  ].join('\n');
+  );
+  return lines.join('\n');
 }
 
 // Compose the full system prompt: dynamic identity + enabled brain modules,
