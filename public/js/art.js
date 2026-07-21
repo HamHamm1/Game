@@ -162,42 +162,157 @@ const BSTYLE = {
   house2:  { wall: '#a898b0', roof: '#5a4a6b', trim: '#e0d4e8', win: '#ffe6a0' },
 };
 
+function rr(ctx, x, y, w, h, r) {
+  r = Math.min(r, w / 2, h / 2);
+  ctx.beginPath();
+  ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
+}
+const OUTLINE = '#241d2e';
+
 export function buildingSprite(obj) {
   return cached(`b:${obj.style}:${obj.w}:${obj.h}:${obj.door}`, () => {
     const s = BSTYLE[obj.style] || BSTYLE.house;
-    const W = obj.w * TILE, bodyH = obj.h * TILE, roofH = Math.round(TILE * 1.6);
-    const H = bodyH + roofH;
-    const { c, ctx } = makeCanvas(W, H);
-    // body
-    ctx.fillStyle = s.wall; ctx.fillRect(0, roofH, W, bodyH);
-    ctx.fillStyle = shade(s.wall, 0.85); ctx.fillRect(0, roofH, W, 3);
-    // stone courses
-    ctx.fillStyle = shade(s.wall, 0.9);
-    for (let y = roofH + 8; y < H; y += 10) ctx.fillRect(0, y, W, 1);
-    // windows
-    ctx.fillStyle = s.win;
-    const cols = Math.max(1, obj.w - 2), rows = Math.max(1, obj.h - 2);
-    for (let cx = 0; cx < cols; cx++) for (let cy = 0; cy < rows; cy++) {
-      const wx = 10 + cx * ((W - 20) / cols), wy = roofH + 12 + cy * ((bodyH - 20) / Math.max(1, rows));
-      ctx.fillStyle = s.win; ctx.fillRect(wx, wy, 10, 12);
-      ctx.strokeStyle = shade(s.trim, 0.8); ctx.strokeRect(wx + .5, wy + .5, 10, 12);
-      ctx.fillStyle = shade(s.win, 0.7); ctx.fillRect(wx + 4, wy, 2, 12);
-    }
-    // door
-    const dx = obj.door * TILE;
-    ctx.fillStyle = '#4a3020'; ctx.fillRect(dx + 6, H - TILE - 2, TILE - 12, TILE + 2);
-    ctx.fillStyle = shade(s.trim, 1.1); ctx.fillRect(dx + TILE - 12, H - 16, 2, 2);
-    ctx.strokeStyle = shade(s.wall, 0.6); ctx.strokeRect(dx + 6.5, H - TILE - 1.5, TILE - 12, TILE + 2);
-    // roof (gable)
-    ctx.fillStyle = s.roof;
-    ctx.beginPath(); ctx.moveTo(-4, roofH + 2); ctx.lineTo(W / 2, 0); ctx.lineTo(W + 4, roofH + 2); ctx.closePath(); ctx.fill();
-    ctx.fillStyle = shade(s.roof, 1.2);
-    ctx.beginPath(); ctx.moveTo(W / 2, 0); ctx.lineTo(W + 4, roofH + 2); ctx.lineTo(W / 2, roofH + 2); ctx.closePath(); ctx.fill();
-    ctx.fillStyle = s.trim; ctx.fillRect(-4, roofH, W + 8, 4);
-    // finial
-    ctx.fillStyle = s.trim; ctx.fillRect(W / 2 - 1, -6, 2, 8);
-    return { canvas: c, ox: 0, oy: -(H - bodyH) };
+    if (obj.style === 'palace') return grandBuilding(obj, 'royal');
+    if (obj.style === 'academy') return grandBuilding(obj, 'magic');
+    return normalBuilding(obj, s);
   });
+}
+
+function normalBuilding(obj, s) {
+  const PAD = 6, W = obj.w * TILE, bodyH = obj.h * TILE, roofH = Math.round(TILE * 1.9);
+  const cw = W + PAD * 2, ch = bodyH + roofH;
+  const { c, ctx } = makeCanvas(cw, ch);
+  const L = PAD, R = PAD + W, mid = L + W / 2, bodyTop = ch - bodyH, apex = 5;
+  // body outline + graded wall
+  ctx.fillStyle = OUTLINE; ctx.fillRect(L - 2, bodyTop - 1, W + 4, bodyH + 1);
+  const g = ctx.createLinearGradient(0, bodyTop, 0, ch);
+  g.addColorStop(0, shade(s.wall, 1.08)); g.addColorStop(1, shade(s.wall, 0.82));
+  ctx.fillStyle = g; ctx.fillRect(L, bodyTop, W, bodyH);
+  ctx.fillStyle = shade(s.wall, 0.6); ctx.fillRect(L, ch - 6, W, 6);            // foundation
+  ctx.fillStyle = shade(s.trim, 0.95);                                          // corner quoins
+  for (let i = 0; i * 12 < bodyH; i++) if (i % 2) { const yy = bodyTop + 4 + i * 12; ctx.fillRect(L, yy, 5, 7); ctx.fillRect(R - 5, yy, 5, 7); }
+  // windows (framed + sheen + sill)
+  const cols = Math.max(1, obj.w - 2), rows = Math.max(1, obj.h - 2), gx = (W - cols * 14) / (cols + 1);
+  for (let a = 0; a < cols; a++) for (let b = 0; b < rows; b++) {
+    const wx = L + gx + a * (14 + gx), wy = bodyTop + 13 + b * ((bodyH - 26) / Math.max(1, rows));
+    ctx.fillStyle = shade(s.trim, 0.7); ctx.fillRect(wx - 2, wy - 2, 14, 17);
+    ctx.fillStyle = s.win; ctx.fillRect(wx, wy, 10, 13);
+    ctx.fillStyle = 'rgba(255,255,255,0.32)'; ctx.fillRect(wx, wy, 10, 4);
+    ctx.fillStyle = shade(s.trim, 0.6); ctx.fillRect(wx + 4, wy, 2, 13); ctx.fillRect(wx, wy + 6, 10, 1);
+    ctx.fillStyle = shade(s.trim, 0.5); ctx.fillRect(wx - 2, wy + 15, 14, 2);
+  }
+  // awning for shops
+  if (['cafe', 'shop', 'shop2', 'inn'].includes(obj.style)) {
+    const ay = bodyTop + 3;
+    for (let i = 0; i * 8 < W; i++) { ctx.fillStyle = i % 2 ? shade(s.trim, 1.05) : '#c9524a'; ctx.beginPath(); ctx.moveTo(L + i * 8, ay); ctx.lineTo(L + i * 8 + 8, ay); ctx.lineTo(L + i * 8 + 4, ay + 9); ctx.closePath(); ctx.fill(); }
+  }
+  // arched door + steps
+  const dcx = L + obj.door * TILE + TILE / 2;
+  ctx.fillStyle = shade(s.trim, 0.6); rr(ctx, dcx - 11, ch - TILE - 6, 22, TILE + 6, 10); ctx.fill();
+  ctx.fillStyle = '#4a3020'; rr(ctx, dcx - 9, ch - TILE - 4, 18, TILE + 4, 8); ctx.fill();
+  ctx.fillStyle = '#3a2616'; ctx.fillRect(dcx - 1, ch - TILE - 2, 2, TILE);
+  ctx.fillStyle = shade(s.trim, 1.2); ctx.beginPath(); ctx.arc(dcx - 4, ch - 15, 1.5, 0, 7); ctx.fill();
+  ctx.fillStyle = shade(s.wall, 0.72); ctx.fillRect(dcx - 14, ch - 3, 28, 3);
+  // gable roof: outline, lit + shaded halves, tile lines, eave trim, finial
+  ctx.fillStyle = OUTLINE; ctx.beginPath(); ctx.moveTo(L - PAD, bodyTop + 2); ctx.lineTo(mid, apex - 2); ctx.lineTo(R + PAD, bodyTop + 2); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = s.roof; ctx.beginPath(); ctx.moveTo(L - PAD + 2, bodyTop); ctx.lineTo(mid, apex); ctx.lineTo(R + PAD - 2, bodyTop); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = shade(s.roof, 0.78); ctx.beginPath(); ctx.moveTo(mid, apex); ctx.lineTo(R + PAD - 2, bodyTop); ctx.lineTo(mid, bodyTop); ctx.closePath(); ctx.fill();
+  ctx.strokeStyle = shade(s.roof, 0.66); ctx.lineWidth = 1;
+  for (let k = 1; k < 4; k++) { const yy = apex + (bodyTop - apex) * k / 4, half = (W / 2 + PAD) * k / 4; ctx.beginPath(); ctx.moveTo(mid - half, yy); ctx.lineTo(mid + half, yy); ctx.stroke(); }
+  ctx.fillStyle = s.trim; ctx.fillRect(L - PAD, bodyTop, W + PAD * 2, 3);
+  ctx.fillStyle = 'rgba(0,0,0,0.12)'; ctx.fillRect(L, bodyTop + 3, W, 4);
+  ctx.fillStyle = s.trim; ctx.fillRect(mid - 1, apex - 8, 2, 8); ctx.beginPath(); ctx.arc(mid, apex - 9, 2.5, 0, 7); ctx.fill();
+  return { canvas: c, ox: -PAD, oy: 0 };
+}
+
+// Bespoke grand structure: two spired towers, central dome, banners, stained
+// glass, grand staircase. theme 'royal' (palace) or 'magic' (academy).
+function grandBuilding(obj, theme) {
+  const PAD = 10, W = obj.w * TILE, bodyH = obj.h * TILE, towerH = Math.round(TILE * 3.4);
+  const cw = W + PAD * 2, ch = bodyH + towerH + 6;
+  const { c, ctx } = makeCanvas(cw, ch);
+  const L = PAD, R = PAD + W, mid = L + W / 2, bodyTop = ch - bodyH;
+  const royal = theme === 'royal';
+  const wall = royal ? '#ece6d6' : '#7a6ca0', wallHi = shade(wall, 1.06), wallLo = shade(wall, 0.8);
+  const roof = royal ? '#7a3f9a' : '#3f56a0', gold = '#ffd24a', goldLo = '#c99a3a';
+  const flag = royal ? '#e05a7a' : '#5ad0e0';
+  const glass = royal ? ['#e05a7a', '#5a9ae0', '#b06ae0', '#5ad08a'] : ['#5ad0e0', '#b06ae0', '#e0c95a', '#e05a8a'];
+  const tw = Math.max(TILE * 1.7, W * 0.16);
+
+  function spire(cx, baseY, halfW, hgt, withFlag) {
+    ctx.fillStyle = OUTLINE; ctx.beginPath(); ctx.moveTo(cx - halfW - 2, baseY + 2); ctx.lineTo(cx, baseY - hgt - 2); ctx.lineTo(cx + halfW + 2, baseY + 2); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = roof; ctx.beginPath(); ctx.moveTo(cx - halfW, baseY); ctx.lineTo(cx, baseY - hgt); ctx.lineTo(cx + halfW, baseY); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = shade(roof, 0.78); ctx.beginPath(); ctx.moveTo(cx, baseY - hgt); ctx.lineTo(cx + halfW, baseY); ctx.lineTo(cx, baseY); ctx.closePath(); ctx.fill();
+    if (withFlag) {
+      ctx.strokeStyle = goldLo; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(cx, baseY - hgt); ctx.lineTo(cx, baseY - hgt - 13); ctx.stroke();
+      ctx.fillStyle = flag; ctx.beginPath(); ctx.moveTo(cx, baseY - hgt - 13); ctx.lineTo(cx + 13, baseY - hgt - 9); ctx.lineTo(cx, baseY - hgt - 5); ctx.closePath(); ctx.fill();
+    } else { ctx.fillStyle = gold; ctx.beginPath(); ctx.arc(cx, baseY - hgt - 2, 2.5, 0, 7); ctx.fill(); }
+  }
+  function tower(tx) {
+    const topY = bodyTop - TILE * 0.7;
+    ctx.fillStyle = OUTLINE; ctx.fillRect(tx - 2, topY - 2, tw + 4, ch - topY);
+    const g = ctx.createLinearGradient(tx, 0, tx + tw, 0); g.addColorStop(0, wallLo); g.addColorStop(0.5, wallHi); g.addColorStop(1, wallLo);
+    ctx.fillStyle = g; ctx.fillRect(tx, topY, tw, ch - topY);
+    spire(tx + tw / 2, topY, tw / 2 + 2, TILE * 1.5, true);
+    for (let i = 0; i < 2; i++) { const wy = topY + 12 + i * 17, fx = tx + tw / 2; ctx.fillStyle = goldLo; rr(ctx, fx - 5, wy - 1, 10, 13, 5); ctx.fill(); ctx.fillStyle = glass[(i + 1) % glass.length]; rr(ctx, fx - 4, wy, 8, 12, 4); ctx.fill(); ctx.fillStyle = 'rgba(255,255,255,0.3)'; ctx.fillRect(fx - 4, wy, 8, 3); }
+  }
+
+  // central body
+  ctx.fillStyle = OUTLINE; ctx.fillRect(L - 1, bodyTop - 1, W + 2, bodyH + 1);
+  const bg = ctx.createLinearGradient(0, bodyTop, 0, ch); bg.addColorStop(0, wallHi); bg.addColorStop(1, wallLo);
+  ctx.fillStyle = bg; ctx.fillRect(L, bodyTop, W, bodyH);
+  ctx.fillStyle = gold; ctx.fillRect(L, bodyTop + 5, W, 3); ctx.fillRect(L, ch - 9, W, 3);
+  ctx.fillStyle = shade(wall, 0.62); ctx.fillRect(L, ch - 6, W, 6);
+  ctx.strokeStyle = 'rgba(0,0,0,0.07)'; ctx.lineWidth = 1;                       // stone courses
+  for (let yy = bodyTop + 14; yy < ch - 10; yy += 12) { ctx.beginPath(); ctx.moveTo(L, yy + 0.5); ctx.lineTo(R, yy + 0.5); ctx.stroke(); }
+
+  // central raised block + dome + big flag
+  const cbw = Math.max(TILE * 2.4, W * 0.34), cbTop = bodyTop - TILE * 1.5;
+  ctx.fillStyle = OUTLINE; ctx.fillRect(mid - cbw / 2 - 2, cbTop - 2, cbw + 4, bodyTop - cbTop + 4);
+  ctx.fillStyle = wallHi; ctx.fillRect(mid - cbw / 2, cbTop, cbw, bodyTop - cbTop);
+  ctx.fillStyle = OUTLINE; ctx.beginPath(); ctx.ellipse(mid, cbTop, cbw / 2 + 2, TILE * 0.95 + 2, 0, Math.PI, 0); ctx.fill();
+  ctx.fillStyle = gold; ctx.beginPath(); ctx.ellipse(mid, cbTop, cbw / 2, TILE * 0.95, 0, Math.PI, 0); ctx.fill();
+  ctx.fillStyle = shade(gold, 0.78); ctx.beginPath(); ctx.ellipse(mid, cbTop, cbw / 2, TILE * 0.95, 0, Math.PI * 0.5, 0); ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,0.45)'; ctx.beginPath(); ctx.ellipse(mid - cbw * 0.16, cbTop - TILE * 0.3, cbw * 0.09, TILE * 0.34, 0, 0, 7); ctx.fill();
+  spire(mid, cbTop - TILE * 0.9, 0.1, 0, false);
+  ctx.strokeStyle = goldLo; ctx.lineWidth = 2; const dtop = cbTop - TILE * 0.95; ctx.beginPath(); ctx.moveTo(mid, dtop); ctx.lineTo(mid, dtop - 18); ctx.stroke();
+  ctx.fillStyle = flag; ctx.beginPath(); ctx.moveTo(mid, dtop - 18); ctx.lineTo(mid + 18, dtop - 13); ctx.lineTo(mid, dtop - 8); ctx.closePath(); ctx.fill();
+  // stained glass on raised block
+  for (let i = 0; i < 3; i++) { const gx = mid - cbw / 2 + cbw * (i + 0.5) / 3, gy = cbTop + 9; ctx.fillStyle = goldLo; rr(ctx, gx - 5, gy - 1, 10, 19, 5); ctx.fill(); ctx.fillStyle = glass[i % glass.length]; rr(ctx, gx - 4, gy, 8, 17, 4); ctx.fill(); ctx.fillStyle = 'rgba(255,255,255,0.3)'; ctx.fillRect(gx - 4, gy, 8, 3); }
+
+  // side towers (after body so they overlap corners)
+  tower(L); tower(R - tw);
+
+  // arched stained-glass windows filling the facade wings (multiple rows)
+  const nwin = Math.max(2, obj.w - 4), wRows = Math.max(1, obj.h - 4);
+  for (let r = 0; r < wRows; r++) {
+    const winY = bodyTop + 14 + r * ((bodyH - 26) / wRows);
+    for (let i = 0; i < nwin; i++) {
+      const gx = L + tw + (W - 2 * tw) * (i + 0.5) / nwin;
+      ctx.fillStyle = goldLo; rr(ctx, gx - 6, winY - 1, 12, 22, 6); ctx.fill();
+      ctx.fillStyle = glass[(i + r) % glass.length]; rr(ctx, gx - 5, winY, 10, 20, 5); ctx.fill();
+      ctx.fillStyle = 'rgba(0,0,0,0.18)'; ctx.fillRect(gx - 5, winY + 9, 10, 1); ctx.fillRect(gx - 0.5, winY + 2, 1, 18);
+      ctx.fillStyle = 'rgba(255,255,255,0.3)'; ctx.fillRect(gx - 5, winY, 10, 3);
+    }
+  }
+  // short hanging banners
+  for (const bx of [mid - cbw / 2 - 7, mid + cbw / 2 + 1]) {
+    const bh = bodyH * 0.4;
+    ctx.fillStyle = royal ? '#9a2f4a' : '#2f3f9a'; ctx.fillRect(bx, bodyTop + 6, 8, bh);
+    ctx.fillStyle = gold; ctx.beginPath(); ctx.arc(bx + 4, bodyTop + 6 + bh * 0.5, 2.5, 0, 7); ctx.fill();
+    ctx.fillStyle = royal ? '#9a2f4a' : '#2f3f9a'; const by = bodyTop + 6 + bh; ctx.beginPath(); ctx.moveTo(bx, by); ctx.lineTo(bx + 4, by + 5); ctx.lineTo(bx + 8, by); ctx.closePath(); ctx.fill();
+  }
+  // grand arched door
+  const doorW = Math.max(TILE, W * 0.13);
+  ctx.fillStyle = goldLo; rr(ctx, mid - doorW / 2 - 3, ch - TILE * 1.7 - 3, doorW + 6, TILE * 1.7 + 6, doorW / 2); ctx.fill();
+  ctx.fillStyle = '#432c1c'; rr(ctx, mid - doorW / 2, ch - TILE * 1.7, doorW, TILE * 1.7, doorW / 2 - 2); ctx.fill();
+  ctx.fillStyle = '#33210f'; ctx.fillRect(mid - 1, ch - TILE * 1.55, 2, TILE * 1.55);
+  ctx.strokeStyle = goldLo; ctx.lineWidth = 1; for (let i = 1; i < 4; i++) { const yy = ch - TILE * 1.7 + i * (TILE * 1.7 / 4); ctx.beginPath(); ctx.moveTo(mid - doorW / 2 + 2, yy); ctx.lineTo(mid + doorW / 2 - 2, yy); ctx.stroke(); }
+  ctx.fillStyle = gold; ctx.beginPath(); ctx.arc(mid - doorW * 0.2, ch - TILE * 0.75, 2, 0, 7); ctx.fill(); ctx.beginPath(); ctx.arc(mid + doorW * 0.2, ch - TILE * 0.75, 2, 0, 7); ctx.fill();
+  // staircase apron
+  for (let i = 0; i < 3; i++) { const sw = doorW + 12 + i * 13; ctx.fillStyle = shade(wall, 0.9 - i * 0.08); ctx.fillRect(mid - sw / 2, ch - 6 + i * 2, sw, 3); }
+  return { canvas: c, ox: -PAD, oy: 0 };
 }
 
 export function treeSprite(variant, snow) {
