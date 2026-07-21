@@ -123,7 +123,7 @@ export function bakeMap(map) {
     if (code !== T.GRASS && code !== T.TALLGRASS) continue;
     if (solid[y * map.w + x]) continue;                         // under trees/buildings
     const patch = hashf(Math.floor(x / 6) + 0.5, Math.floor(y / 6) + 0.5); // coarse noise
-    const density = 0.04 + patch * 0.18;                        // 4%..22%
+    const density = 0.08 + patch * 0.34;                        // 8%..42% (lush meadows)
     if (hashf(x * 1.7, y * 2.3) > density) continue;
     const d = pickDecor(x, y);
     ctx.drawImage(TILESET, d[0] * ST, d[1] * ST, ST, ST, x * TILE, y * TILE, TILE, TILE);
@@ -133,8 +133,14 @@ export function bakeMap(map) {
 
 // Weighted decoration tiles (all sit on a grass backdrop in the sheet).
 const DECOR = [];
-[[[29, 27], 8], [[25, 33], 4], [[27, 35], 3], [[7, 0], 2], [[24, 33], 2], [[27, 33], 1],
- [[6, 0], 1], [[6, 2], 1], [[30, 32], 2], [[31, 32], 1]].forEach(([t, w]) => { for (let i = 0; i < w; i++) DECOR.push(t); });
+[
+  // green tufts / bushes / ferns / leaf plants (common)
+  [[29, 27], 9], [[25, 33], 5], [[27, 35], 4], [[28, 35], 3], [[26, 30], 3], [[28, 27], 3], [[24, 30], 2], [[25, 30], 2],
+  // flower accents
+  [[24, 33], 2], [[26, 33], 2], [[29, 28], 2], [[27, 33], 1], [[28, 28], 1], [[7, 0], 1], [[6, 2], 1],
+  // rocks / boulders
+  [[30, 32], 2], [[31, 32], 1], [[24, 32], 1],
+].forEach(([t, w]) => { for (let i = 0; i < w; i++) DECOR.push(t); });
 const pickDecor = (x, y) => DECOR[Math.floor(hashf(x * 3.1 + 1.3, y * 4.7 + 0.9) * 991) % DECOR.length];
 
 // ---------------- OBJECT SPRITES ----------------
