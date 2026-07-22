@@ -1341,73 +1341,176 @@ export function propSprite(obj) {
 }
 function q(w, h) { return makeCanvas(w, h); }
 
-// ---------------- CHARACTERS (customizable) ----------------
-const BODY_FRONT = ['            ', '   SSSSSS   ', '  SSSSSSSS  ', '  SSSSSSSS  ', '  SSSSSSSS  ', '  SSSSSSSS  ', '  SSSSSSSS  ', '   SSSSSS   ', '  AOOOOOOA  ', ' OOOOOOOOOO ', ' OOOOOOOOOO ', ' OOCOOOOCOO ', '  OOOOOOOO  '];
-const BODY_BACK = BODY_FRONT;
-const BODY_SIDE = ['            ', '   SSSSS    ', '  SSSSSSS   ', '  SSSSSSS   ', '  SSSSSSS   ', '  SSSSSSS   ', '  SSSSSSS   ', '   SSSSS    ', '  AOOOOO    ', '  OOOOOOO   ', '  OOOOOOO   ', '  OOOOOO    ', '  OOOOO     '];
+// ---------------- CHARACTERS (redrawn — prettier, more human) ----------------
+// Native sprite drawn at CW x CH, then the renderer scales it. Slimmer, taller
+// proportions with a defined head, neck, torso, arms and striding legs, plus a
+// soft-shaded face (eyes with highlights, brows, blush, mouth).
+const CW = 32, CH = 48, CX = 16, OUT = '#241826';
+const R = (ctx, x, y, w, h, c) => { ctx.fillStyle = c; ctx.fillRect(x, y, w, h); };
 
-function paintBody(ctx, grid, pal, S, bob) {
-  for (let y = 0; y < grid.length; y++) for (let x = 0; x < grid[y].length; x++) {
-    const col = pal[grid[y][x]]; if (col) { ctx.fillStyle = col; ctx.fillRect(x * S, (y + bob) * S, S, S); }
+function chrPal(look) {
+  return {
+    sk: look.skin, skS: shade(look.skin, 0.85), skL: shade(look.skin, 1.07),
+    ha: look.hair, haS: shade(look.hair, 0.75), haL: shade(look.hair, 1.28),
+    ou: look.outfit, ouS: shade(look.outfit, 0.78), ouL: shade(look.outfit, 1.2),
+    eye: look.eye, blush: 'rgba(240,130,150,0.5)', shoe: shade(look.outfit, 0.5),
+  };
+}
+
+// Legs + shoes. dir: 'front'|'back'|'side'. p: 0 stand, 1 left-fwd, 2 right-fwd.
+function legs(ctx, P, dir, p) {
+  const yTop = 37, len = 8;
+  if (dir === 'side') {
+    // striding profile: a front leg and a back leg
+    const swing = p === 1 ? 3 : p === 2 ? -3 : 0;
+    const back = { x: CX - 2 - swing, };
+    const front = { x: CX - 2 + swing };
+    R(ctx, back.x, yTop, 4, len, P.ouS); R(ctx, back.x, yTop + len, 5, 2, shade(P.shoe, 0.9)); // back leg
+    R(ctx, front.x, yTop, 4, len, P.ou); R(ctx, front.x - 1, yTop + len, 5, 2, P.shoe);        // front leg
+    ctx.fillStyle = OUT; ctx.fillRect(front.x, yTop, 1, len);
+    return;
+  }
+  const lo = p === 1 ? -1 : p === 2 ? 1 : 0;   // left leg vertical step
+  const ro = p === 1 ? 1 : p === 2 ? -1 : 0;
+  const lx = CX - 5, rx = CX + 1;
+  R(ctx, lx, yTop + Math.max(0, lo), 4, len - Math.abs(lo), P.ouS);
+  R(ctx, rx, yTop + Math.max(0, ro), 4, len - Math.abs(ro), P.ouS);
+  R(ctx, lx, yTop + len - 1, 4, 3, P.shoe);                 // shoes
+  R(ctx, rx, yTop + len - 1, 4, 3, P.shoe);
+  R(ctx, lx, yTop + len - 1, 4, 1, shade(P.shoe, 1.3));
+  R(ctx, rx, yTop + len - 1, 4, 1, shade(P.shoe, 1.3));
+}
+
+// Torso + arms. dir: 'front'|'back'|'side'.
+function torso(ctx, P, dir, p) {
+  const top = 24, bot = 38;
+  if (dir === 'side') {
+    R(ctx, CX - 5, top, 9, bot - top, P.ou);
+    R(ctx, CX - 5, top, 2, bot - top, P.ouL); R(ctx, CX + 2, top, 2, bot - top, P.ouS);
+    // one swinging arm in front
+    const sw = p === 1 ? 2 : p === 2 ? -2 : 0;
+    R(ctx, CX - 2 + sw, top + 3, 3, 8, P.ouS);
+    R(ctx, CX - 2 + sw, top + 10, 3, 2, P.sk);              // hand
+    ctx.fillStyle = OUT; ctx.fillRect(CX - 6, top, 1, bot - top);
+    return;
+  }
+  // front / back torso: shoulders taper to waist
+  R(ctx, CX - 6, top, 12, 4, P.ou);                          // shoulders
+  R(ctx, CX - 5, top + 4, 10, 6, P.ou);
+  R(ctx, CX - 4, top + 10, 8, bot - top - 10, P.ou);         // waist
+  R(ctx, CX - 6, top, 3, 10, P.ouL); R(ctx, CX + 3, top, 3, 10, P.ouS); // shading
+  if (dir === 'front') { R(ctx, CX - 1, top + 2, 2, 10, shade(P.ou, 0.9)); } // placket
+  // arms swing opposite to legs
+  const la = p === 1 ? 1 : p === 2 ? -1 : 0;
+  const ra = p === 1 ? -1 : p === 2 ? 1 : 0;
+  R(ctx, CX - 8, top + 2 + la, 3, 8, P.ouS);  R(ctx, CX - 8, top + 10 + la, 3, 2, P.sk); // L arm+hand
+  R(ctx, CX + 5, top + 2 + ra, 3, 8, P.ouS);  R(ctx, CX + 5, top + 10 + ra, 3, 2, P.sk); // R arm+hand
+  R(ctx, CX - 3, top - 1, 6, 1, P.sk);                       // neck
+}
+
+// Head + hair + face.
+function head(ctx, P, style, dir) {
+  const top = 6, faceB = 20;
+  const back = dir === 'back', side = dir === 'side';
+  // face (skin) — rounded block
+  if (!back) {
+    R(ctx, CX - 6, top + 1, 12, faceB - top - 1, P.sk);
+    R(ctx, CX - 7, top + 3, 1, faceB - top - 5, P.sk); R(ctx, CX + 6, top + 3, 1, faceB - top - 5, P.sk); // cheeks
+    R(ctx, CX - 6, top, 12, 1, P.sk); R(ctx, CX - 5, top + (faceB - top - 1), 10, 1, P.sk);
+    R(ctx, CX + 3, top + 2, 3, faceB - top - 3, P.skS);      // shade side
+    R(ctx, CX - 7, top + 3, 2, faceB - top - 6, P.skL);      // light side
+  } else {
+    R(ctx, CX - 6, top, 12, faceB - top, P.sk);
+  }
+  drawHairAndFace(ctx, P, style, dir, top, faceB);
+}
+
+function drawHairAndFace(ctx, P, style, dir, top, faceB) {
+  const back = dir === 'back', side = dir === 'side';
+  // ---- face features (front & side only) ----
+  if (!back) {
+    if (side) {
+      R(ctx, CX + 2, top + 6, 2, 2, '#fff'); R(ctx, CX + 3, top + 6, 1, 2, P.eye); R(ctx, CX + 3, top + 6, 1, 1, OUT);
+      R(ctx, CX + 1, top + 5, 3, 1, P.haS);                  // brow
+      R(ctx, CX + 4, top + 9, 2, 1, P.blush);                // blush
+      R(ctx, CX + 4, top + 11, 2, 1, shade(P.sk, 0.7));      // mouth
+    } else {
+      // two eyes with white, iris, pupil, highlight
+      for (const ex of [CX - 4, CX + 2]) {
+        R(ctx, ex, top + 6, 3, 3, '#fff');
+        R(ctx, ex + 1, top + 6, 2, 3, P.eye);
+        R(ctx, ex + 1, top + 7, 1, 2, OUT);
+        R(ctx, ex + 1, top + 6, 1, 1, '#fff');               // highlight
+      }
+      R(ctx, CX - 5, top + 4, 3, 1, P.haS); R(ctx, CX + 2, top + 4, 3, 1, P.haS); // brows
+      R(ctx, CX - 5, top + 9, 2, 1, P.blush); R(ctx, CX + 3, top + 9, 2, 1, P.blush); // blush
+      R(ctx, CX - 1, top + 8, 1, 1, P.skS);                  // nose
+      R(ctx, CX - 1, top + 11, 3, 1, shade(P.sk, 0.7));      // mouth
+    }
+  }
+  // ---- hair ----
+  const H = P.ha, HL = P.haL, HS = P.haS;
+  const cap = () => { // crown + top shading
+    R(ctx, CX - 6, top - 2, 12, 5, H);
+    R(ctx, CX - 7, top, 14, 2, H);
+    R(ctx, CX - 6, top - 2, 12, 1, HL);
+    R(ctx, CX + 2, top - 1, 3, 3, HS);
+  };
+  if (style === 'hood') {
+    const h = shade(P.ou, 1.05), hs = shade(P.ou, 0.8);
+    R(ctx, CX - 8, top - 3, 16, 7, h);
+    if (side) R(ctx, CX - 8, top - 3, 14, 15, h);
+    else { R(ctx, CX - 8, top - 1, 3, 14, h); R(ctx, CX + 5, top - 1, 3, 14, hs); if (back) R(ctx, CX - 8, top - 1, 16, 14, h); }
+    return;
+  }
+  cap();
+  if (back) { R(ctx, CX - 7, top, 14, faceB - top + 2, H); R(ctx, CX + 3, top, 4, faceB - top, HS); }
+  if (side) {
+    R(ctx, CX - 7, top - 1, 5, faceB - top + 1, H);          // back of side hair
+    if (style === 'long') R(ctx, CX - 7, top, 4, faceB - top + 8, H);
+    if (style === 'ponytail') { R(ctx, CX - 9, top + 1, 3, 10, H); R(ctx, CX - 9, top + 10, 3, 1, HS); }
+  } else {
+    // front side-locks framing the face
+    R(ctx, CX - 7, top, 2, faceB - top - 2, H); R(ctx, CX + 5, top, 2, faceB - top - 2, H);
+    R(ctx, CX - 7, top, 1, faceB - top - 2, HL);
+    // bangs
+    R(ctx, CX - 6, top + 1, 12, 2, H); R(ctx, CX - 1, top + 1, 2, 3, H);   // centre fringe
+    switch (style) {
+      case 'long': R(ctx, CX - 8, top, 2, faceB - top + 9, H); R(ctx, CX + 6, top, 2, faceB - top + 9, H); if (back) R(ctx, CX - 8, top, 16, faceB - top + 9, H); break;
+      case 'ponytail': R(ctx, CX + 6, top, 2, faceB - top + 6, H); R(ctx, CX + 7, top + 3, 2, 6, HS); break;
+      case 'spiky': for (const sx of [CX - 6, CX - 3, CX, CX + 3, CX + 5]) { R(ctx, sx, top - 4, 2, 4, H); } R(ctx, CX - 6, top - 4, 1, 4, HL); break;
+      case 'bun': R(ctx, CX - 3, top - 5, 6, 4, H); R(ctx, CX - 2, top - 5, 4, 1, HL); break;
+      case 'bob': R(ctx, CX - 7, top, 2, faceB - top + 1, H); R(ctx, CX + 5, top, 2, faceB - top + 1, H); break;
+      case 'braids': R(ctx, CX - 8, top + 3, 2, faceB - top + 4, H); R(ctx, CX + 6, top + 3, 2, faceB - top + 4, H); R(ctx, CX - 8, top + faceB - top + 6, 2, 1, HL); R(ctx, CX + 6, top + faceB - top + 6, 2, 1, HL); break;
+      default: break; // short
+    }
   }
 }
-function drawEyes(ctx, S, dir, eye) {
-  ctx.fillStyle = '#fff';
-  if (dir === 'down') { ctx.fillRect(3.5 * S, 5 * S, 1.5 * S, 1.2 * S); ctx.fillRect(7 * S, 5 * S, 1.5 * S, 1.2 * S); ctx.fillStyle = eye; ctx.fillRect(4 * S, 5.1 * S, S, S); ctx.fillRect(7.3 * S, 5.1 * S, S, S); }
-  else if (dir === 'right') { ctx.fillRect(6 * S, 5 * S, 1.6 * S, 1.2 * S); ctx.fillStyle = eye; ctx.fillRect(6.4 * S, 5.1 * S, S, S); }
-  else if (dir === 'left') { ctx.fillRect(3.5 * S, 5 * S, 1.6 * S, 1.2 * S); ctx.fillStyle = eye; ctx.fillRect(3.9 * S, 5.1 * S, S, S); }
-}
-function drawHair(ctx, S, dir, style, hair, accent, outfit) {
-  const R = (x, y, w, h, col) => { ctx.fillStyle = col; ctx.fillRect(x * S, y * S, w * S, h * S); };
-  const back = dir === 'up';
-  const side = dir === 'left' || dir === 'right';
-  // base cap
-  if (side) { R(2, 1, 6, 2, hair); R(2, 3, 2, 3, hair); }
-  else { R(2, 1, 8, 2, hair); R(3, 0, 6, 1, accent); R(2, 3, 1, back ? 5 : 3, hair); R(9, 3, 1, back ? 5 : 3, hair); }
-  if (back && !side) R(2, 1, 8, 6, hair);           // back of head fully covered
-  switch (style) {
-    case 'long': if (side) { R(2, 3, 2, 7, hair); } else { R(2, 3, 1, 7, hair); R(9, 3, 1, 7, hair); if (back) R(2, 3, 8, 7, hair); } break;
-    case 'ponytail': if (back) R(4, 6, 4, 6, hair); else if (side) R(1, 3, 2, 6, hair); else { R(8.5, 3, 1.5, 5, hair); } break;
-    case 'spiky': R(2, -0.2, 1, 1.4, hair); R(4, -0.4, 1, 1.6, hair); R(6, -0.4, 1, 1.6, hair); R(8, -0.2, 1, 1.4, hair); break;
-    case 'bun': R(4.5, -1.2, 3, 2.4, hair); R(5, -1.5, 2, 1.2, accent); break;
-    case 'bob': if (!side && !back) { R(2, 3, 1, 4, hair); R(9, 3, 1, 4, hair); } if (side) R(2, 3, 2, 4, hair); break;
-    case 'braids': if (!side) { R(1.5, 4, 1.2, 6, hair); R(9.3, 4, 1.2, 6, hair); R(1.5, 9.6, 1.2, 1, accent); R(9.3, 9.6, 1.2, 1, accent); } else R(1.5, 4, 1.5, 6, hair); break;
-    case 'hood': { const h = shade(outfit, 1.1); R(1.5, 0.5, 9, 3, h); if (side) R(1.5, 0.5, 7, 6, h); else { R(1.5, 1, 1.5, 6, h); R(9, 1, 1.5, 6, h); if (back) R(1.5, 1, 9, 6, h); } break; }
-    default: break; // short
-  }
-}
 
-const legDown = (ctx, S, x, pal) => { ctx.fillStyle = pal.O; ctx.fillRect(x * S, 13 * S, 2 * S, 1 * S); ctx.fillStyle = pal.B; ctx.fillRect(x * S, 14 * S, 2 * S, 1.4 * S); };
-const legUp = (ctx, S, x, pal) => { ctx.fillStyle = pal.B; ctx.fillRect(x * S, 13 * S, 2 * S, 1.2 * S); };
-
-function frame(dir, look, S, leftDown, rightDown, bob) {
-  const grid = dir === 'up' ? BODY_BACK : dir === 'down' ? BODY_FRONT : BODY_SIDE;
-  const { c, ctx } = makeCanvas(12 * S, 16 * S);
-  const pal = { S: look.skin, O: look.outfit, A: shade(look.outfit, 1.2), C: shade(look.outfit, 0.7), B: '#2a2320' };
-  paintBody(ctx, grid, pal, S, bob);
-  drawHair(ctx, S, dir, look.hairStyle || 'short', look.hair, shade(look.hair, 1.3), look.outfit);
-  if (dir !== 'up') drawEyes(ctx, S, dir, look.eye);
-  legDownUp(ctx, S, leftDown, rightDown, pal);
+function renderChar(dir, look, p) {
+  const P = chrPal(look), { c, ctx } = makeCanvas(CW, CH);
+  ctx.imageSmoothingEnabled = false;
+  const style = look.hairStyle || 'short';
+  const d = dir === 'up' ? 'back' : (dir === 'down' ? 'front' : 'side');
+  legs(ctx, P, d, p);
+  torso(ctx, P, d, p);
+  head(ctx, P, style, d);
   return c;
 }
-function legDownUp(ctx, S, l, r, pal) { (l ? legDown : legUp)(ctx, S, 2.5, pal); (r ? legDown : legUp)(ctx, S, 7.5, pal); }
 
-export function makeCharacter(look, S = 3) {
+export function makeCharacter(look, _S) {
   const L = { skin: '#e9c39b', hair: '#6a2fb0', hairStyle: 'short', eye: '#ff4a8d', outfit: '#2a1f3a', ...look };
-  const dir = (d) => [frame(d, L, S, true, true, 0), frame(d, L, S, true, false, 0), frame(d, L, S, false, true, 0)];
+  const dir = (d) => [renderChar(d, L, 0), renderChar(d, L, 1), renderChar(d, L, 2)];
   const right = dir('right');
-  const left = right; // side reused; flipped at draw time via renderer
-  return { down: dir('down'), up: dir('up'), right, left, w: 12 * S, h: 16 * S, flipLeft: true };
+  return { down: dir('down'), up: dir('up'), right, left: right, w: CW, h: CH, flipLeft: true };
 }
 
 // ---------------- PORTRAIT ----------------
 export function drawPortrait(ctx, look, x, y, size) {
-  const S = size / 12;
+  const L = { skin: '#e9c39b', hair: '#6a2fb0', hairStyle: 'short', eye: '#ff4a8d', outfit: '#2a1f3a', ...look };
+  const front = renderChar('down', L, 0);
   ctx.save(); ctx.imageSmoothingEnabled = false;
-  const pal = { S: look.skin, O: look.outfit, A: shade(look.outfit, 1.2), C: shade(look.outfit, 0.7), B: '#2a2320' };
-  ctx.translate(x, y);
-  paintBody(ctx, BODY_FRONT, pal, S, 0);
-  drawHair(ctx, S, 'down', look.hairStyle || 'short', look.hair, shade(look.hair, 1.3), look.outfit);
-  drawEyes(ctx, S, 'down', look.eye);
+  const sc = size / CW;                       // width fills the box; body extends below (bust)
+  ctx.drawImage(front, x, y, CW * sc, CH * sc);
   ctx.restore();
 }
