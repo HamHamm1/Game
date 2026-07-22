@@ -1,9 +1,10 @@
 // Camera + multi-map rendering with depth-sorted objects and characters.
 import { TILE, getMap } from '/shared/maps.js';
 import { T } from '/shared/tiles.js';
-import { bakeMap, bakeInterior, furnitureSprite, buildingSprite, treeSprite, propSprite, mountainSprite, makeCharacter, drawPortrait, loadTileset, tilesetOk } from './art.js';
+import { bakeMap, bakeInterior, furnitureSprite, buildingSprite, treeSprite, propSprite, mountainSprite, makeCharacter, drawPortrait, loadTileset, tilesetOk, loadNpcSheets, npcFrames, npcPortrait } from './art.js';
 
 loadTileset();                // begin loading the terrain tileset immediately
+loadNpcSheets();              // and the Minifolks NPC sprite sheets
 const baked = new Map();      // mapId -> canvas
 const charCache = new Map();  // lookKey -> sheet
 function bakedMap(id) {
@@ -99,11 +100,18 @@ export function draw(ctx, view, mapId, remotes, self, npcs, frameTick) {
     else if (o.t === 'furn') { const s = furnitureSprite(o); if (s.flat || s.hang) continue; const fw = s.canvas.width, fh = s.canvas.height; D.push({ y: (o.y + 1) * TILE, spr: s.canvas, dx: (o.x + 0.5) * TILE - fw / 2, dy: (o.y + 1) * TILE - fh, sw: TILE * 0.5, scx: (o.x + 0.5) * TILE, scy: (o.y + 1) * TILE - 2 }); }
   }
   for (const n of npcs) {
-    const sheet = sheetFor(n.look || { skin: '#e9c39b', hair: '#5a3b22', hairStyle: 'short', eye: '#333', outfit: '#556' });
-    const flip = n.dir === 'left' && sheet.flipLeft;
-    const frames = (n.dir === 'left' ? sheet.right : sheet[n.dir]) || sheet.down;
-    const idx = n.moving ? [1, 0, 2, 0][Math.floor(frameTick / 5) % 4] : 0;
-    D.push({ y: n.y + TILE * 0.1, char: sheet, frame: frames[idx], cx: n.x, cy: n.y, name: n.name, npc: true, flip, emote: n.emote });
+    const nf = n.sprite ? npcFrames(n.sprite) : null;
+    if (nf) {   // real Minifolks art (front-facing; flip for left/right)
+      const frames = n.moving ? nf.walk : nf.idle;
+      const idx = n.moving ? Math.floor(frameTick / 4) % frames.length : Math.floor(frameTick / 18) % frames.length;
+      D.push({ y: n.y + TILE * 0.1, spr2: frames[idx], w: nf.w, feet: nf.feet, headTop: nf.headTop, cw: nf.cw, cx: n.x, cy: n.y, name: n.name, npc: true, flip: n.dir === 'left', emote: n.emote });
+    } else {
+      const sheet = sheetFor(n.look || { skin: '#e9c39b', hair: '#5a3b22', hairStyle: 'short', eye: '#333', outfit: '#556' });
+      const flip = n.dir === 'left' && sheet.flipLeft;
+      const frames = (n.dir === 'left' ? sheet.right : sheet[n.dir]) || sheet.down;
+      const idx = n.moving ? [1, 0, 2, 0][Math.floor(frameTick / 5) % 4] : 0;
+      D.push({ y: n.y + TILE * 0.1, char: sheet, frame: frames[idx], cx: n.x, cy: n.y, name: n.name, npc: true, flip, emote: n.emote });
+    }
   }
   const everyone = [self, ...remotes].filter(Boolean);
   for (const p of everyone) {
@@ -124,6 +132,15 @@ export function draw(ctx, view, mapId, remotes, self, npcs, frameTick) {
       if (d.sw) shadow(ctx, d.scx - camera.x, d.scy - camera.y, d.sw);
       ctx.drawImage(d.spr, Math.round(d.dx - camera.x), Math.round(d.dy - camera.y));
       if (d.name) { ctx.font = 'bold 11px system-ui'; ctx.textAlign = 'center'; ctx.fillStyle = 'rgba(20,16,30,0.7)'; }
+    } else if (d.spr2) {   // Minifolks NPC — anchored by feet, flipped for left
+      const w = d.w;
+      const sx = Math.round(d.cx - camera.x - w / 2), sy = Math.round(d.cy - camera.y - d.feet);
+      shadow(ctx, d.cx - camera.x, d.cy - camera.y - 2, d.cw * 0.9);
+      if (d.flip) { ctx.save(); ctx.translate(sx + w, sy); ctx.scale(-1, 1); ctx.drawImage(d.spr2, 0, 0); ctx.restore(); }
+      else ctx.drawImage(d.spr2, sx, sy);
+      const headY = Math.round(d.cy - camera.y - d.feet + d.headTop);
+      nameplate(ctx, d.name, Math.round(d.cx - camera.x), headY - 3, false, true);
+      if (d.emote) drawEmote(ctx, Math.round(d.cx - camera.x), headY - 14, d.emote);
     } else if (d.char) {
       const w = d.char.w, h = d.char.h;
       const sx = Math.round(d.cx - camera.x - w / 2), sy = Math.round(d.cy - camera.y - h);
@@ -250,4 +267,4 @@ function nameplate(ctx, name, cx, y, self, npc) {
   ctx.fillStyle = self ? '#ffe6a0' : '#fff'; ctx.fillText(name, cx, y - 1);
 }
 
-export { drawPortrait };
+export { drawPortrait, npcPortrait };

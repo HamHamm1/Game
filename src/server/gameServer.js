@@ -70,7 +70,7 @@ function handleInteract(c) {
   const explicit = content.get().dialogues[best.id];
   const dlg = explicit ? { lines: explicit.lines, choices: explicit.choices } : templateDialogue(best);
   send(c.ws, MSG.DIALOGUE, {
-    npc: { id: best.id, name: best.name, role: best.role, portrait: best.look || best.portrait },
+    npc: { id: best.id, name: best.name, role: best.role, portrait: best.look || best.portrait, sprite: best.sprite },
     affection: c.acc.affection[best.id] || 0,
     lines: dlg.lines,
     choices: dlg.choices || [{ text: 'ทักทาย (+2 ♥)', affection: 2 }, { text: 'จากไป', affection: 0 }],

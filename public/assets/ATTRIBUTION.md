@@ -1,5 +1,13 @@
 # Art asset attribution
 
+## assets/npc/*.png — NPC villager sprites
+- **Source:** "MinifolksVillagers" character pack (front-facing villager
+  sprite sheets: princess, queen, nobleman, noblewoman, oldman, oldwoman,
+  peasant, villagerman, villagerwoman, worker).
+- **Credit / License:** _to be confirmed — pending the pack's license terms._
+  Provided by the project owner; credit to the original artist will be added
+  here once the pack/author is confirmed.
+
 ## terrain.png — outdoor terrain tileset
 - **Source:** The [Tuxemon](https://github.com/Tuxemon/Tuxemon) project
   (`mods/tuxemon/gfx/tilesets/core_outdoor.png`), cropped to the terrain

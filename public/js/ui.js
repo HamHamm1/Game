@@ -1,5 +1,5 @@
 // DOM overlays: join / approval gates, dialogue, chat, quests, toasts.
-import { drawPortrait } from './renderer.js';
+import { drawPortrait, npcPortrait } from './renderer.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -34,8 +34,11 @@ export function showDialogue(m, chooseCb, sendCb) {
   $('dlg-role').textContent = m.npc.role || '';
   $('dlg-aff').textContent = `♥ ${m.affection || 0}`;
   const cv = $('dlg-portrait'), ctx = cv.getContext('2d');
+  ctx.imageSmoothingEnabled = false;
   ctx.clearRect(0, 0, cv.width, cv.height);
-  drawPortrait(ctx, m.npc.portrait, 6, 4, 84);
+  const mf = m.npc.sprite ? npcPortrait(m.npc.sprite) : null;
+  if (mf) ctx.drawImage(mf, 24, 44, 48, 48, 6, 4, 84, 84);   // crop head+bust from the Minifolks frame
+  else drawPortrait(ctx, m.npc.portrait, 6, 4, 84);
   $('dlg-lines').innerHTML = m.lines.map((l) => `<p>${escape(l)}</p>`).join('');
   const ch = $('dlg-choices'); ch.innerHTML = '';
   (m.choices || []).forEach((c, i) => {

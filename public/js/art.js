@@ -1505,7 +1505,41 @@ export function makeCharacter(look, _S) {
   return { down: dir('down'), up: dir('up'), right, left: right, w: CW, h: CH, flipLeft: true };
 }
 
+// ---------------- NPC SPRITES (MinifolksVillagers — real pixel art) ----------------
+// Front-facing villager sheets: row 0 = idle (4 frames), row 1 = walk (6). We
+// scale them up so their on-screen height matches the procedural player, and
+// flip horizontally for left/right movement (there is no back/side art).
+const NPC_TYPES = ['princess', 'queen', 'nobleman', 'noblewoman', 'oldman', 'oldwoman', 'peasant', 'villagerman', 'villagerwoman', 'worker'];
+const NF = 32, NPC_SCALE = 3, NPC_FEET = 30;   // native frame, upscale, feet row
+const npcImgs = {};
+export function loadNpcSheets() {
+  for (const t of NPC_TYPES) { const img = new Image(); img.src = `/assets/npc/${t}.png`; npcImgs[t] = img; }
+}
+const npcFrameCache = new Map();
+export function npcFrames(type) {
+  const img = npcImgs[type];
+  if (!img || !img.complete || !img.naturalWidth) return null;      // still loading
+  if (npcFrameCache.has(type)) return npcFrameCache.get(type);
+  const slice = (col, row) => {
+    const { c, ctx } = makeCanvas(NF * NPC_SCALE, NF * NPC_SCALE);
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(img, col * NF, row * NF, NF, NF, 0, 0, NF * NPC_SCALE, NF * NPC_SCALE);
+    return c;
+  };
+  const f = {
+    idle: [0, 1, 2, 3].map((c) => slice(c, 0)),
+    walk: [0, 1, 2, 3, 4, 5].map((c) => slice(c, 1)),
+    w: NF * NPC_SCALE, h: NF * NPC_SCALE,
+    feet: NPC_FEET * NPC_SCALE, headTop: 16 * NPC_SCALE, cw: 16 * NPC_SCALE,
+  };
+  npcFrameCache.set(type, f);
+  return f;
+}
+
 // ---------------- PORTRAIT ----------------
+export function npcPortrait(type) {   // a static idle frame for dialogue portraits
+  const f = npcFrames(type); return f ? f.idle[0] : null;
+}
 export function drawPortrait(ctx, look, x, y, size) {
   const L = { skin: '#e9c39b', hair: '#6a2fb0', hairStyle: 'short', eye: '#ff4a8d', outfit: '#2a1f3a', ...look };
   const front = renderChar('down', L, 0);
