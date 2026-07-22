@@ -479,8 +479,60 @@ function rr(ctx, x, y, w, h, r) {
 }
 const OUTLINE = '#241d2e';
 
+// ---- Real building sprites (cozy pack + sprout houses) ----
+const buildImgs = {};
+export function loadBuildSheets() {
+  for (const n of ['house', 'hut', 'cozy_green', 'cozy_red', 'cozy_dark', 'gate']) {
+    const i = new Image(); i.src = `/assets/build/${n}.png`; buildImgs[n] = i;
+  }
+}
+// style -> sprite. Sprout house/hut sheets are a 3x3 grid of 64px colour variants.
+const BUILD = {
+  house:   { img: 'house', c: 0, r: 2 },   // blue
+  house2:  { img: 'house', c: 2, r: 1 },   // purple
+  dorm:    { img: 'house', c: 1, r: 0 },   // green
+  dorm2:   { img: 'house', c: 2, r: 2 },   // cyan
+  cafe:    { img: 'house', c: 0, r: 1 },   // orange
+  inn:     { img: 'house', c: 2, r: 0 },   // yellow
+  shop:    { img: 'house', c: 1, r: 1 },   // pink
+  shop2:   { img: 'hut',   c: 0, r: 0 },   // teal hut (different silhouette)
+  library: { img: 'house', c: 0, r: 0 },   // teal
+  academy: { img: 'cozy_dark' },
+  opera:   { img: 'cozy_red' },
+  palace:  { img: 'cozy_green', gate: true, gold: true },
+};
+
 export function buildingSprite(obj) {
-  return cached(`b:${obj.style}:${obj.w}:${obj.h}:${obj.door}`, () => buildVictorian(obj));
+  const spec = BUILD[obj.style] || BUILD.house;
+  if (!buildRegion(spec)) return buildVictorian(obj);   // sheets still loading — don't cache the fallback
+  return cached(`b:${obj.style}:${obj.w}:${obj.h}`, () => makeBuilding(obj));
+}
+function buildRegion(spec) {
+  const img = buildImgs[spec.img];
+  if (!img || !img.complete || !img.naturalWidth) return null;
+  if (spec.c !== undefined) return { img, sx: spec.c * 64, sy: spec.r * 64, sw: 64, sh: 64 };
+  return { img, sx: 0, sy: 0, sw: img.naturalWidth, sh: img.naturalHeight };
+}
+function makeBuilding(obj) {
+  const spec = BUILD[obj.style] || BUILD.house;
+  const rg = buildRegion(spec);
+  if (!rg) return buildVictorian(obj);          // sprites still loading → procedural fallback
+  const S = 2, w = rg.sw * S, h = rg.sh * S;
+  const { c, ctx } = makeCanvas(w, h);
+  ctx.imageSmoothingEnabled = false;
+  ctx.drawImage(rg.img, rg.sx, rg.sy, rg.sw, rg.sh, 0, 0, w, h);
+  if (spec.gold) {                              // palace: gilded roof accents + gems
+    for (let x = 6; x < w - 6; x += 10) { ctx.fillStyle = '#ffd24a'; ctx.fillRect(x, h * 0.12, 3, 3); }
+    gemAt(ctx, w / 2, h * 0.34, '#4aa3ff'); gemAt(ctx, w / 2 - 14, h * 0.30, '#ff4a8d'); gemAt(ctx, w / 2 + 14, h * 0.30, '#4fbf6a');
+  }
+  if (spec.gate) {                              // palace: stone arch over the entrance
+    const g = buildImgs.gate;
+    if (g && g.complete && g.naturalWidth) {
+      const gw = g.naturalWidth * 1.2, gh = g.naturalHeight * 1.2;
+      ctx.drawImage(g, 0, 0, g.naturalWidth, g.naturalHeight, w / 2 - gw / 2, h - gh, gw, gh);
+    }
+  }
+  return { canvas: c, ox: (obj.w * TILE - w) / 2 };
 }
 
 // ===================== Victorian building system =====================

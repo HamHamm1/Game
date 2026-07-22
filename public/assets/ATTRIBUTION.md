@@ -1,5 +1,12 @@
 # Art asset attribution
 
+## assets/cozy/*.png & assets/build/*.png — world / building sprites
+- **Source:** a "cozy" top-down pack (overworld, town, interior, nature, char)
+  plus Sprout village houses and a Fantasy-tileset city gate, provided by the
+  project owner.
+- **Credit / License:** _to be confirmed — pending each pack's terms._ Credits
+  to the original artists will be added here once confirmed.
+
 ## assets/npc/*.png — NPC villager sprites
 - **Source:** "MinifolksVillagers" character pack (front-facing villager
   sprite sheets: princess, queen, nobleman, noblewoman, oldman, oldwoman,
