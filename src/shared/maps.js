@@ -33,11 +33,11 @@ function buildSchool() {
   road(t, w, h, 12, 30, 26, 24, T.PATH, 2);
   road(t, w, h, 40, 30, 26, 24, T.PATH, 2);
 
-  objects.push({ t: 'building', x: 19, y: 3, w: 4, h: 2, style: 'academy', name: 'อาคารเรียนหลัก', door: 2 });
+  objects.push({ t: 'building', x: 19, y: 3, w: 10, h: 3, style: 'academy', name: 'อาคารเรียนหลัก', door: 5 });
   objects.push({ t: 'building', x: 6, y: 14, w: 4, h: 2, style: 'dorm', name: 'หอพักหญิง', door: 2 });
   objects.push({ t: 'building', x: 37, y: 14, w: 4, h: 2, style: 'dorm2', name: 'หอพักชาย', door: 2 });
   objects.push({ t: 'building', x: 6, y: 27, w: 4, h: 2, style: 'cafe', name: 'คาเฟ่ไรส์ทา', door: 2 });
-  objects.push({ t: 'building', x: 38, y: 27, w: 4, h: 2, style: 'library', name: 'ห้องสมุดต้องห้าม', door: 2 });
+  objects.push({ t: 'building', x: 38, y: 27, w: 6, h: 2, style: 'library', name: 'ห้องสมุดต้องห้าม', door: 3 });
   objects.push({ t: 'prop', x: 25, y: 19, kind: 'fountain' });
   // gardens
   for (const [gx, gy] of [[17, 17], [33, 17], [17, 23], [33, 23]]) objects.push({ t: 'prop', x: gx, y: gy, kind: 'flowerbed' });
@@ -65,16 +65,16 @@ function buildTown() {
 
   objects.push({ t: 'prop', x: 29, y: 22, kind: 'statue' });
   // north: palace + academy district
-  objects.push({ t: 'building', x: 22, y: 4, w: 6, h: 3, style: 'palace', name: 'พระราชวังอเล็กเทียร์', door: 3 });
-  objects.push({ t: 'building', x: 8, y: 6, w: 5, h: 2, style: 'opera', name: 'โรงละครโอเปร่า', door: 2 });
-  objects.push({ t: 'building', x: 40, y: 6, w: 4, h: 2, style: 'library', name: 'หอสมุดแห่งปัญญา', door: 2 });
+  objects.push({ t: 'building', x: 22, y: 4, w: 11, h: 3, style: 'palace', name: 'พระราชวังอเล็กเทียร์', door: 5 });
+  objects.push({ t: 'building', x: 8, y: 6, w: 6, h: 2, style: 'opera', name: 'โรงละครโอเปร่า', door: 3 });
+  objects.push({ t: 'building', x: 40, y: 6, w: 6, h: 2, style: 'library', name: 'หอสมุดแห่งปัญญา', door: 3 });
   // shops row
-  objects.push({ t: 'building', x: 8, y: 28, w: 4, h: 2, style: 'shop', name: 'ร้านเวทมนตร์', door: 2 });
+  objects.push({ t: 'building', x: 8, y: 28, w: 5, h: 2, style: 'shop', name: 'ร้านเวทมนตร์', door: 2 });
   objects.push({ t: 'building', x: 17, y: 30, w: 4, h: 2, style: 'shop2', name: 'ร้านเครื่องประดับ', door: 2 });
   objects.push({ t: 'building', x: 38, y: 30, w: 4, h: 2, style: 'inn', name: 'โรงแรมลอเรล', door: 2 });
-  objects.push({ t: 'building', x: 10, y: 40, w: 4, h: 2, style: 'house', name: 'บ้านตระกูลอยุก', door: 2 });
+  objects.push({ t: 'building', x: 10, y: 40, w: 5, h: 2, style: 'house', name: 'บ้านตระกูลอยุก', door: 2 });
   objects.push({ t: 'building', x: 22, y: 40, w: 4, h: 2, style: 'house2', name: 'บ้านตระกูลมาร์ควิส', door: 2 });
-  objects.push({ t: 'building', x: 34, y: 40, w: 4, h: 2, style: 'house', name: 'บ้านตระกูลเคานต์', door: 2 });
+  objects.push({ t: 'building', x: 34, y: 40, w: 5, h: 2, style: 'house', name: 'บ้านตระกูลเคานต์', door: 2 });
   objects.push({ t: 'building', x: 8, y: 18, w: 4, h: 2, style: 'cafe', name: 'คาเฟ่ไรส์ทา', door: 2 });
   // market stalls around plaza
   for (const [sx, sy, c] of [[25, 31, 'red'], [28, 31, 'blue'], [31, 31, 'green'], [34, 31, 'yellow']])
@@ -122,7 +122,7 @@ function buildWorld() {
   forest(objects, t, w, h, r, [[8, 22, 12, 10], [44, 24, 12, 10], [10, 10, 8, 6], [48, 34, 10, 6]]);
 
   // POI nodes (each is a town-like building + portal to town for now)
-  objects.push({ t: 'building', x: 22, y: 26, w: 6, h: 3, style: 'palace', name: 'เมืองหลวงอเล็กเทียร์', door: 3 });
+  objects.push({ t: 'building', x: 22, y: 26, w: 11, h: 3, style: 'palace', name: 'เมืองหลวงอเล็กเทียร์', door: 5 });
   objects.push({ t: 'prop', x: 44, y: 12, kind: 'signpost', label: 'อาณาจักรโรเซเลีย' });
   objects.push({ t: 'prop', x: 14, y: 30, kind: 'signpost', label: 'เมืองท่าเบลวิน' });
   objects.push({ t: 'prop', x: 30, y: 11, kind: 'signpost', label: 'ป่าการคืนชีพ' });
@@ -246,8 +246,12 @@ export function getInterior(fromMapId, obj) {
   for (let x = 0; x < w; x++) { solid[x] = 1; solid[1 * w + x] = 1; solid[(h - 1) * w + x] = 1; }
   for (let y = 0; y < h; y++) { solid[y * w] = 1; solid[y * w + w - 1] = 1; }
   const ex = w >> 1; solid[(h - 1) * w + ex] = 0;                     // doorway
-  const objects = furnFor(obj.style, w, h);
+  const spawnX = ex, spawnY = h - 3;
+  // keep the entrance lane (spawn up to the doorway) clear of furniture
+  const clear = new Set([spawnY * w + spawnX, (h - 2) * w + spawnX]);
+  const objects = furnFor(obj.style, w, h).filter((f) => !clear.has(f.y * w + f.x));
   for (const f of objects) if (SOLID_FURN.has(f.kind)) solid[f.y * w + f.x] = 1;
+  for (const i of clear) solid[i] = 0;                                // guarantee a walkable spawn lane
   const portals = [{ x: ex, y: h - 1, w: 1, h: 1, to: fromMapId, tx: obj.x + obj.door, ty: obj.y + obj.h, label: 'ออกไปข้างนอก' }];
   _interiors[id] = { id, interior: true, style: obj.style, name: obj.name || 'ภายในอาคาร', w, h, tiles, solid, objects, portals, spawn: { x: ex, y: h - 3 } };
   return _interiors[id];

@@ -481,25 +481,33 @@ const OUTLINE = '#241d2e';
 
 // ---- Real building sprites (cozy pack + sprout houses) ----
 const buildImgs = {};
+export function buildSheetsReady() {
+  const ns = Object.keys(buildImgs);
+  return ns.length > 0 && ns.every((n) => { const i = buildImgs[n]; return i && i.complete && i.naturalWidth; });
+}
 export function loadBuildSheets() {
-  for (const n of ['house', 'hut', 'cozy_green', 'cozy_red', 'cozy_dark', 'gate']) {
+  for (const n of ['house', 'hut', 'brick', 'cozy_green', 'cozy_red', 'cozy_dark', 'hay1', 'hay2', 'hay3', 'manor', 'gate']) {
     const i = new Image(); i.src = `/assets/build/${n}.png`; buildImgs[n] = i;
   }
 }
-// style -> sprite. Sprout house/hut sheets are a 3x3 grid of 64px colour variants.
+// style -> sprite. Sprout house/hut sheets are a 3x3 grid of 64px colour
+// variants (c,r); everything else is a standalone image. Grand buildings use
+// the bigger Fantasy houses; the palace is the manor + gate arch + gilding.
 const BUILD = {
-  house:   { img: 'house', c: 0, r: 2 },   // blue
-  house2:  { img: 'house', c: 2, r: 1 },   // purple
-  dorm:    { img: 'house', c: 1, r: 0 },   // green
-  dorm2:   { img: 'house', c: 2, r: 2 },   // cyan
-  cafe:    { img: 'house', c: 0, r: 1 },   // orange
-  inn:     { img: 'house', c: 2, r: 0 },   // yellow
-  shop:    { img: 'house', c: 1, r: 1 },   // pink
-  shop2:   { img: 'hut',   c: 0, r: 0 },   // teal hut (different silhouette)
-  library: { img: 'house', c: 0, r: 0 },   // teal
-  academy: { img: 'cozy_dark' },
-  opera:   { img: 'cozy_red' },
-  palace:  { img: 'cozy_green', gate: true, gold: true },
+  // residential — varied cozy / sprout shapes
+  house:   { img: 'cozy_red' },
+  house2:  { img: 'cozy_dark' },
+  dorm:    { img: 'house', c: 1, r: 0 },   // sprout green
+  dorm2:   { img: 'house', c: 2, r: 2 },   // sprout cyan
+  cafe:    { img: 'house', c: 0, r: 1 },   // sprout orange
+  inn:     { img: 'house', c: 2, r: 0 },   // sprout yellow
+  shop:    { img: 'brick' },                // grey-stone shop
+  shop2:   { img: 'hut',   c: 1, r: 1 },    // sprout hut (pink)
+  // grand — big Fantasy buildings + the widest cozy house
+  library: { img: 'hay1' },
+  opera:   { img: 'cozy_green' },
+  academy: { img: 'hay2' },
+  palace:  { img: 'hay3', gate: true, gold: true },
 };
 
 export function buildingSprite(obj) {
