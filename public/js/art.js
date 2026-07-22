@@ -511,9 +511,89 @@ const BUILD = {
 };
 
 export function buildingSprite(obj) {
+  if (obj.style === 'palace') return cached(`castle:${obj.w}:${obj.h}`, () => castleSprite(obj));
   const spec = BUILD[obj.style] || BUILD.house;
   if (!buildRegion(spec)) return buildVictorian(obj);   // sheets still loading — don't cache the fallback
   return cached(`b:${obj.style}:${obj.w}:${obj.h}`, () => makeBuilding(obj));
+}
+
+// ---- Grand stone castle (procedural, sandstone palette from Resurrected RPG) ----
+const CAS = { base: '#b49f7d', mid: '#9d8770', dk: '#856555', hi: '#bdb18a', mortar: '#75604f', win: '#2b2438', gate: '#241b2b', banner: '#8a2f3a', bannerHi: '#b0454f', gold: '#ffd24a' };
+function stoneFill(ctx, x, y, w, h, off = 0) {
+  ctx.fillStyle = CAS.base; ctx.fillRect(x, y, w, h);
+  const bw = 16, bh = 8;                                   // block coursing
+  for (let ry = 0, row = 0; ry < h; ry += bh, row++) {
+    ctx.fillStyle = CAS.mortar; ctx.fillRect(x, y + ry + bh - 1, w, 1);
+    const stagger = ((row + off) & 1) ? bw / 2 : 0;
+    for (let rx = -stagger; rx < w; rx += bw) ctx.fillRect(x + rx, y + ry, 1, bh);
+    ctx.fillStyle = CAS.hi; ctx.fillRect(x, y + ry, w, 1);
+  }
+  ctx.fillStyle = CAS.dk; ctx.fillRect(x, y, 2, h);        // side shading
+  ctx.fillStyle = 'rgba(0,0,0,0.10)'; ctx.fillRect(x + w - 3, y, 3, h);
+}
+function crenellate(ctx, x, y, w) {                         // merlons along the top
+  const m = 12, g = 8, h = 12;
+  ctx.fillStyle = CAS.base; ctx.fillRect(x, y, w, 6);
+  for (let mx = x + 2; mx < x + w - m; mx += m + g) {
+    ctx.fillStyle = CAS.base; ctx.fillRect(mx, y - h, m, h + 2);
+    ctx.fillStyle = CAS.hi; ctx.fillRect(mx, y - h, m, 1);
+    ctx.fillStyle = CAS.dk; ctx.fillRect(mx, y - h, 1, h);
+  }
+  ctx.fillStyle = CAS.dk; ctx.fillRect(x, y + 5, w, 1);
+}
+function archWin(ctx, cx, y, w, h) {
+  const x = cx - w / 2;
+  ctx.fillStyle = CAS.dk; ctx.fillRect(x - 1, y - 1, w + 2, h + 2);
+  ctx.fillStyle = CAS.win; ctx.fillRect(x, y + w / 2, w, h - w / 2);
+  ctx.beginPath(); ctx.arc(cx, y + w / 2, w / 2, Math.PI, 0); ctx.fill();
+  ctx.fillStyle = 'rgba(150,180,210,0.25)'; ctx.fillRect(x + 1, y + w / 2, 2, h - w / 2 - 1); // glass sheen
+  ctx.fillStyle = CAS.hi; ctx.beginPath(); ctx.arc(cx, y + w / 2, w / 2 + 1, Math.PI, 0); ctx.lineWidth = 1; ctx.stroke();
+}
+function banner(ctx, cx, y, h) {
+  const w = 12;
+  ctx.fillStyle = CAS.banner; ctx.fillRect(cx - w / 2, y, w, h);
+  ctx.fillStyle = CAS.bannerHi; ctx.fillRect(cx - w / 2, y, 3, h);
+  ctx.fillStyle = CAS.banner; ctx.beginPath(); ctx.moveTo(cx - w / 2, y + h); ctx.lineTo(cx + w / 2, y + h); ctx.lineTo(cx, y + h + 6); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = CAS.gold; ctx.fillRect(cx - w / 2, y, w, 2); ctx.fillRect(cx - 2, y + 4, 4, 4); // gold crest
+}
+function torch(ctx, x, y) {
+  ctx.fillStyle = '#5a3b28'; ctx.fillRect(x - 1, y, 2, 10);
+  ctx.fillStyle = '#ff8a2a'; ctx.beginPath(); ctx.ellipse(x, y - 2, 3, 5, 0, 0, 7); ctx.fill();
+  ctx.fillStyle = '#ffd24a'; ctx.beginPath(); ctx.ellipse(x, y - 2, 1.5, 3, 0, 0, 7); ctx.fill();
+}
+function drawCastle(ctx, W, H) {
+  const towerW = Math.round(W * 0.17), wallTop = 46, tTop = 26;
+  // main wall body
+  stoneFill(ctx, towerW - 2, wallTop, W - 2 * towerW + 4, H - wallTop);
+  // towers (taller, flank)
+  for (const tx of [0, W - towerW]) { stoneFill(ctx, tx, tTop, towerW, H - tTop, 1); crenellate(ctx, tx, tTop, towerW); torch(ctx, tx + towerW / 2, tTop + 18); }
+  crenellate(ctx, towerW - 2, wallTop, W - 2 * towerW + 4);
+  // window rows on the main wall
+  const midX = W / 2;
+  for (const wy of [wallTop + 22, wallTop + 66]) {
+    for (const wx of [midX - (W * 0.22), midX, midX + (W * 0.22)]) if (Math.abs(wx - midX) > 6 || wy === wallTop + 22) archWin(ctx, wx, wy, 12, 26);
+  }
+  // tower windows
+  for (const tx of [0, W - towerW]) { archWin(ctx, tx + towerW / 2, tTop + 34, 10, 20); archWin(ctx, tx + towerW / 2, tTop + 70, 10, 20); }
+  // banners
+  for (const bx of [midX - W * 0.22, midX + W * 0.22]) banner(ctx, bx, wallTop + 54, 30);
+  // grand arched gate (center bottom)
+  const gw = Math.min(46, W * 0.16), gx = midX, gy = H - 54;
+  ctx.fillStyle = CAS.dk; ctx.fillRect(gx - gw / 2 - 3, gy - 3, gw + 6, 57);
+  ctx.fillStyle = CAS.gate; ctx.fillRect(gx - gw / 2, gy + gw / 2, gw, 54 - gw / 2);
+  ctx.beginPath(); ctx.arc(gx, gy + gw / 2, gw / 2, Math.PI, 0); ctx.fill();
+  ctx.fillStyle = '#3a2c1e'; for (let i = 1; i < 4; i++) ctx.fillRect(gx - gw / 2 + i * gw / 4, gy + gw / 2, 1, 54 - gw / 2); // door planks
+  ctx.strokeStyle = CAS.gold; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(gx, gy + gw / 2, gw / 2 + 1, Math.PI, 0); ctx.stroke();
+  torch(ctx, gx - gw / 2 - 8, gy + 20); torch(ctx, gx + gw / 2 + 8, gy + 20);
+  // central keystone banner over the gate
+  banner(ctx, gx, gy - 22, 20);
+}
+function castleSprite(obj) {
+  const W = obj.w * TILE, H = Math.round(W * 0.86);
+  const { c, ctx } = makeCanvas(W, H);
+  ctx.imageSmoothingEnabled = false;
+  drawCastle(ctx, W, H);
+  return { canvas: c, ox: 0 };
 }
 function buildRegion(spec) {
   const img = buildImgs[spec.img];
