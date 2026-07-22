@@ -2,9 +2,11 @@
 import { TILE, getMap } from '/shared/maps.js';
 import { T } from '/shared/tiles.js';
 import { bakeMap, bakeInterior, furnitureSprite, buildingSprite, treeSprite, propSprite, mountainSprite, makeCharacter, drawPortrait, loadTileset, tilesetOk, loadNpcSheets, npcFrames, npcPortrait } from './art.js';
+import { preloadCozy } from './atlas.js';
 
 loadTileset();                // begin loading the terrain tileset immediately
 loadNpcSheets();              // and the Minifolks NPC sprite sheets
+preloadCozy();                // and the cozy asset pack (used by the graphics rework)
 const baked = new Map();      // mapId -> canvas
 const charCache = new Map();  // lookKey -> sheet
 function bakedMap(id) {
