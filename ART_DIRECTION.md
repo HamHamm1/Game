@@ -1,5 +1,17 @@
 # ART_DIRECTION.md
 
+> ⚠️ **MOBILE-FIRST PRECEDENCE (added after the platform requirement
+> landed):** The game's **primary platform is Android/touch**
+> (`MOBILE_FIRST.md`), and its visual/technical-art authority is
+> `MOBILE_ART_DIRECTION.md`. Where anything in *this* document assumes
+> PC-first defaults or conflicts with those two, **they win** — this file
+> is being kept for its still-valid identity/pipeline material (material
+> library, blockout→production pipeline, the safe/mystery contrast) and
+> will get a fuller mobile-first reconciliation pass once the Phase 1 core
+> is validated. Read `MOBILE_ART_DIRECTION.md` first for lighting, LOD,
+> streaming, texture/shader budgets, performance tiers, and the "maximum
+> atmosphere per GPU millisecond" principle.
+
 > The **visual bible** — the identity, rules, and pipelines that keep the
 > game looking like one coherent place. DESIGN.md §2 sets the intent; this
 > document turns it into concrete, followable rules for materials,

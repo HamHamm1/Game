@@ -13,6 +13,24 @@ Status labels follow AI_RULES.md Rule 11:
 
 ## [Unreleased]
 
+### Platform requirement — MOBILE-FIRST (Android/touch is primary)
+
+- Added `MOBILE_FIRST.md` (primary-platform requirement: touch input,
+  input abstraction, streaming, tiered NPC sim, mobile performance/memory,
+  app lifecycle, AI-API cost/offline fallback, priority order) and
+  `MOBILE_ART_DIRECTION.md` (mobile-first visual/technical-art bible).
+- `ART_DIRECTION.md` now defers to those two where they conflict (note
+  added at its top); a fuller mobile-first reconciliation of ARCHITECTURE
+  (input), ART_DIRECTION, DIALOGUE UI, and TECHNICAL_ROADMAP happens after
+  the Phase 1 core is validated.
+- **Identified foundation gap:** Phase 1 controls are keyboard/mouse only
+  (LOOK is mouse-only, no touch). A "Phase 1b" mobile input/settings/
+  lifecycle layer is required **before Phase 2**. Not yet built (Phase 2 is
+  on hold pending Phase 1 validation).
+- Added `godot/PHASE1_TEST_PLAN.md` — the in-editor manual validation
+  checklist for the current core (still `NEEDS TESTING`; nothing marked
+  `IMPLEMENTED`/`VERIFIED` until the user runs it in Godot 4).
+
 ### Phase 1 — Foundation (`NEEDS TESTING` in-editor)
 
 First gameplay code. Built under `godot/` to stay cleanly separated from
