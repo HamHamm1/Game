@@ -13,6 +13,14 @@ config/description="First-person open-world life-sim RPG, Android-first. See rep
 run/main_scene="res://main.tscn"
 config/features=PackedStringArray("4.3", "Forward Plus")
 config/icon="res://icon.svg"
+; Cap render to the physics tick rate (60). The FP camera is a child of the
+; CharacterBody3D (moved in _physics_process at 60 Hz); Godot 4.3 has no 3D
+; physics interpolation, so on a high-refresh (90/120 Hz) phone the extra
+; render frames beat against the 60 Hz body motion and cause a walking
+; micro-stutter. Matching render to 60 removes the beat and saves battery
+; (MOBILE_FIRST.md §20/§21). Reversible; a "keep 120fps" alternative would be
+; per-frame camera interpolation (larger change, deferred).
+run/max_fps=60
 
 [autoload]
 

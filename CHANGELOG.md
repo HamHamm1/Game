@@ -13,6 +13,30 @@ Status labels follow AI_RULES.md Rule 11:
 
 ## [Unreleased]
 
+### Fix — Pause menu scroll on small screens + walking-stutter mitigation
+
+On-device (real Android): game launches; touch move/look/interact, pickup,
+pause, and graphics presets all work. Two issues fixed:
+
+- **Pause menu unscrollable / content off-screen** → rebuilt
+  `pause_menu.gd`: settings now live in a vertical **ScrollContainer**
+  (touch-drag scrollable), with **Resume/Quit in a fixed bottom bar** that
+  is always visible, all inset to the **safe area**. Labels ignore touches
+  so a finger-drag over them scrolls, while sliders/dropdown/buttons keep
+  consuming their own touches — so adjusting a slider never scrolls the
+  menu, and the whole panel is reachable by swipe. No wheel/keyboard
+  needed. Visual design preserved (same controls, same order).
+- **Walking micro-stutter** → root-caused (not animation — there is no
+  animation system): the FP camera is a child of the `CharacterBody3D`
+  moved in `_physics_process` (60 Hz), and Godot 4.3 has no 3D physics
+  interpolation, so on a 90/120 Hz phone the render frames beat against the
+  60 Hz body motion. Smallest safe fix: cap `application/run/max_fps=60` so
+  render aligns 1:1 with physics (also saves battery, MOBILE_FIRST §20/§21).
+  Reversible; no gameplay/architecture change.
+
+Validated headlessly (static 61 + import + boot + 42 tests + export config
+all pass). No inventory / world-building added; Phase 2 stays BLOCKED.
+
 ### Diagnosed real-device install failure — root cause was DELIVERY, not the APK
 
 - Symptom: phone shows "The file has a problem" when installing.
