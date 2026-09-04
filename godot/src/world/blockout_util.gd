@@ -46,3 +46,27 @@ static func add_spawn(parent: Node, spawn_name: String, pos: Vector3) -> Marker3
 	marker.position = pos
 	parent.add_child(marker)
 	return marker
+
+## A mesh-only coloured box (no collision, no StaticBody). For decorative
+## geometry the player can't reach or interact with — roofs, tree canopies,
+## water surfaces, painted street stripes. Keeps node count down vs.
+## static_box when collision would be wasted (MOBILE_FIRST.md §6/§10).
+static func visual_box(size: Vector3, pos: Vector3, color: Color) -> MeshInstance3D:
+	var mesh := MeshInstance3D.new()
+	mesh.position = pos
+	var box := BoxMesh.new()
+	box.size = size
+	mesh.mesh = box
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = color
+	mesh.material_override = mat
+	return mesh
+
+## A simple blockout tree: a collidable trunk plus a mesh-only canopy.
+## Trees are obstacles the player bumps into (trunk collides), but the
+## canopy above head height is visual only.
+static func add_tree(parent: Node, pos: Vector3) -> void:
+	parent.add_child(static_box(
+		Vector3(0.4, 3.0, 0.4), pos + Vector3(0.0, 1.5, 0.0), Color(0.35, 0.25, 0.18)))
+	parent.add_child(visual_box(
+		Vector3(2.2, 2.2, 2.2), pos + Vector3(0.0, 3.8, 0.0), Color(0.28, 0.42, 0.24)))

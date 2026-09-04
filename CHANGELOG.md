@@ -13,6 +13,41 @@ Status labels follow AI_RULES.md Rule 11:
 
 ## [Unreleased]
 
+### Phase 2 M2.1 — Blockout pass on the real MVP region
+
+Expanded the grey-box town from a single-house test scene into the ten-item
+MVP hub laid out by DESIGN.md §3 — still primitives-only (ART_DIRECTION.md
+§6 step 1, MOBILE_ART_DIRECTION.md §57 "blockout first"). No new autoloads,
+no signals, no save-format change, no `RegionLoader`/`LocationLoader` core
+change, no lighting profiles (that's M2.2), no weather (M2.3), no
+material/lighting pass (M2.4), no NPCs/cooking/quests/dialogue/inventory-UI.
+
+- **`godot/src/world/blockout_util.gd`** — added `visual_box` (mesh-only,
+  no collision, for roofs/water/leaves/street stripes — halves node cost
+  vs. `static_box` where collision would be wasted, MOBILE_FIRST.md §6/§10)
+  and `add_tree` (collidable trunk + visual canopy).
+- **`godot/src/world/regions/blockout_town.gd`** — rebuilt as the MVP hub:
+  residential street; player home, restaurant, shop, workshop (all
+  enterable, each pointing at its own interior via the existing
+  `LocationEntryPoint` pattern); a stepped-roof **bathhouse landmark**
+  (hero building at the north end, larger footprint, taller, enterable);
+  a **park** with a bench; a **pond** by the park; a **river** strip east
+  of the buildings; a **forest edge** row of tree blockouts east of the
+  river; two non-enterable NPC houses for street density; a narrow-walled
+  **alley** between the workshop and one NPC house. Player spawn moved to
+  the south end of the street. Phase-1 freestanding openable Door and two
+  outdoor pickups preserved so existing interaction smoke tests still fire.
+- **New interior scenes** (each a `.gd` + `.tscn` following the exact
+  pattern of the existing `blockout_interior.gd`):
+  `restaurant_interior`, `shop_interior`, `workshop_interior`,
+  `bathhouse_interior`. Player home reuses the existing
+  `blockout_interior.tscn` unchanged.
+
+Validated: `tools/run_validation.sh` → static **73/73**, headless import
+clean, headless boot clean, headless suite **42/42**, Android export config
+valid. Phase 2 M2.2/M2.3/M2.4 remain not started; awaiting on-device
+verification of M2.1 before continuing.
+
 ### Fix — Pause menu scroll on small screens + walking-stutter mitigation
 
 On-device (real Android): game launches; touch move/look/interact, pickup,

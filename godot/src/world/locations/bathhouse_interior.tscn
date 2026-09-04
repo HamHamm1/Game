@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/world/locations/bathhouse_interior.gd" id="1"]
+
+[node name="BathhouseInterior" type="Node3D"]
+script = ExtResource("1")
