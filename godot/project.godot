@@ -47,3 +47,6 @@ pointing/emulate_touch_from_mouse=true
 ; (MOBILE_FIRST.md §5/§6). Per-platform override.
 renderer/rendering_method="forward_plus"
 renderer/rendering_method.mobile="mobile"
+; Required for Android export (Godot 4.3 fails the Android build config
+; check without it — with an empty error message). Not a gameplay change.
+textures/vram_compression/import_etc2_astc=true

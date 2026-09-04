@@ -13,6 +13,18 @@ Status labels follow AI_RULES.md Rule 11:
 
 ## [Unreleased]
 
+### Fix — Android export blocked by missing ETC2/ASTC setting
+
+- The first CI run got through SDK install, Godot, templates, keystore,
+  editor settings, and import, then failed at export with Godot's
+  unhelpful **empty** "configuration errors:" message. Root-caused locally
+  (by stubbing a complete SDK so the export advanced past the SDK checks):
+  Godot 4.3 **requires** `rendering/textures/vram_compression/import_etc2_astc`
+  for Android export. Added `textures/vram_compression/import_etc2_astc=true`
+  to `godot/project.godot` — a required build-config setting, not a gameplay
+  change. With it, the headless export runs to completion (add → align →
+  sign → verify → end) and produces a ~24 MB APK. Export preset unchanged.
+
 ### Android APK via cloud CI — GitHub Actions workflow (no PC required)
 
 Solves "build the APK without a PC": GitHub's Linux runners can install the
