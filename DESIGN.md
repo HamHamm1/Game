@@ -20,8 +20,9 @@ otome). The new project starts from an empty gameplay codebase, in a
 different engine (Godot 4, see ARCHITECTURE.md §1), aimed at a different
 genre (first-person 3D open-world life-sim, not 2D top-down multiplayer
 MMORPG). The old code stays in the repository only until the new
-foundation (Phase 1, see §12) is validated, at which point it is removed
-in its own dedicated commit — never silently mixed with the new codebase.
+foundation (Phase 1, see TECHNICAL_ROADMAP.md) is validated, at which
+point it is removed in its own dedicated commit — never silently mixed
+with the new codebase.
 
 *A working title, "Project Aletheia," is used throughout this document
 purely as a placeholder identifier — the real name is a future design
@@ -93,16 +94,16 @@ appears, comes from **wrongness in a place that should be safe**, not from
 scripted jump-scares as a default tool.
 
 **Lighting philosophy:** no single global palette. Lighting is organized
-into *zones* (see ARCHITECTURE.md §7) driven by time-of-day (day / evening
+into *zones* (see ARCHITECTURE.md §10) driven by time-of-day (day / evening
 / night) and location category (safe / mystery), each with its own target
 mood, so a lighting artist or an AI contributor can add a new interior
 without re-deriving the whole game's color philosophy from scratch.
 
 **Materials & set dressing:** a shared material system (wood, stone,
 ceramic, metal, glass, water/wet-surface, cloth, skin, food, vegetation)
-and a modular prop/kit-based approach to environment art (§7) — never
-one-off, throwaway, purely-primitive blockouts once a space has passed
-prototyping.
+and a modular prop/kit-based approach to environment art (detailed later
+in ART_DIRECTION.md) — never one-off, throwaway, purely-primitive
+blockouts once a space has passed prototyping.
 
 ---
 
@@ -215,7 +216,7 @@ other systems rather than existing in isolation.
 ## 7. Success Criteria for This Design
 
 This design is considered "foundation-ready" once it is possible to say
-yes to all of the following (mirrors ARCHITECTURE.md §9's technical
+yes to all of the following (mirrors ARCHITECTURE.md §13's technical
 criteria):
 
 - A new NPC can be added as data without touching NPC core code.
