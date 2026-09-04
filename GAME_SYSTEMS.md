@@ -258,6 +258,15 @@ recomputed on load, but is stored for event bookkeeping).
 
 ## 6. Dialogue System
 
+> **See DIALOGUE_DESIGN.md for the full architecture.** This section
+> describes the **authored branching graph**, which is the *Level-1
+> (authored) tier* of a hybrid system: DIALOGUE_DESIGN.md layers an
+> external-LLM conversation tier (Level 2 hybrid, Level 3 fully AI-driven)
+> on top for casual/dynamic dialogue, while critical/canon dialogue stays
+> in the deterministic graph described here. In both tiers the engine is
+> authoritative — the LLM only ever generates *wording* within branches
+> and consequences the game has already permitted.
+
 **Data-driven branching graph** (DESIGN.md §4.4, ARCHITECTURE.md §8). Never
 strings embedded in scripts.
 
