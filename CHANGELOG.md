@@ -13,6 +13,32 @@ Status labels follow AI_RULES.md Rule 11:
 
 ## [Unreleased]
 
+### Android APK via cloud CI — GitHub Actions workflow (no PC required)
+
+Solves "build the APK without a PC": GitHub's Linux runners can install the
+Android SDK (they are not behind this container's egress block), so the APK
+is built in the cloud and downloaded to the phone as an artifact.
+
+- **Added** `.github/workflows/android-build.yml` — on `ubuntu-latest`:
+  JDK 17 + Android SDK (`platform-tools`, `build-tools;34.0.0`,
+  `platforms;android-34`) + Godot 4.3 headless + export templates + debug
+  keystore; injects SDK path/keystore via `editor_settings-4.3.tres`;
+  imports `godot/` headlessly; runs the **unchanged** `Android` preset;
+  uploads `aletheia-phase1-debug.apk` as an artifact. Triggers:
+  `workflow_dispatch` (phone-runnable) + push to the dev branch under
+  `godot/**`.
+- **Validated locally** (the parts not needing the real SDK): injecting the
+  SDK path via `editor_settings-4.3.tres` makes the export advance past
+  "SDK path required" to the apksigner/adb stage (proving the mechanism +
+  filename + format); export from a **fresh checkout** (no `.godot`)
+  self-imports and reaches the same point. Only the real SDK install (CI's
+  job) remains unproven here.
+- **Docs:** ANDROID_BUILD.md §0b (phone-only operation guide). Export config
+  and game architecture unchanged.
+- Still **not** an APK in this environment and **not** ANDROID VERIFIED —
+  the APK is produced by the CI run; verification is the on-device A–T gate.
+  Phase 2 remains BLOCKED.
+
 ### Android export path — configured & validated to the SDK boundary
 
 Set up a reproducible Godot 4.3 Android debug export. **No APK was built

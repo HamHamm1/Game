@@ -38,6 +38,44 @@ tools/validate_android_export.sh
 
 ---
 
+## 0b. Recommended path with NO PC — GitHub Actions cloud build
+
+You do not need a PC or a local Android SDK. The repo includes a cloud build
+workflow, **`.github/workflows/android-build.yml`**, that runs on GitHub's
+Linux runners (which are *not* behind this container's egress policy, so
+they can install the Android SDK). It uses the project's **unchanged**
+`godot/export_presets.cfg`.
+
+**Operate entirely from the phone:**
+
+1. Make sure **Actions are enabled** for the repo: GitHub → your repo →
+   **Settings → Actions → General → Allow all actions** (one-time; doable in
+   a mobile browser).
+2. Trigger a build, either:
+   - **Automatic:** any push to `claude/rpg-architecture-design-eut455` that
+     touches `godot/**` runs it; or
+   - **Manual:** GitHub → repo → **Actions** tab → **"Android Debug APK
+     (Phase 1 + 1b)"** → **Run workflow** → pick the branch → Run. (The
+     "Run workflow" button needs the desktop-site/full web UI; it works in a
+     phone browser, and also in the GitHub mobile app where available.)
+3. Open the finished run → **Summary** shows ✅/❌ → under **Artifacts**,
+   download **`aletheia-phase1-debug-apk`** (a zip containing
+   `aletheia-phase1-debug.apk`).
+4. Unzip on the phone, then install the APK (allow "install from unknown
+   sources"). Run the on-device checklist: `godot/ANDROID_VERIFICATION.md`.
+
+What the workflow does (all validated locally except the SDK install, which
+only GitHub's runners can do): installs JDK 17 + Android SDK
+(`platform-tools`, `build-tools;34.0.0`, `platforms;android-34`), downloads
+Godot 4.3 headless + export templates, generates a debug keystore, points
+Godot at the SDK + keystore via `editor_settings-4.3.tres`, imports the
+project headlessly, runs the `Android` preset, and uploads the APK.
+
+> If a build fails, open the failed step's log (or the run **Summary**) and
+> paste it back — the fix is in the workflow, not the game.
+
+---
+
 ## 1. Prerequisites (on a machine that CAN reach the Android SDK)
 
 1. **Godot 4.3** (editor or headless binary). `tools/fetch_godot.sh` gets
