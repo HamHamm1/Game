@@ -1,0 +1,9 @@
+# Godot 4 editor cache / imported assets (regenerated on open)
+.godot/
+
+# Exported builds
+/build/
+*.tmp
+
+# OS cruft
+.DS_Store

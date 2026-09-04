@@ -1,0 +1,92 @@
+# Project Aletheia — Godot 4 project (Phase 1 Foundation)
+
+This directory is the **new** game: an original first-person open-world
+life-sim RPG built in Godot 4, per the design docs at the repository root
+(`DESIGN.md`, `ARCHITECTURE.md`, `AI_RULES.md`, `GAME_SYSTEMS.md`,
+`ART_DIRECTION.md`, `DIALOGUE_DESIGN.md`, `TECHNICAL_ROADMAP.md`).
+
+## Why is it in a `godot/` subdirectory?
+
+The repository root still contains the **retired** Spirit World MMORPG
+(Node.js / WebSocket / Canvas). Per DESIGN.md §0 the new codebase must
+never be silently mixed with the old one, and the root has colliding
+`src/` and `data/` directories plus a `.gitignore` (`data/*.json`) that
+would swallow our content data. So Phase 1 lives cleanly under `godot/`.
+
+When the foundation is validated in-editor, a single dedicated
+**retirement commit** (TECHNICAL_ROADMAP.md §2.4) deletes the old JS code,
+moves `godot/*` to the repository root, and rewrites the root `README.md`.
+Until then, this stays self-contained here.
+
+## How to open / run
+
+1. Open **Godot 4** (a recent stable 4.x — this project pins a conservative
+   `4.3` floor in `project.godot`; opening in a newer 4.x will upgrade it.
+   Bump `config/features` to your installed version).
+2. Import `godot/project.godot`.
+3. Press **Play** (`main.tscn` is the main scene).
+
+> **Status: `NEEDS TESTING` (in-editor).** This foundation was authored in
+> an environment without a running Godot editor, so it has **not** been
+> launched or verified in-engine yet. Scripts were written and reviewed for
+> correctness by inspection; `.tscn` UIDs will be (re)generated on first
+> open. Report real results against the checklist below (AI_RULES.md
+> Rule 11) — do not mark anything `IMPLEMENTED` until it actually runs.
+
+## Controls
+
+| Action | Key |
+|---|---|
+| Move | `W A S D` / arrows |
+| Sprint | `Shift` |
+| Crouch | `Ctrl` |
+| Jump | `Space` |
+| Interact | `E` |
+| Free / recapture mouse | `Esc` |
+| Quicksave | `F5` |
+| Quickload | `F9` |
+
+## Phase 1 manual test checklist (the foundation deliverable)
+
+Maps to TECHNICAL_ROADMAP.md §3's MVP loop points 1–3, 7, 12. Tick these
+in-editor; anything that half-works is `PARTIALLY IMPLEMENTED`, not done.
+
+- [ ] Walk/sprint/crouch/jump around the blockout region; first-person
+      camera looks with the mouse; head-bob while walking.
+- [ ] Look at a pickup → prompt shows; press `E` → item enters inventory
+      (HUD item count rises); the object disappears.
+- [ ] Look at the freestanding door → press `E` → it opens/closes.
+- [ ] Look at the house doorway → press `E` → interior loads and you are
+      placed inside; pick up the egg; look at the exit → press `E` → you
+      return outside where you entered.
+- [ ] Watch the HUD clock advance (Day / time / block).
+- [ ] `F5` to save, move/pick up more, `F9` to load → position, camera
+      orientation, inventory count, and time all revert to the saved state.
+
+## Structure (mirrors ARCHITECTURE.md §2, rooted here for now)
+
+```
+godot/
+  project.godot          autoloads, main scene, Forward+
+  main.tscn              → src/world/world_root.gd (persistent root)
+  src/
+    autoload/            world_events, save_manager, item_registry, time_manager
+    data/                item_definition, item_instance (typed data classes)
+    player/              player + movement/camera/interaction/inventory components
+      camera_effects/    head_bob (toggleable effect-module seam)
+    interaction/         interactable base + door, pickup_item, entry/exit points
+    world/               region_loader, location_loader, blockout_util, world_root
+      regions/           blockout_town (.gd + .tscn)
+      locations/         blockout_interior (.gd + .tscn)
+    ui/                  hud (placeholder)
+  data/
+    items/               fish / rice / egg (JSON — the data pattern reference)
+```
+
+## What is NOT here yet (honest scope)
+
+Per TECHNICAL_ROADMAP.md this is Phase 1 only. No NPCs, dialogue, cooking,
+quests, relationships, weather, or real art — those are later phases. The
+LLM dialogue system (DIALOGUE_DESIGN.md) is Phase 3+ and deliberately
+unimplemented. Automated tests are `NOT IMPLEMENTED` (no test harness yet);
+the checklist above is the current in-editor verification.

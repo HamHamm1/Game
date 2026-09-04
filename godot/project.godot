@@ -1,0 +1,27 @@
+; Project Aletheia — Phase 1 Foundation
+; Engine configuration. See ARCHITECTURE.md §1, TECHNICAL_ROADMAP.md §2.2.
+; NOTE: config/features pins a conservative Godot 4.3 floor; validate and
+; bump to the actually-installed stable 4.x on first open (this project was
+; authored without a running editor — see godot/README.md).
+
+config_version=5
+
+[application]
+
+config/name="Project Aletheia (Phase 1 Foundation)"
+config/description="First-person open-world life-sim RPG — foundation slice. See repo-root DESIGN.md / ARCHITECTURE.md."
+run/main_scene="res://main.tscn"
+config/features=PackedStringArray("4.3", "Forward Plus")
+config/icon="res://icon.svg"
+
+[autoload]
+
+; Order matters — a listed-later autoload may call an earlier one in _ready().
+WorldEvents="*res://src/autoload/world_events.gd"
+SaveManager="*res://src/autoload/save_manager.gd"
+ItemRegistry="*res://src/autoload/item_registry.gd"
+TimeManager="*res://src/autoload/time_manager.gd"
+
+[rendering]
+
+renderer/rendering_method="forward_plus"

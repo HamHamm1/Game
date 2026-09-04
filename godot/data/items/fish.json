@@ -1,0 +1,8 @@
+{
+  "id": "fish",
+  "display_name": "Fish",
+  "category": "ingredient",
+  "stack_size": 20,
+  "base_value": 12,
+  "tags": ["ingredient", "fish", "perishable"]
+}

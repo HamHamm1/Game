@@ -1,0 +1,8 @@
+{
+  "id": "egg",
+  "display_name": "Egg",
+  "category": "ingredient",
+  "stack_size": 30,
+  "base_value": 5,
+  "tags": ["ingredient", "perishable"]
+}

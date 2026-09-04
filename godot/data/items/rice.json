@@ -1,0 +1,8 @@
+{
+  "id": "rice",
+  "display_name": "Rice",
+  "category": "ingredient",
+  "stack_size": 50,
+  "base_value": 3,
+  "tags": ["ingredient", "grain", "staple"]
+}
