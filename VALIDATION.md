@@ -53,7 +53,22 @@ The headless logic suite covers, without a GPU/window:
   state, touch move vector — i.e. the touch→gameplay path is exercised
   even though no touch hardware is present.
 
-## Android export status
+## Android APK — BUILT IN CLOUD CI ✅ (not yet ANDROID VERIFIED)
+
+The GitHub Actions workflow (`.github/workflows/android-build.yml`) built an
+installable debug APK on a hosted Linux runner:
+
+- **Run #2 — `success`.** Artifact **`aletheia-phase1-debug-apk`**,
+  **24,071,337 bytes (~24 MB)**, sha256 `1cb6cb2b…`. Download it from the
+  run's Artifacts (ANDROID_BUILD.md §0b).
+- (Run #1 failed at export with Godot's blank config error; root-caused to a
+  missing required setting — see below — and fixed in run #2.)
+
+**A produced APK is still not `ANDROID VERIFIED`.** That requires installing
+it on a real device and passing `godot/ANDROID_VERIFICATION.md` (A–T).
+Phase 2 stays BLOCKED until then.
+
+## Android export status (local container)
 
 Attempted in-container with Godot 4.3.stable headless (ANDROID_BUILD.md §0):
 

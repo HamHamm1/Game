@@ -13,6 +13,15 @@ Status labels follow AI_RULES.md Rule 11:
 
 ## [Unreleased]
 
+### ✅ Cloud build SUCCEEDED — APK produced
+
+- GitHub Actions run #2 finished **`success`** and produced the artifact
+  **`aletheia-phase1-debug-apk`** (24,071,337 bytes, ~24 MB, sha256
+  `1cb6cb2b…`). The "GitHub repo → cloud build → APK artifact" goal is met.
+- Still **not** `ANDROID VERIFIED`: the APK must be installed and pass the
+  on-device A–T checklist (`godot/ANDROID_VERIFICATION.md`). Phase 2 remains
+  BLOCKED.
+
 ### Fix — Android export blocked by missing ETC2/ASTC setting
 
 - The first CI run got through SDK install, Godot, templates, keystore,

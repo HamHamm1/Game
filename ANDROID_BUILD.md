@@ -38,6 +38,12 @@ tools/validate_android_export.sh
 
 ---
 
+> **Status: the cloud build WORKS.** GitHub Actions run #2 finished
+> `success` and produced the artifact `aletheia-phase1-debug-apk`
+> (~24 MB). Use §0b to download + install it on the phone, then run the A–T
+> checklist. (Local-container status in §0 is unchanged: no SDK here, so the
+> APK is built in CI, not in this container.)
+
 ## 0b. Recommended path with NO PC — GitHub Actions cloud build
 
 You do not need a PC or a local Android SDK. The repo includes a cloud build
