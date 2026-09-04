@@ -8,5 +8,8 @@ extends Interactable
 func get_interaction_prompt(_player: Player) -> String:
 	return prompt
 
+func get_interaction_verb(_player: Player) -> String:
+	return "EXIT"
+
 func interact(_player: Player) -> void:
 	WorldEvents.location_exit_requested.emit()

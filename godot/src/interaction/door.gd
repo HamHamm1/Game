@@ -25,6 +25,11 @@ func get_interaction_prompt(_player: Player) -> String:
 		return "Locked"
 	return "Close door" if is_open else "Open door"
 
+func get_interaction_verb(_player: Player) -> String:
+	if locked:
+		return "LOCKED"
+	return "CLOSE" if is_open else "OPEN"
+
 func interact(_player: Player) -> void:
 	if locked:
 		return

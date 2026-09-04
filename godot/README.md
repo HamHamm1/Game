@@ -35,6 +35,8 @@ Until then, this stays self-contained here.
 
 ## Controls
 
+**Desktop (development):**
+
 | Action | Key |
 |---|---|
 | Move | `W A S D` / arrows |
@@ -42,9 +44,20 @@ Until then, this stays self-contained here.
 | Crouch | `Ctrl` |
 | Jump | `Space` |
 | Interact | `E` |
-| Free / recapture mouse | `Esc` |
+| Pause / Settings menu | `Esc` (frees the cursor while open) |
 | Quicksave | `F5` |
 | Quickload | `F9` |
+
+**Touch (mobile — primary platform):** virtual joystick (bottom-left) to
+move; drag elsewhere to look; SPRINT/CROUCH/JUMP buttons (bottom-right); a
+contextual interact button that appears only near a target and shows the
+action (`PICK UP`, `OPEN`, `ENTER`, …); ☰ menu button (top-right) for
+pause/settings. All input flows through one abstraction layer (`GameInput`),
+so keyboard/mouse and touch are co-equal (MOBILE_FIRST.md §13).
+
+> **Preview touch on desktop:** press `Esc` → tick **"Touch controls
+> (preview)"** → Resume. The touch HUD appears and the mouse acts as a
+> finger. This previews touch logic but is not proof of Android behavior.
 
 ## Phase 1 manual test checklist (the foundation deliverable)
 
@@ -62,6 +75,37 @@ in-editor; anything that half-works is `PARTIALLY IMPLEMENTED`, not done.
 - [ ] Watch the HUD clock advance (Day / time / block).
 - [ ] `F5` to save, move/pick up more, `F9` to load → position, camera
       orientation, inventory count, and time all revert to the saved state.
+
+## Phase 1b — Mobile Foundation (`IMPLEMENTED`, not yet `TESTED`/`VERIFIED`)
+
+Added on top of the core (MOBILE_FIRST.md). State legend: `IMPLEMENTED` =
+code exists + reviewed · `TESTED` = tried in target env · `VERIFIED` =
+confirmed by its test. **Everything below is `IMPLEMENTED` only** — see
+`PHASE1B_TEST_PLAN.md` (M1–M10).
+
+- **Input abstraction** (`GameInput`): gameplay reads abstract actions;
+  keyboard/mouse and touch both feed them. Keyboard/mouse gameplay is
+  unchanged.
+- **Touch movement/camera**: dynamic virtual joystick (dead-zone,
+  camera-relative), look-drag area (no accidental look while touching UI).
+- **Contextual interact button**: shows only on a valid target, with the
+  action verb.
+- **Mobile HUD**: joystick + action buttons + interact + menu, safe-area
+  inset, center kept clear.
+- **Settings** (`Settings`, persisted to `user://settings.json`): graphics
+  preset, look sensitivity X/Y, FOV, camera smoothing, head-bob strength,
+  camera-shake strength (stored; no shake system yet).
+- **Graphics presets** (`GraphicsManager`): LOW/MEDIUM/HIGH/ULTRA driving
+  shadows, shadow/view distance, fog, glow, SSAO, 3D resolution scale, MSAA.
+- **App lifecycle** (`AppLifecycle`): pause/resume/focus/close → forced
+  autosave.
+- **Autosave** (`AutosaveManager`): on location transitions, inventory
+  changes, and a periodic interval — debounced, never every frame.
+- **Android project settings**: Mobile renderer override, expand-aspect
+  stretch, sensor orientation, touch emulation for desktop preview.
+
+> **Mobile performance is `UNVERIFIED`** until run on a real Android device
+> (M10). PC preview is not proof (MOBILE_FIRST.md §25).
 
 ## Structure (mirrors ARCHITECTURE.md §2, rooted here for now)
 

@@ -29,6 +29,11 @@ func unregister_savable(key: String) -> void:
 func has_save() -> bool:
 	return FileAccess.file_exists(SAVE_PATH)
 
+## True once there is meaningful state to save (the player has registered).
+## Used by AutosaveManager to avoid saving empty state during boot.
+func can_autosave() -> bool:
+	return _savables.has("player")
+
 func save_game() -> bool:
 	var systems := {}
 	for key in _savables:

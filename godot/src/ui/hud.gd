@@ -60,6 +60,11 @@ func _process(delta: float) -> void:
 			_toast.text = ""
 
 func _on_target_changed(interactable: Node) -> void:
+	# On touch, the mobile interact button shows the action instead of this
+	# text prompt (MOBILE_FIRST.md §2).
+	if GameInput.touch_ui_enabled:
+		_prompt.text = ""
+		return
 	if interactable is Interactable:
 		_prompt.text = "[E]  " + (interactable as Interactable).get_interaction_prompt(player)
 	else:
@@ -79,8 +84,9 @@ func _refresh_info() -> void:
 	var clock := TimeManager.clock_string()
 	var block := TimeManager.block_name(TimeManager.current_block())
 	var items := player.inventory.slot_count() if (player != null and player.inventory != null) else 0
-	_info.text = "Day %d   %s  (%s)\nItems: %d\n[F5] save   [F9] load" % [
-		TimeManager.day_index, clock, block, items]
+	var hint := "" if GameInput.touch_ui_enabled else "\n[F5] save   [F9] load"
+	_info.text = "Day %d   %s  (%s)\nItems: %d%s" % [
+		TimeManager.day_index, clock, block, items, hint]
 
 func _show_toast(text: String) -> void:
 	_toast.text = text

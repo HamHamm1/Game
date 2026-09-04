@@ -28,6 +28,17 @@ with the new codebase.
 purely as a placeholder identifier — the real name is a future design
 decision, not something to bikeshed now.*
 
+> **Primary platform: Android / touch (mobile-first).** This was set as a
+> standing requirement after the initial design docs were written — see
+> **MOBILE_FIRST.md** (platform requirement) and **MOBILE_ART_DIRECTION.md**
+> (visual/technical-art authority). Mobile is not a later port; it shapes
+> input, UI, rendering, performance, and the AI-dialogue API design from the
+> start. The foundation now includes a Phase 1b mobile layer (touch input
+> behind abstract actions, settings, graphics presets, autosave/lifecycle) —
+> `IMPLEMENTED`, pending in-editor and on-device validation. Where this
+> document's PC-leaning phrasing conflicts with those two, they take
+> precedence.
+
 ---
 
 ## 1. Game Vision

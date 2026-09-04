@@ -18,11 +18,13 @@ var _t: float = 0.0
 func _process(delta: float) -> void:
 	if not enabled or camera == null or player == null:
 		return
+	# Strength is a live user setting (MOBILE_FIRST.md §3 / comfort).
+	var strength := Settings.head_bob_strength
 	var speed := Vector2(player.velocity.x, player.velocity.z).length()
-	if player.is_on_floor() and speed > min_speed:
+	if strength > 0.0 and player.is_on_floor() and speed > min_speed:
 		_t += delta * frequency * speed
-		var y := sin(_t * TAU) * amplitude
-		var x := cos(_t * PI) * amplitude * 0.5
+		var y := sin(_t * TAU) * amplitude * strength
+		var x := cos(_t * PI) * amplitude * 0.5 * strength
 		camera.position = Vector3(x, y, 0.0)
 	else:
 		camera.position = camera.position.lerp(Vector3.ZERO, clampf(delta * 8.0, 0.0, 1.0))

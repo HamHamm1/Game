@@ -22,21 +22,23 @@ func physics_step(delta: float, yaw: Node3D) -> void:
 
 	if not player.is_on_floor():
 		player.velocity.y -= gravity * delta
-	elif Input.is_action_just_pressed("jump"):
+	elif GameInput.consume_action("jump"):
 		player.velocity.y = jump_velocity
 
-	var input := Input.get_vector("move_left", "move_right", "move_forward", "move_back")
+	# All input comes through the abstraction layer (MOBILE_FIRST.md §13):
+	# keyboard or virtual joystick, resolved the same way here.
+	var input := GameInput.get_move_vector()
 	var dir := yaw.global_transform.basis * Vector3(input.x, 0.0, input.y)
 	dir.y = 0.0
 	if dir.length() > 0.001:
 		dir = dir.normalized()
 
-	var is_crouching := Input.is_action_pressed("crouch")
+	var is_crouching := GameInput.is_held("crouch")
 	(player as Player).is_crouching = is_crouching
 	var speed := walk_speed
 	if is_crouching:
 		speed = crouch_speed
-	elif Input.is_action_pressed("sprint"):
+	elif GameInput.is_held("sprint"):
 		speed = sprint_speed
 
 	var target := dir * speed

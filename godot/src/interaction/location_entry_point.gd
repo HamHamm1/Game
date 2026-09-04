@@ -15,6 +15,9 @@ extends Interactable
 func get_interaction_prompt(_player: Player) -> String:
 	return prompt
 
+func get_interaction_verb(_player: Player) -> String:
+	return "ENTER"
+
 func can_interact(_player: Player) -> bool:
 	return not location_scene.is_empty()
 

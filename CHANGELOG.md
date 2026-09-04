@@ -13,6 +13,59 @@ Status labels follow AI_RULES.md Rule 11:
 
 ## [Unreleased]
 
+### Phase 1b — Mobile Foundation (`IMPLEMENTED`, not yet `TESTED`/`VERIFIED`)
+
+Folded the mobile-first foundation into Phase 1 (Android is the primary
+platform). Keyboard/mouse gameplay preserved; smallest clean changes.
+State legend: `IMPLEMENTED` = code exists + reviewed · `TESTED` = tried in
+target env · `VERIFIED` = confirmed by its test. Everything below is
+`IMPLEMENTED` only — authored without a running editor/device. Mobile
+performance is `UNVERIFIED` until an Android run.
+
+**Added (autoloads)**
+- `GameInput` — input abstraction (MOBILE_FIRST.md §13): gameplay reads
+  abstract actions; keyboard/mouse and touch both feed them.
+- `Settings` — persisted (`user://settings.json`): graphics preset, look
+  sensitivity X/Y, FOV, camera smoothing, head-bob strength, camera-shake
+  strength (stored; no shake system yet), move sensitivity.
+- `GraphicsManager` — LOW/MEDIUM/HIGH/ULTRA presets → shadows, shadow/view
+  distance, fog, glow, SSAO, 3D resolution scale, MSAA.
+- `AutosaveManager` — debounced autosave on location transitions, inventory
+  changes, and a periodic interval (never every frame).
+- `AppLifecycle` — pause/resume/focus-out/close → forced autosave
+  (MOBILE_FIRST.md §22/§23).
+
+**Added (UI)**
+- `MobileHud` — touch layer: dynamic virtual joystick, look-drag area,
+  contextual interact button (shows the action verb, appears only on a
+  target), SPRINT/CROUCH/JUMP buttons, ☰ menu, safe-area inset, center kept
+  clear.
+- `VirtualJoystick`, `TouchLookArea`, `TouchActionButton` widgets.
+- `PauseMenu` — pause + settings (graphics preset, sliders), a
+  "Touch controls (preview)" toggle for desktop, Quit; pauses the tree,
+  runs while paused.
+
+**Changed**
+- `Interactable` contract gains `get_interaction_verb()` (short verb for the
+  mobile button); Door/PickupItem/entry/exit override it.
+- `PlayerMovement`, `PlayerCamera`, `PlayerInteraction`, `HeadBob` now read
+  input via `GameInput` and comfort/sensitivity/FOV/bob via `Settings`.
+  Camera supports smoothing and captures the mouse only on desktop.
+- `Hud` suppresses the text prompt on touch (the interact button covers it).
+- `world_root` wires the mobile HUD, pause menu, and applies graphics
+  presets to the sun/environment/camera/viewport.
+- `SaveManager.can_autosave()` guards autosave before the player exists.
+- `project.godot`: new autoloads; Mobile renderer override for Android;
+  expand-aspect stretch; sensor orientation; touch emulation for desktop
+  preview; `pause` input action.
+
+**Docs**
+- `godot/PHASE1B_TEST_PLAN.md` (M1–M10). README, MOBILE_FIRST,
+  MOBILE_ART_DIRECTION, DESIGN updated with accurate implementation states.
+
+**Behavior note:** `Esc` now opens the pause menu (frees the cursor while
+open) instead of the old capture toggle.
+
 ### Platform requirement — MOBILE-FIRST (Android/touch is primary)
 
 - Added `MOBILE_FIRST.md` (primary-platform requirement: touch input,

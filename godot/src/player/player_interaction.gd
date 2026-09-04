@@ -25,7 +25,9 @@ func _physics_process(_delta: float) -> void:
 		_current = found
 		WorldEvents.interaction_target_changed.emit(_current)
 
-	if _current != null and Input.is_action_just_pressed("interact"):
+	# Interact comes through the abstraction: keyboard E OR the mobile
+	# interact button both latch this action (MOBILE_FIRST.md §13).
+	if _current != null and GameInput.consume_action("interact"):
 		if _current.can_interact(player):
 			_current.interact(player)
 

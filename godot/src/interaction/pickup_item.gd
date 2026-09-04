@@ -17,6 +17,9 @@ func get_interaction_prompt(_player: Player) -> String:
 		return "Pick up %s x%d" % [name_str, quantity]
 	return "Pick up %s" % name_str
 
+func get_interaction_verb(_player: Player) -> String:
+	return "PICK UP"
+
 func can_interact(_player: Player) -> bool:
 	return ItemRegistry.has_definition(item_id)
 

@@ -185,23 +185,29 @@ has failed.
 
 ## Reconciliation with existing docs (what changes, and when)
 
-This requirement lands mid-Phase-1. Nothing is silently rewritten; the
-affected systems adopt it as they are built or revisited:
+This requirement landed mid-Phase-1. Nothing was silently rewritten; the
+affected systems adopt it as they are built or revisited. **Phase 1b is now
+implemented** (state legend: `IMPLEMENTED` = code exists + reviewed;
+`TESTED`/`VERIFIED` require running it — see godot/PHASE1B_TEST_PLAN.md):
 
-| Area | Current state | Change required | When |
-|---|---|---|---|
-| **Input** (ARCHITECTURE.md §4, Phase 1 controls) | InputMap actions, but keyboard/mouse only; LOOK is mouse-only | Add a touch input layer (virtual joystick, look-drag, contextual interact) behind the same abstract actions | **Phase 1b** (before Phase 2) |
-| **Camera** (ARCHITECTURE.md §4, GAME_SYSTEMS.md) | Head bob + crouch, fixed sensitivity | Settings for sensitivity (H/V), FOV, smoothing, bob/shake; comfort defaults | Phase 1b |
-| **UI/HUD** (ART_DIRECTION.md §8) | Placeholder PC HUD | Touch-target sizes, safe areas, aspect-ratio support | Phase 1b / Phase 2 |
-| **Graphics** (ART_DIRECTION.md) | Single Forward+ setup | LOW/MED/HIGH presets + settings surface; MOBILE_ART_DIRECTION.md supersedes PC-leaning assumptions | Phase 1b / Phase 2 |
-| **World/streaming** (ARCHITECTURE.md §3) | Synchronous region/location swap | Distance-based streaming + fog/occlusion to hide loads | Phase 2+ |
-| **NPC sim** (GAME_SYSTEMS.md §4) | Not built | L0–L3 tiered simulation from the start | Phase 3 |
-| **Dialogue UI** (DIALOGUE_DESIGN.md) | Not built | Quick-response + free-chat, keyboard handling, online/fallback | Phase 3+ |
-| **Lifecycle/save** (ARCHITECTURE.md §11) | Manual F5/F9 | Autosave at safe moments + pause/resume/background handling | Phase 1b / Phase 2 |
-| **Profiling** | None | Mobile perf checklist + on-device tests (MOBILE_ART_DIRECTION.md §52) | ongoing from Phase 2 |
+| Area | Change required | Status |
+|---|---|---|
+| **Input** (ARCHITECTURE.md §4) | Touch layer (joystick, look-drag, contextual interact) behind the same abstract actions; keyboard/mouse preserved | ✅ `IMPLEMENTED` (Phase 1b) — `GameInput` |
+| **Camera** | Settings for sensitivity (H/V), FOV, smoothing, bob/shake; comfort defaults | ✅ `IMPLEMENTED` (shake stored; no shake system yet) |
+| **UI/HUD** (ART_DIRECTION.md §8) | Touch-target sizes, safe areas, aspect-ratio support | ✅ `IMPLEMENTED` — `MobileHud` (safe-area inset) |
+| **Graphics** | LOW/MED/HIGH(/ULTRA) presets + settings surface | ✅ `IMPLEMENTED` — `GraphicsManager` + pause menu |
+| **Lifecycle/save** (ARCHITECTURE.md §11) | Autosave at safe moments + pause/resume/background handling | ✅ `IMPLEMENTED` — `AppLifecycle`, `AutosaveManager` |
+| **World/streaming** (ARCHITECTURE.md §3) | Distance-based streaming + fog/occlusion to hide loads | ⏳ Phase 2+ (seam ready) |
+| **NPC sim** (GAME_SYSTEMS.md §4) | L0–L3 tiered simulation from the start | ⏳ Phase 3 |
+| **Dialogue UI** (DIALOGUE_DESIGN.md) | Quick-response + free-chat, keyboard handling, online/fallback | ⏳ Phase 3+ |
+| **Profiling / on-device perf** | Mobile perf checklist + real-device tests (MOBILE_ART_DIRECTION.md §52) | ⏳ `UNVERIFIED` until Android run (M10) |
 
-**Immediate consequence for the plan:** validate the current core on PC
-(godot/PHASE1_TEST_PLAN.md) → add the **Phase 1b mobile input/settings/
-lifecycle** layer → then Phase 2 (world). ART_DIRECTION.md and
-TECHNICAL_ROADMAP.md get a fuller mobile-first pass once the core is
-validated; this doc is the authority in the meantime.
+**Everything in Phase 1b is `IMPLEMENTED` but not yet `TESTED`/`VERIFIED`**,
+and **mobile performance is explicitly `UNVERIFIED`** until it runs on a
+real mid-range Android device (§24, §25).
+
+**Plan:** validate the core on PC (godot/PHASE1_TEST_PLAN.md) **and** the
+mobile layer (godot/PHASE1B_TEST_PLAN.md, incl. an Android launch) → then
+Phase 2 (world). ART_DIRECTION.md and TECHNICAL_ROADMAP.md get a fuller
+mobile-first pass during Phase 2; this doc + MOBILE_ART_DIRECTION.md are the
+authority in the meantime.

@@ -35,3 +35,8 @@ signal inventory_changed()
 # --- Save/load (ARCHITECTURE.md §11) ---
 signal game_saved()
 signal game_loaded()
+signal autosaved(reason: String)
+
+# --- App lifecycle (MOBILE_FIRST.md §23) ---
+signal app_paused()
+signal app_resumed()

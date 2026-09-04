@@ -1,15 +1,15 @@
-; Project Aletheia — Phase 1 Foundation
-; Engine configuration. See ARCHITECTURE.md §1, TECHNICAL_ROADMAP.md §2.2.
-; NOTE: config/features pins a conservative Godot 4.3 floor; validate and
-; bump to the actually-installed stable 4.x on first open (this project was
-; authored without a running editor — see godot/README.md).
+; Project Aletheia — Phase 1 + 1b (Mobile Foundation)
+; Engine configuration. See ARCHITECTURE.md §1, TECHNICAL_ROADMAP.md §2.2,
+; MOBILE_FIRST.md. config/features pins a conservative Godot 4.3 floor;
+; validate/bump to the installed stable 4.x on first open (godot/README.md).
+; Primary platform is Android — the mobile renderer is used on handhelds.
 
 config_version=5
 
 [application]
 
 config/name="Project Aletheia (Phase 1 Foundation)"
-config/description="First-person open-world life-sim RPG — foundation slice. See repo-root DESIGN.md / ARCHITECTURE.md."
+config/description="First-person open-world life-sim RPG, Android-first. See repo-root DESIGN.md / ARCHITECTURE.md / MOBILE_FIRST.md."
 run/main_scene="res://main.tscn"
 config/features=PackedStringArray("4.3", "Forward Plus")
 config/icon="res://icon.svg"
@@ -18,10 +18,32 @@ config/icon="res://icon.svg"
 
 ; Order matters — a listed-later autoload may call an earlier one in _ready().
 WorldEvents="*res://src/autoload/world_events.gd"
+Settings="*res://src/autoload/settings.gd"
+GraphicsManager="*res://src/autoload/graphics_manager.gd"
+GameInput="*res://src/autoload/game_input.gd"
 SaveManager="*res://src/autoload/save_manager.gd"
 ItemRegistry="*res://src/autoload/item_registry.gd"
 TimeManager="*res://src/autoload/time_manager.gd"
+AutosaveManager="*res://src/autoload/autosave_manager.gd"
+AppLifecycle="*res://src/autoload/app_lifecycle.gd"
+
+[display]
+
+; Mobile-safe scaling and aspect handling (MOBILE_FIRST.md §4).
+window/stretch/mode="canvas_items"
+window/stretch/aspect="expand"
+window/handheld/orientation="sensor"
+
+[input_devices]
+
+; Lets a desktop mouse drive the touch widgets when the touch UI is forced
+; on for preview. Harmless during normal desktop play (touch UI hidden,
+; mouse captured, gameplay reads keyboard/mouse — not touch).
+pointing/emulate_touch_from_mouse=true
 
 [rendering]
 
+; Desktop preview uses Forward+; Android uses the Mobile renderer
+; (MOBILE_FIRST.md §5/§6). Per-platform override.
 renderer/rendering_method="forward_plus"
+renderer/rendering_method.mobile="mobile"

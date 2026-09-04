@@ -1,5 +1,17 @@
 # MOBILE_ART_DIRECTION.md
 
+> **Implementation status (Phase 1b).** This is the standing visual/
+> technical-art authority for the Android-first target. Implemented so far
+> (code exists + reviewed; not yet run on device): a graphics-preset system
+> (LOW/MEDIUM/HIGH/ULTRA, §50) controlling shadows/view-distance/fog/glow/
+> SSAO/resolution-scale, a settings surface with FOV + comfort camera
+> options (§4/§5/§51), the Mobile renderer on Android (§1/§31), and the
+> blockout-first workflow (§57/§58). **Not yet built:** terrain/streaming
+> (§36), LOD (§28), water/steam/fog art (§13–§15), NPC/face/hands assets
+> (§38–§41), performance test scenes (§52), on-device profiling (§53) — all
+> Phase 2+. Mobile visual performance is `UNVERIFIED` until a real device is
+> profiled (§24/§25).
+
 # MOBILE-FIRST VISUAL ART DIRECTION
 
 ## 0. DOCUMENT PURPOSE

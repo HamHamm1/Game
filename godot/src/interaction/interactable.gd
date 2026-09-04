@@ -14,9 +14,15 @@ extends Node
 func can_interact(_player: Player) -> bool:
 	return true
 
-## Short text shown on the HUD prompt when this is the focused target.
+## Short text shown on the HUD prompt when this is the focused target
+## (desktop, full phrase e.g. "Pick up Fish x2").
 func get_interaction_prompt(_player: Player) -> String:
 	return ""
+
+## Short contextual verb for the mobile interact button (MOBILE_FIRST.md §2),
+## e.g. "PICK UP", "OPEN", "ENTER", "TALK", "COOK". Defaults to "USE".
+func get_interaction_verb(_player: Player) -> String:
+	return "USE"
 
 ## Perform the interaction. Concrete subclasses override this.
 func interact(_player: Player) -> void:
