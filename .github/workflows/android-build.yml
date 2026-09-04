@@ -119,6 +119,46 @@ jobs:
             echo "- Building the APK is **not** ANDROID VERIFIED — the device tests are."
           } >> "$GITHUB_STEP_SUMMARY"
 
+      - name: Diagnose APK (temporary)
+        if: always()
+        run: |
+          set +e
+          APK="$PROJECT_DIR/build/$OUTPUT"
+          BT="$ANDROID_SDK_ROOT/build-tools/34.0.0"
+          [ -f "$APK" ] || { echo "no APK to diagnose"; exit 0; }
+          {
+            echo "==== INTEGRITY ===="
+            sha256sum "$APK"
+            echo "size=$(stat -c%s "$APK") bytes"
+            if unzip -t "$APK" >/dev/null 2>&1; then echo "zip: OK"; else echo "zip: CORRUPT"; fi
+            echo
+            echo "==== BADGING (package / sdk / abis / perms) ===="
+            "$BT/aapt2" dump badging "$APK" 2>&1
+            echo
+            echo "==== USES-SDK (manifest) ===="
+            "$BT/aapt2" dump xmltree --file AndroidManifest.xml "$APK" 2>&1 | grep -iE "manifest|uses-sdk|SdkVersion|compileSdk|application |activity |android:exported|MAIN|LAUNCHER" | head -50
+            echo
+            echo "==== ABIs ===="
+            unzip -l "$APK" | grep -E "lib/"
+            echo
+            echo "==== SIGNING (apksigner verify) ===="
+            "$BT/apksigner" verify --verbose --print-certs "$APK" 2>&1
+            echo "apksigner_verify_exit=$?"
+            echo
+            echo "==== SIGNING (verify as min-sdk 21) ===="
+            "$BT/apksigner" verify --min-sdk-version 21 "$APK" 2>&1
+            echo "apksigner_minsdk21_exit=$?"
+            echo
+            echo "==== META-INF (v1 signature files) ===="
+            unzip -l "$APK" | grep -E "META-INF/" || echo "(no META-INF entries)"
+          } 2>&1 | tee "$PROJECT_DIR/build/apk-diagnostics.txt"
+          {
+            echo "### APK diagnostics"
+            echo '```'
+            cat "$PROJECT_DIR/build/apk-diagnostics.txt"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
       - name: Upload APK artifact
         if: success()
         uses: actions/upload-artifact@v4
@@ -126,6 +166,15 @@ jobs:
           name: aletheia-phase1-debug-apk
           path: godot/build/aletheia-phase1-debug.apk
           if-no-files-found: error
+          retention-days: 30
+
+      - name: Upload diagnostics report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: apk-diagnostics
+          path: godot/build/apk-diagnostics.txt
+          if-no-files-found: warn
           retention-days: 30
 
       - name: Report failure
