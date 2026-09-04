@@ -13,6 +13,26 @@ Status labels follow AI_RULES.md Rule 11:
 
 ## [Unreleased]
 
+### Diagnosed real-device install failure — root cause was DELIVERY, not the APK
+
+- Symptom: phone shows "The file has a problem" when installing.
+- Added a temporary CI diagnostic (aapt2 badging + apksigner verify) and
+  read the real numbers. **The built APK is valid and installable:**
+  apksigner verify exit 0, signed **v1+v2+v3** (RSA 2048, CN=Android Debug),
+  `minSdk 21 / targetSdk 34 / compileSdk 34`, `native-code arm64-v8a`,
+  zip OK, launcher activity exported. Nothing about the build is wrong.
+- **Root cause:** GitHub *Actions artifacts* download as a **ZIP** wrapper,
+  not the bare `.apk`; installing the zip (or a partial/corrupted
+  extraction) is what triggers "The file has a problem."
+- **Fix (delivery):** the workflow now also **publishes the `.apk` as a
+  GitHub Release asset** (tag `phase1-debug`), which downloads as the raw
+  `.apk` with no zip — a clean phone install path. Added a permanent
+  **apksigner signature-verify gate** (fails the build if the APK isn't
+  v1+v2 signed) and prints the APK **SHA-256** in the run summary + Release
+  notes. Replaced the temporary verbose diagnostic with this lean gate.
+  `permissions: contents: write` added for the Release. No game/architecture
+  changes; export preset unchanged.
+
 ### ✅ Cloud build SUCCEEDED — APK produced
 
 - GitHub Actions run #2 finished **`success`** and produced the artifact

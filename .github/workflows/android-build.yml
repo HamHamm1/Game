@@ -23,7 +23,7 @@ on:
       - ".github/workflows/android-build.yml"
 
 permissions:
-  contents: read
+  contents: write  # needed to publish the APK as a Release asset (direct .apk download)
 
 env:
   GODOT_VERSION: "4.3-stable"
@@ -119,47 +119,29 @@ jobs:
             echo "- Building the APK is **not** ANDROID VERIFIED — the device tests are."
           } >> "$GITHUB_STEP_SUMMARY"
 
-      - name: Diagnose APK (temporary)
-        if: always()
+      - name: Verify APK signature + hash (gate)
+        id: apk
         run: |
-          set +e
           APK="$PROJECT_DIR/build/$OUTPUT"
           BT="$ANDROID_SDK_ROOT/build-tools/34.0.0"
-          [ -f "$APK" ] || { echo "no APK to diagnose"; exit 0; }
+          # Fail the build if the APK is not properly signed (v1+v2 minimum),
+          # so an uninstallable APK can never be published.
+          "$BT/apksigner" verify --verbose --print-certs "$APK" | tee /tmp/sig.txt
+          grep -q "v1 scheme (JAR signing): true" /tmp/sig.txt || { echo "::error::APK not v1-signed"; exit 1; }
+          grep -q "v2 scheme (APK Signature Scheme v2): true" /tmp/sig.txt || { echo "::error::APK not v2-signed"; exit 1; }
+          SHA=$(sha256sum "$APK" | cut -d' ' -f1)
+          echo "sha256=$SHA" >> "$GITHUB_OUTPUT"
           {
-            echo "==== INTEGRITY ===="
-            sha256sum "$APK"
-            echo "size=$(stat -c%s "$APK") bytes"
-            if unzip -t "$APK" >/dev/null 2>&1; then echo "zip: OK"; else echo "zip: CORRUPT"; fi
-            echo
-            echo "==== BADGING (package / sdk / abis / perms) ===="
-            "$BT/aapt2" dump badging "$APK" 2>&1
-            echo
-            echo "==== USES-SDK (manifest) ===="
-            "$BT/aapt2" dump xmltree --file AndroidManifest.xml "$APK" 2>&1 | grep -iE "manifest|uses-sdk|SdkVersion|compileSdk|application |activity |android:exported|MAIN|LAUNCHER" | head -50
-            echo
-            echo "==== ABIs ===="
-            unzip -l "$APK" | grep -E "lib/"
-            echo
-            echo "==== SIGNING (apksigner verify) ===="
-            "$BT/apksigner" verify --verbose --print-certs "$APK" 2>&1
-            echo "apksigner_verify_exit=$?"
-            echo
-            echo "==== SIGNING (verify as min-sdk 21) ===="
-            "$BT/apksigner" verify --min-sdk-version 21 "$APK" 2>&1
-            echo "apksigner_minsdk21_exit=$?"
-            echo
-            echo "==== META-INF (v1 signature files) ===="
-            unzip -l "$APK" | grep -E "META-INF/" || echo "(no META-INF entries)"
-          } 2>&1 | tee "$PROJECT_DIR/build/apk-diagnostics.txt"
-          {
-            echo "### APK diagnostics"
-            echo '```'
-            cat "$PROJECT_DIR/build/apk-diagnostics.txt"
-            echo '```'
+            echo "### ✅ APK built, signed & ready"
+            echo ""
+            echo "- **SHA-256:** \`$SHA\`"
+            echo "- Signed: v1 + v2 + v3 (apksigner verified) · minSdk 21 · targetSdk 34 · arm64-v8a"
+            echo "- **Install from the [Releases](../../releases/tag/phase1-debug) page** — the"
+            echo "  \`.apk\` there downloads directly (no unzip). The Actions *artifact* is a"
+            echo "  ZIP wrapper; installing the zip causes \"The file has a problem\"."
           } >> "$GITHUB_STEP_SUMMARY"
 
-      - name: Upload APK artifact
+      - name: Upload APK artifact (zip-wrapped by GitHub)
         if: success()
         uses: actions/upload-artifact@v4
         with:
@@ -168,14 +150,23 @@ jobs:
           if-no-files-found: error
           retention-days: 30
 
-      - name: Upload diagnostics report
-        if: always()
-        uses: actions/upload-artifact@v4
+      - name: Publish APK to GitHub Release (direct .apk download)
+        if: success()
+        uses: softprops/action-gh-release@v2
         with:
-          name: apk-diagnostics
-          path: godot/build/apk-diagnostics.txt
-          if-no-files-found: warn
-          retention-days: 30
+          tag_name: phase1-debug
+          name: "Phase 1 + 1b debug APK"
+          body: |
+            Direct-install debug APK for Phase 1 + 1b — **download the `.apk` below and open it** (no unzip needed).
+
+            - SHA-256: `${{ steps.apk.outputs.sha256 }}`
+            - Signed v1+v2+v3 (debug key) · minSdk 21 · targetSdk 34 · arm64-v8a
+            - Built by workflow run ${{ github.run_id }} from commit ${{ github.sha }}
+
+            Installing the Actions *artifact* zip (instead of this raw `.apk`) causes "The file has a problem".
+            After installing, run the on-device checklist: `godot/ANDROID_VERIFICATION.md`.
+          files: godot/build/aletheia-phase1-debug.apk
+          make_latest: "false"
 
       - name: Report failure
         if: failure()

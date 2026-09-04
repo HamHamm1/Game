@@ -61,14 +61,19 @@ they can install the Android SDK). It uses the project's **unchanged**
    - **Automatic:** any push to `claude/rpg-architecture-design-eut455` that
      touches `godot/**` runs it; or
    - **Manual:** GitHub → repo → **Actions** tab → **"Android Debug APK
-     (Phase 1 + 1b)"** → **Run workflow** → pick the branch → Run. (The
-     "Run workflow" button needs the desktop-site/full web UI; it works in a
-     phone browser, and also in the GitHub mobile app where available.)
-3. Open the finished run → **Summary** shows ✅/❌ → under **Artifacts**,
-   download **`aletheia-phase1-debug-apk`** (a zip containing
-   `aletheia-phase1-debug.apk`).
-4. Unzip on the phone, then install the APK (allow "install from unknown
-   sources"). Run the on-device checklist: `godot/ANDROID_VERIFICATION.md`.
+     (Phase 1 + 1b)"** → **Run workflow** → pick the branch → Run.
+3. **Download the APK the reliable way — from Releases, not Artifacts:**
+   GitHub → repo → **Releases** → **"Phase 1 + 1b debug APK"** (tag
+   `phase1-debug`) → tap **`aletheia-phase1-debug.apk`**. This downloads the
+   **raw `.apk`** directly — **no unzip**.
+   > ⚠️ Do **not** install the Actions **artifact** (`aletheia-phase1-debug-apk`):
+   > GitHub always wraps artifacts in a **ZIP**, and installing that zip (or a
+   > partial/corrupted extraction of it) is exactly what causes Android's
+   > **"The file has a problem"**. The Release asset avoids this entirely.
+4. Open the downloaded `.apk` → allow "install from unknown sources" →
+   install. (Optional integrity check: the Release notes list the APK's
+   **SHA-256**; a file manager or `RootBeer`-style hash app can confirm your
+   download matches.) Then run `godot/ANDROID_VERIFICATION.md`.
 
 What the workflow does (all validated locally except the SDK install, which
 only GitHub's runners can do): installs JDK 17 + Android SDK
