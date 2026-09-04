@@ -22,19 +22,19 @@ The game is a **first-person open-world RPG designed primarily for Android phone
 
 The visual goal is:
 
-> A beautiful, atmospheric, intimate first-person world with the warm, eerie, nostalgic environmental feeling of a Japanese bathhouse/folk-horror game, while remaining technically achievable on mobile.
+> A beautiful, peaceful Japanese rural village — warm, nostalgic, alive with nature — that the player genuinely wants to live in, carrying a *quiet* undercurrent of mystery beneath its calm; intimate and cinematic in first person, and technically achievable on mobile.
 
 Do NOT copy any copyrighted game's assets, characters, environments, logos, textures, maps, or exact visual designs.
 
 The target is an original visual identity inspired by the general qualities of:
-- Japanese traditional architecture
-- quiet rural environments
-- bathhouses and inns
-- warm interior lighting
-- mysterious nighttime atmosphere
-- nostalgic low-key horror
-- dense environmental storytelling
+- Japanese traditional rural architecture (wood, eaves, sliding doors, verandas)
+- quiet countryside and nature — trees, water, fields, moss, stone, distant mountains
+- peaceful slow-life village atmosphere
+- warm interior lighting and lived-in spaces
+- bathhouses and inns (architectural inspiration)
+- dense, intentional environmental storytelling
 - cinematic first-person exploration
+- a subtle, occasional undercurrent of mystery (secondary — never the dominant mood)
 
 The art direction must be original.
 
@@ -91,7 +91,33 @@ Avoid generic "game level" appearance.
 
 # 3. VISUAL IDENTITY
 
-The visual identity should combine:
+The visual identity should combine, in order of priority:
+
+### Natural Beauty (primary character)
+
+- trees
+- grass
+- moss
+- wet stone
+- water, streams, ponds
+- rain
+- mountains
+- small gardens
+- forest edges
+- changing sky
+
+Nature is a **primary identity of the game**, not decoration placed around
+buildings. The village should feel *surrounded by and woven into* nature,
+never placed on an empty green plane.
+
+### Peace / Slow Life
+
+- calm, unhurried spaces
+- inviting paths and thresholds
+- warm windows seen from outside
+- benches, verandas, quiet corners
+- a village that feels organically grown and lived-in
+- the recurring feeling: *"I want to live here."*
 
 ### Warmth
 
@@ -103,16 +129,6 @@ The visual identity should combine:
 - warm food
 - cozy interiors
 
-### Mystery
-
-- deep shadows
-- fog
-- silhouettes
-- partially obscured paths
-- distant lights
-- quiet empty spaces
-- subtle environmental anomalies
-
 ### Nostalgia
 
 - aged wood
@@ -122,17 +138,19 @@ The visual identity should combine:
 - traditional furniture
 - slightly imperfect materials
 
-### Natural Beauty
+### Mystery *(secondary layer — applied locally and sparingly)*
 
-- rain
-- moss
-- wet stone
-- trees
-- grass
-- water
-- mountains
-- small gardens
-- changing sky
+- deep shadows
+- fog
+- silhouettes
+- partially obscured paths
+- distant lights
+- quiet empty spaces
+- subtle environmental anomalies
+
+Mystery never dominates the default world. It is an occasional, local
+treatment that gains meaning *because* the player already loves the
+village (DESIGN.md §5).
 
 ---
 
@@ -464,6 +482,38 @@ Examples:
 
 Do not place dozens of expensive dynamic lights in every room.
 
+## Lighting readability & time-of-day (canonical)
+
+The goal of lighting is **cinematic beauty AND readability** — never
+darkness for its own sake. The four canonical time-of-day states are all
+*beautiful* states:
+
+- **Morning** — soft natural light, fresh atmosphere, subtle mist, gentle
+  shadows, cool-to-neutral daylight, peaceful.
+- **Day** — bright natural daylight, beautiful vegetation, readable
+  architecture, natural shadows, water sparkle/reflection, lively but calm.
+- **Evening / golden hour** — warm golden sunlight, long shadows, warm
+  windows, lanterns beginning to glow, beautiful sky. This is the **hero
+  visual state** — the strongest "I want to live here" feeling.
+- **Night** — peaceful darkness, moonlight, stars when appropriate, warm
+  windows, lanterns, subtle ambient illumination. **Night must remain
+  beautiful and navigable** — never simply "make everything dark."
+
+**Hard rules:**
+
+- **Night ≠ darkness.** The player must comfortably see and navigate
+  outdoor paths at night (raise the ambient floor; use warm windows,
+  lanterns, moonlight).
+- **Interiors must not be excessively dark.** Use window light, warm lamps,
+  lanterns, and indirect ambient light, with a warm-interior / cooler-
+  exterior contrast. Interiors should stay warm and readable at all times.
+- Natural variation and beautiful shadows are still important — the village
+  must never become uniformly bright or sterile.
+
+Mystery is a **local/occasional lighting modifier**, not a global lighting
+mode. Most locations, most of the time, use the beautiful, readable
+profiles above.
+
 ---
 
 # 17. LIGHTING HIERARCHY
@@ -690,6 +740,28 @@ Priority:
 5. Background decoration
 
 Do not fully detail rooms the player cannot access.
+
+## KNOWN DIRECTION (from the M2.1 on-device playtest)
+
+The M2.1 grey-box interiors currently read **too empty and some are too
+dark**. Recorded direction for future environment-art passes (this is art
+direction, **not** an instruction to place props now): interiors should
+eventually feel *lived-in*, each with its own warm, readable identity —
+
+- **Player home:** wooden / tatami-like flooring, low table, cushions,
+  bedding, shelves, small decorations, tea/cooking objects, plants,
+  storage, windows, warm lamps.
+- **Restaurant:** counter, tables, stools, kitchen area, food props,
+  shelves, lanterns, signage, warm interior lighting.
+- **Shop:** shelves, products, counter, storage, signage, small
+  decorations.
+- **Workshop:** workbench, tools, materials, storage, wooden structure.
+- **Bathhouse / onsen:** strong architectural identity — wood, stone,
+  water, warm lighting, steam (eventually), transitional indoor/outdoor
+  spaces.
+
+Sequence this **after** the blockout → lighting → material pipeline; do not
+fill interiors with assets ahead of that order.
 
 ---
 

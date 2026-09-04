@@ -13,6 +13,53 @@ Status labels follow AI_RULES.md Rule 11:
 
 ## [Unreleased]
 
+### M2.0 — Canonical art-direction reconciliation (documentation only)
+
+Corrected the canonical creative/visual direction after the M2.1 on-device
+playtest. **Documentation only** — no gameplay code, no `project.godot`, no
+`RegionLightingController`/`WeatherManager`, no assets, no save-format or
+architecture change. M2.2/M2.3/M2.4 remain unimplemented and separate.
+
+The primary identity is now stated explicitly: **a beautiful, peaceful
+Japanese rural village the player genuinely wants to live in**, with nature
+as a *primary character*. Canonical hierarchy — **PRIMARY:** Japanese rural
+village + peaceful slow life + nature + beauty + exploration; **SECONDARY:**
+relationships + daily activities + small discoveries + belonging;
+**TERTIARY:** mystery + supernatural + occasional unease/horror (seasoning,
+never the meal). The bathhouse is an architectural/visual reference only,
+not a horror mandate. Exploration/adventure/mystery remain part of the
+identity; the village must not become a pure life-sim, nor uniformly bright
+or sterile — natural variation and beautiful shadows still matter.
+
+- **DESIGN.md** — new §1.1 "Creative Hierarchy" (PRIMARY/SECONDARY/TERTIARY
+  + nature-as-primary + bathhouse-as-architecture); §1 genre line reframes
+  mystery/horror as a tertiary layer; §2 atmosphere lead now
+  "peaceful, beautiful, natural, nostalgic, lived-in"; §5 adds the
+  attach-to-the-village-first intent.
+- **MOBILE_ART_DIRECTION.md** — §0 visual-goal sentence rewritten (village
+  first, mystery as quiet undercurrent) and identity list reordered
+  (nature/peace lead, horror demoted/softened); §3 visual identity
+  reordered with Natural Beauty (primary character) + a new Peace/Slow Life
+  block above Mystery (marked secondary); §16 adds canonical lighting
+  readability + time-of-day rules (Morning/Day/Evening/Night all beautiful,
+  evening = hero, night navigable, interiors warm/readable, mystery = local
+  modifier); §26 adds the "lived-in interiors" recorded direction from the
+  M2.1 playtest (art direction, not a prop-placement order).
+- **ART_DIRECTION.md** — §1 reframes the safe/mystery "core contrast" as a
+  spectrum with a dominant beautiful/peaceful default (not a two-mode
+  switch); asset-check words now peaceful · natural · nostalgic · lived-in
+  (mysterious secondary).
+- **ARCHITECTURE.md** — §10 clarifies (prose only) that the
+  `safe/mystery` location-category is a lighting-profile spectrum defaulting
+  to the peaceful village look; category set expected to broaden at M2.2;
+  the `RegionLightingController` mechanism and code symbols are unchanged.
+- **MASTER_SESSION_HANDOFF.md** — §1 identity lead + §9 Phase-2 intent
+  aligned to the hierarchy and the beauty/readability lighting rules; notes
+  M2.1–M2.4 stay separate milestones.
+- **TECHNICAL_ROADMAP.md** — Phase 2 deliverable adds the beauty+readability
+  lighting priority and the M2.2/M2.3 separation; Phase 7 "Mystery" remains
+  a later additive layer (unchanged).
+
 ### Phase 2 M2.1 — Blockout pass on the real MVP region
 
 Expanded the grey-box town from a single-house test scene into the ten-item

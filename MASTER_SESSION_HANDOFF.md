@@ -24,12 +24,19 @@
   RPG / life-sim** built from scratch in **Godot 4**. It replaces a retired
   earlier project ("Spirit World MMORPG", a 2D Node.js/Canvas browser game
   whose code still sits, inert, at the repo root — see §2 "Repository").
-- **Game concept (target vision, mostly not built yet):** live as a
-  resident of a small, lived-in town — walk, talk to NPCs, build
-  relationships (incl. romance), cook, gather/shop, do quests, explore, and
-  uncover a light mystery/horror thread. Warm, nostalgic, "someone lives
-  here" atmosphere, with a bathhouse/folk-horror *mood reference only*
-  (nothing copied). See DESIGN.md.
+- **Game concept (target vision, mostly not built yet):** a **beautiful,
+  peaceful Japanese rural village the player genuinely wants to live in.**
+  Live as a resident of a small, lived-in town surrounded by nature — walk,
+  talk to NPCs, build relationships (incl. romance), cook, gather/shop, do
+  quests, and explore, with small everyday discoveries and a strong sense
+  of belonging. A *light* mystery/horror thread runs quietly beneath the
+  calm. Canonical hierarchy (DESIGN.md §1.1): **PRIMARY** = Japanese rural
+  village + peaceful slow life + nature + beauty + exploration; **SECONDARY**
+  = relationships + daily activities + small discoveries + belonging;
+  **TERTIARY** = mystery + supernatural + occasional unease/horror (seasoning,
+  never the meal). **Nature is a primary character, not decoration.** The
+  bathhouse is an **architectural / visual reference only** (nothing copied,
+  not a horror mandate). See DESIGN.md.
 - **Target platform:** **Android phones (touch), primary and only.** No PC
   is available to the developer. Mobile is not a later port — it drives
   input, UI, rendering, performance, and the (future) AI-dialogue design.
@@ -319,8 +326,18 @@ small, believable *place* —
   lighting + material pass (ART_DIRECTION.md §6 pipeline);
 - `TimeManager` day/night wired to **lighting profiles** (time-of-day ×
   location-category), the mobile-first way (baked where possible, few
-  dynamic lights, art-directed fog);
+  dynamic lights, art-directed fog). Lighting must serve **beauty and
+  readability first**: Morning/Day/Evening/Night are all beautiful states,
+  evening/golden hour is the hero look, **night must stay navigable and
+  interiors warm/readable**, and "location-category" is a spectrum whose
+  default is the peaceful village look — "mystery" is a rare local modifier,
+  not a global lighting mode (see DESIGN.md §1.1, ARCHITECTURE.md §10,
+  MOBILE_ART_DIRECTION.md §16);
 - a **weather foundation** (state + signal; light visual hookup).
+
+Keep the milestones separate: **M2.1** grey-box MVP region · **M2.2**
+time-of-day + lighting · **M2.3** weather foundation · **M2.4** material /
+hero-area pass. Do not combine M2.2 and M2.3.
 
 **Explicitly NOT Phase 2:** the large open world, NPCs, cooking, quests,
 dialogue, romance, inventory UI — those are later phases.

@@ -44,7 +44,8 @@ decision, not something to bikeshed now.*
 ## 1. Game Vision
 
 **Genre:** First-Person Open-World RPG + Life Simulation + Social/Romance +
-Exploration + Cooking/Crafting + Light Horror/Mystery.
+Exploration + Cooking/Crafting, with Light Mystery/Horror as a **tertiary
+layer beneath a peaceful life-sim** (see §1.1).
 
 **Player fantasy:** *"I live here."* The player is not a tourist passing
 through hand-built dioramas; they are a resident of a small town who works,
@@ -78,6 +79,39 @@ items, work a job, farm (future), fish (future), explore restricted/eerie
 areas, find secrets, make dialogue choices that affect relationships and
 the world state.
 
+### 1.1 Creative Hierarchy (canonical)
+
+The game's identity is a **beautiful, peaceful Japanese rural village the
+player genuinely wants to live in.** Everything is ordered against this:
+
+- **PRIMARY:** Japanese rural village + peaceful slow life + nature +
+  beauty + exploration. The world is beautiful and desirable *by default*,
+  at every time of day. The recurring player feeling is *"I want to live
+  here / I want to explore this village / I wonder what's around the next
+  corner."*
+- **SECONDARY:** relationships + daily activities (cooking, work, gathering,
+  shopping) + small discoveries + a sense of belonging.
+- **TERTIARY:** mystery + supernatural + **occasional** unease/horror —
+  subtle, contextual, local anomalies inside an otherwise beautiful place.
+  Horror is *seasoning, not the meal*; it gains meaning only because the
+  player already loves the village.
+
+**Nature is a primary character**, not decoration placed around buildings:
+trees, grass, moss, ferns, flowers, water, streams, ponds, stones, forest
+edges, hills, distant mountains, sky, sunlight, wind, and (eventually)
+seasons. The village is *surrounded by and woven into* nature, never placed
+on a blank green plane.
+
+Exploration, adventure, and mystery remain part of the identity — this is
+not a pure life-simulator. But the peaceful, beautiful world is always the
+default, and mystery/horror must never dominate it.
+
+*The Bathhouse* is a reference for **architectural and visual inspiration
+only** (wooden framing, eaves, corridors, sliding doors, layered intimate
+spaces, wood/stone/water/vegetation, warm lighting, steam, reflections,
+handcrafted lived-in feel) — **not** a mandate to make the game
+horror-focused. See §2 and the originality rule (AI_RULES.md).
+
 ---
 
 ## 2. Visual Target & Direction
@@ -95,7 +129,8 @@ settling when interacting) — tuned conservatively to avoid motion
 sickness. See ARCHITECTURE.md §4 for the technical breakdown into
 independent, disable-able camera-effect modules.
 
-**Atmosphere:** nostalgic, mysterious, lived-in. Every location contains
+**Atmosphere:** peaceful, beautiful, natural, nostalgic, lived-in — with
+mystery as a quiet undercurrent. Every location contains
 small human traces — misaligned objects, used tools, stains, personal
 items — so the world reads as *inhabited*, not decorated. Cozy areas
 (home, café, restaurant, residential streets) sit in explicit contrast to
@@ -210,6 +245,12 @@ should be possible to spend an entire play session doing nothing but
 cooking, chatting, and exploring the cozy half of the map without ever
 touching the unsettling material, and the reverse should also be true for
 players who chase the mystery thread first.
+
+The intended emotional order is: the player first becomes *attached* to the
+village — it is a place they like and want to live in — and only then does
+mystery become meaningful, precisely because it disturbs a place they care
+about. The peaceful village must remain beautiful and desirable even once
+the mystery exists.
 
 ---
 

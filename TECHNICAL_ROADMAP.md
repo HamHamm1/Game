@@ -187,6 +187,12 @@ with an object, pick up an item, save and load position+inventory.
 
 **Deliverable:** the player can move through the slice across a day/night
 cycle with coherent lighting; it *feels* like the target look, small.
+Lighting must prioritize **beauty and readability** (Morning/Day/Evening/
+Night all beautiful; evening/golden hour the hero state; night navigable;
+interiors warm/legible); the slice must read as a **peaceful place worth
+living in**, not a mode-switching horror set. Mystery is a local/occasional
+modifier here, never a global lighting mode (DESIGN.md §1.1). Keep M2.2
+(lighting) and M2.3 (weather) as separate milestones.
 
 ### Phase 3 — NPCs
 **Goal:** the world has residents.

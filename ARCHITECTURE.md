@@ -482,6 +482,15 @@ time-of-day × location-category (safe/mystery) lighting profile (DESIGN.md
 §2), `NPCDirectory` triggers schedule re-evaluation, shops open/close.
 No system polls `TimeManager` every frame; everything is signal-driven.
 
+Here "location-category" is a **lighting-profile tag on a spectrum whose
+default is the beautiful, readable, peaceful village look**; "mystery" is
+an *occasional, local* profile applied to a minority of spaces, not a
+global horror mode. The category set is expected to broaden (e.g.
+residential / commercial / natural / water / landmark / threshold) when
+M2.2 lighting is designed; the signal-driven `RegionLightingController`
+mechanism itself is unchanged. (Naming of code symbols is an M2.2 design
+decision — deliberately not changed here.)
+
 ---
 
 ## 11. Save/Load Architecture

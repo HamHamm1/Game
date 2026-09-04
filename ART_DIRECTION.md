@@ -35,21 +35,29 @@ a mood/camera/environmental-storytelling reference only — no models,
 textures, layouts, UI, or branding are taken from it. Our town, our
 landmark, our lore are original.
 
-**Three words to check every asset against:** **nostalgic ·
-mysterious · lived-in.** If a prop, material, or lighting choice serves
-none of these, it's decoration for its own sake — cut or rework it.
+**Words to check every asset against:** **peaceful · natural ·
+nostalgic · lived-in** (with *mysterious* as a secondary, occasional
+filter). If a prop, material, or lighting choice serves none of these,
+it's decoration for its own sake — cut or rework it.
 
-**The core contrast** the whole look is built around (DESIGN.md §2):
+**The default look** the whole game is built around: the village is
+**beautiful, warm, natural, and peaceful at every time of day** — a place
+the player wants to live in. A *minority* of places, at *some* times, carry
+a cooler, quieter "something is a little off" treatment. This is a
+**spectrum with a dominant calm end, not a two-mode switch** (DESIGN.md §2,
+§5): most locations, most of the time, sit firmly in the beautiful /
+peaceful column below.
 
-| Cozy / Safe | Mysterious |
+| Beautiful / Peaceful (default — dominant) | Mysterious (occasional / local) |
 |---|---|
-| home, café, restaurant, kitchen, residential street, shop | abandoned wing, underground passage, closed-off bathhouse areas, night forest, hidden rooms |
-| warm practical light, saturated but soft, readable | controlled contrast, cool ambient, fog/occlusion, unusual light behavior |
+| home, café, restaurant, kitchen, residential street, shop, gardens, streams, forest edge, fields | an abandoned wing, an underground passage, closed-off bathhouse areas, the night forest, hidden rooms |
+| warm practical light, saturated but soft, readable, nature-rich | controlled contrast, cool ambient, fog/occlusion, unusual light behavior |
 | clutter that reads as *someone lives here* | clutter that reads as *someone left in a hurry / something is off* |
 
 The game is **not dark all the time** (DESIGN.md §2). Dread comes from
 *wrongness in a place that should be safe*, not from constant darkness or
-jump-scares. Most of the player's time is spent in the warm half.
+jump-scares. Most of the player's time is spent in the beautiful, peaceful
+world — and that is what gives the rare mysterious moments their meaning.
 
 ---
 
