@@ -461,6 +461,13 @@ documented untyped-`Variant` pitfall. This is a recommendation, not a
 final decision — record the actual choice and rationale in
 TECHNICAL_ROADMAP.md when Phase 1 starts.
 
+> **RESOLVED (TECHNICAL_ROADMAP.md §2.1):** JSON with a strict
+> typed-parsing layer — content data is JSON on disk, loaded through a
+> registry that constructs validated, typed data classes (never raw
+> `Dictionary` in gameplay code). Godot `Resource`/`.tres` remains the
+> tool for engine-facing assets (materials, scenes, animation libraries),
+> not game content data. `data/` therefore uses `.json`.
+
 ---
 
 ## 10. Time, Weather, Lighting Zones
