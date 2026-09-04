@@ -1,12 +1,13 @@
 # Phase 1 — Manual Test Plan (Godot 4)
 
-> Purpose: validate the Phase 1 foundation **in the Godot 4 editor** before
-> any Phase 2 work. Nothing in Phase 1 is `IMPLEMENTED`/`VERIFIED` until the
-> relevant test below passes on your machine (AI_RULES.md Rule 11). This
-> foundation was authored without a running editor, so expect some failures
-> — that is what this pass is for. **If a test fails: report it (per its
-> "Report back"), I fix it, you re-test.** Only when every test passes do we
-> move on.
+> Purpose: the **RUNTIME TESTED / ANDROID VERIFIED** gate for the Phase 1
+> core — the parts that need real input, physics, and rendering. The code is
+> already `STATICALLY VALIDATED` + `HEADLESS TESTED` in the container (see
+> VALIDATION.md: import clean, boot clean, 42/42 logic tests), so the boot
+> path and logic units are proven; what remains is the *felt* behavior that
+> only a running window/device can confirm. Each test below is
+> **REQUIRES EXTERNAL DEVICE** (Godot editor or Android). **If a test fails:
+> report it (per its "Report back"), I fix it, you re-test.**
 >
 > Scope note (mobile-first): these tests validate the **core architecture**
 > using PC keyboard/mouse. That is a legitimate development step

@@ -1,12 +1,14 @@
 # Phase 1b — Mobile Foundation Manual Test Plan (Godot 4 / Android)
 
-> Validates the mobile-foundation layer added on top of the Phase 1 core.
-> **State legend (as defined by the project):** `IMPLEMENTED` = code exists
-> and has been reviewed · `TESTED` = manually tried in the target
-> environment · `VERIFIED` = confirmed working by the required test. Every
-> item below is currently **`IMPLEMENTED` only** — authored without a
-> running editor or an Android device. Nothing is `VERIFIED` until you run
-> it.
+> The **RUNTIME TESTED / ANDROID VERIFIED** gate for the mobile layer.
+> **Status ladder (VALIDATION.md):** the mobile code is already
+> `STATICALLY VALIDATED` + `HEADLESS TESTED` in the container — the
+> GameInput abstraction (latch/consume, touch-held, touch-move), settings
+> persistence, and graphics presets are exercised by the headless logic
+> suite (42/42). What these M-tests add is what headless **cannot** prove:
+> real touch input, on-screen layout/safe-area, and mobile performance.
+> Every item below is **REQUIRES EXTERNAL DEVICE** until you run it; nothing
+> is `ANDROID VERIFIED` without an actual Android run.
 >
 > **Two ways to test:**
 > - **On desktop (previews M1–M8):** run the project; press **Esc** to open

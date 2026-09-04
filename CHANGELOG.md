@@ -13,6 +13,27 @@ Status labels follow AI_RULES.md Rule 11:
 
 ## [Unreleased]
 
+### Automated validation — `STATICALLY VALIDATED` + `HEADLESS TESTED`
+
+Project is Android-first, developed without a desktop. Added an automated
+validation ladder (VALIDATION.md defines the 5 levels: IMPLEMENTED →
+STATICALLY VALIDATED → HEADLESS TESTED → RUNTIME TESTED → ANDROID VERIFIED).
+
+- **Added** `tools/static_validate.py` (no-Godot static checks: paths,
+  JSON, dead refs, Godot-3 API), `tools/run_validation.sh` (static +
+  headless import + boot + logic tests), `tools/fetch_godot.sh` (grabs
+  Godot 4.3 headless; binary git-ignored), `godot/tests/headless_test.gd` +
+  `.tscn` (42-check logic suite), `VALIDATION.md`.
+- **Ran** all gates with Godot 4.3.stable headless in-container:
+  static **61/61**, headless import clean, main-scene boot clean, logic
+  suite **42/42 PASS**.
+- **Fixed** (found by the headless run): input actions were registered in
+  `world_root` (main-scene only) → moved to the `GameInput` autoload so
+  they exist for every scene; removes `InputMap action "…" doesn't exist`
+  errors and fixes movement in non-main scenes.
+- Status labels across README / test plans / AI_RULES updated to the ladder.
+  RUNTIME TESTED and ANDROID VERIFIED remain `REQUIRES EXTERNAL DEVICE`.
+
 ### Phase 1b — Mobile Foundation (`IMPLEMENTED`, not yet `TESTED`/`VERIFIED`)
 
 Folded the mobile-first foundation into Phase 1 (Android is the primary

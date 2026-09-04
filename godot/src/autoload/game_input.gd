@@ -25,7 +25,33 @@ var _latched: Dictionary = {}                 # action -> bool (edge: interact/j
 var _mouse_look_accum: Vector2 = Vector2.ZERO
 
 func _ready() -> void:
+	_register_default_actions()
 	touch_ui_enabled = _detect_touch_primary()
+
+## Register the abstract input actions in code (so they exist for every
+## scene, not just the main one) with default desktop keyboard bindings.
+## Physical keycodes = keyboard-layout independent. Touch and controller
+## bindings feed the same action names through this autoload.
+func _register_default_actions() -> void:
+	_bind("move_forward", [KEY_W, KEY_UP])
+	_bind("move_back", [KEY_S, KEY_DOWN])
+	_bind("move_left", [KEY_A, KEY_LEFT])
+	_bind("move_right", [KEY_D, KEY_RIGHT])
+	_bind("sprint", [KEY_SHIFT])
+	_bind("crouch", [KEY_CTRL])
+	_bind("jump", [KEY_SPACE])
+	_bind("interact", [KEY_E])
+	_bind("pause", [KEY_ESCAPE])
+	_bind("quicksave", [KEY_F5])
+	_bind("quickload", [KEY_F9])
+
+func _bind(action: String, keys: Array) -> void:
+	if not InputMap.has_action(action):
+		InputMap.add_action(action)
+	for k in keys:
+		var ev := InputEventKey.new()
+		ev.physical_keycode = k
+		InputMap.action_add_event(action, ev)
 
 func _detect_touch_primary() -> bool:
 	if OS.has_feature("mobile"):

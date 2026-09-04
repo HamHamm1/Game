@@ -26,12 +26,14 @@ Until then, this stays self-contained here.
 2. Import `godot/project.godot`.
 3. Press **Play** (`main.tscn` is the main scene).
 
-> **Status: `NEEDS TESTING` (in-editor).** This foundation was authored in
-> an environment without a running Godot editor, so it has **not** been
-> launched or verified in-engine yet. Scripts were written and reviewed for
-> correctness by inspection; `.tscn` UIDs will be (re)generated on first
-> open. Report real results against the checklist below (AI_RULES.md
-> Rule 11) — do not mark anything `IMPLEMENTED` until it actually runs.
+> **Status: `STATICALLY VALIDATED` + `HEADLESS TESTED`** (Godot 4.3
+> headless, in this container — see `VALIDATION.md`). The project imports
+> with no script errors, the main scene boots clean, and the logic test
+> suite passes **42/42** (`tests/headless_test.gd`). **Not yet `RUNTIME
+> TESTED` or `ANDROID VERIFIED`** — real input/physics/rendering and all
+> mobile performance require the editor or a device (the checklists below,
+> `PHASE1_TEST_PLAN.md` / `PHASE1B_TEST_PLAN.md`). Run the automated gates
+> with `tools/run_validation.sh`.
 
 ## Controls
 

@@ -1,0 +1,4 @@
+# The Godot binary is large (~110 MB) and machine-specific — never commit it.
+godot
+*.zip
+.headless_test.log

@@ -20,7 +20,8 @@ var _in_location: bool = false
 var _return_position: Vector3 = Vector3.ZERO
 
 func _ready() -> void:
-	_setup_input()
+	# Input actions are registered by the GameInput autoload, so they exist
+	# for every scene (not just this one).
 	_setup_environment()
 
 	region_loader = RegionLoader.new()
@@ -86,30 +87,6 @@ func _place_player_at_spawn(root: Node3D, spawn_name: String) -> void:
 	var marker := root.find_child(spawn_name, true, false)
 	if marker is Node3D:
 		player.teleport_to((marker as Node3D).global_position)
-
-## Input actions are registered in code so the project has no fragile
-## hand-authored input-map encoding (they can be migrated to the editor's
-## Input Map panel later). Physical keycodes = keyboard-layout independent.
-func _setup_input() -> void:
-	_bind("move_forward", [KEY_W, KEY_UP])
-	_bind("move_back", [KEY_S, KEY_DOWN])
-	_bind("move_left", [KEY_A, KEY_LEFT])
-	_bind("move_right", [KEY_D, KEY_RIGHT])
-	_bind("sprint", [KEY_SHIFT])
-	_bind("crouch", [KEY_CTRL])
-	_bind("jump", [KEY_SPACE])
-	_bind("interact", [KEY_E])
-	_bind("pause", [KEY_ESCAPE])
-	_bind("quicksave", [KEY_F5])
-	_bind("quickload", [KEY_F9])
-
-func _bind(action: String, keys: Array) -> void:
-	if not InputMap.has_action(action):
-		InputMap.add_action(action)
-	for k in keys:
-		var ev := InputEventKey.new()
-		ev.physical_keycode = k
-		InputMap.action_add_event(action, ev)
 
 ## One lighting environment + sun for the whole game (avoids multiple
 ## WorldEnvironment conflicts). Real time-of-day × location lighting

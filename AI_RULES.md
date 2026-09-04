@@ -164,6 +164,17 @@ using these labels:
 If tests fail, say so and show the output. If a step was skipped, say
 which. State something is done only when you have verified it.
 
+**Validation ladder (this project is Android-first, developed without a
+desktop — see VALIDATION.md).** For "does it actually work" claims, use the
+precise ladder and never skip a rung: `IMPLEMENTED` → `STATICALLY
+VALIDATED` (tools/static_validate.py) → `HEADLESS TESTED`
+(tools/run_validation.sh) → `RUNTIME TESTED` (editor/device) → `ANDROID
+VERIFIED` (real device). Never claim `ANDROID VERIFIED` without an actual
+Android run. Anything that fundamentally needs the editor or a device is
+`REQUIRES EXTERNAL DEVICE` — do not hand the user a desktop-only test as if
+they could run it. Run the automated gates (`tools/run_validation.sh`)
+after code changes.
+
 ## 12. When it's bigger than a local fix, or you're unsure — stop and raise it
 
 - If you discover an architecture problem, a missing extension point, or a
