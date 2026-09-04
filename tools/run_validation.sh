@@ -51,8 +51,13 @@ grep -E "RESULT:|checks:|FAIL:" "$ROOT/tools/.headless_test.log" | grep -vE "$NO
 if [ $tcode -ne 0 ]; then echo "  HEADLESS TESTS FAILED (exit $tcode)"; fail=1; else echo "  HEADLESS TESTS PASS"; fi
 echo
 
+echo "=================== 5. ANDROID EXPORT CONFIG =============="
+bash "$ROOT/tools/validate_android_export.sh" || fail=1
+echo
+
 echo "=================== SUMMARY ==============================="
-[ $fail -eq 0 ] && echo "ALL AUTOMATED VALIDATION PASSED (static + headless)." \
+[ $fail -eq 0 ] && echo "ALL AUTOMATED VALIDATION PASSED (static + headless + export config)." \
 	|| echo "VALIDATION FAILURES — see above."
-echo "Note: RUNTIME TESTED and ANDROID VERIFIED still require a device."
+echo "Note: an APK build needs the Android SDK; RUNTIME TESTED and ANDROID"
+echo "VERIFIED still require the editor or a physical device."
 exit $fail

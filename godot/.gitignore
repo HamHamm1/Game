@@ -7,3 +7,10 @@
 
 # OS cruft
 .DS_Store
+
+# Android build outputs / SDK / keystores (never commit)
+build/
+android/
+*.keystore
+*.apk
+*.aab

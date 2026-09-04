@@ -53,6 +53,25 @@ The headless logic suite covers, without a GPU/window:
   state, touch move vector — i.e. the touch→gameplay path is exercised
   even though no touch hardware is present.
 
+## Android export status
+
+Attempted in-container with Godot 4.3.stable headless (ANDROID_BUILD.md §0):
+
+- **Export preset** (`godot/export_presets.cfg`, arm64-v8a, non-gradle
+  debug) — **loads and is accepted** by Godot.
+- **Export templates** — downloaded + installed.
+- **Debug keystore** — generated (`tools/make_debug_keystore.sh`).
+- **`--export-debug "Android"`** stops at exactly one error: *"A valid
+  Android SDK path is required."* → **EXPORT CONFIG VALID**; the only
+  missing piece is the Android SDK, which **cannot be installed here**
+  (`dl.google.com` blocked by egress policy, HTTP 403).
+- **APK: NOT built** in this environment, and not claimed. Re-check the
+  classification any time with `tools/validate_android_export.sh`.
+
+So the Android export path is proven correct up to the SDK boundary; an
+actual APK requires a machine that can reach the Android SDK (see
+ANDROID_BUILD.md §1–§3), and running it requires a device.
+
 ## What is NOT yet validated — REQUIRES EXTERNAL DEVICE
 
 These need real input/physics/rendering or an actual phone; they are the
@@ -64,11 +83,13 @@ content of `godot/PHASE1_TEST_PLAN.md` and `godot/PHASE1B_TEST_PLAN.md`:
   pause menu and settings sliders visually, graphics presets' visual
   effect, mesh rendering (the headless dummy renderer can't render our
   `BoxMesh` blockout — a headless-only limitation, not a code bug).
-- **ANDROID VERIFIED** (physical device): touch joystick/look/buttons on a
-  real screen, safe-area/notch behavior, orientation changes, app
-  pause/resume autosave, and **all mobile performance** (FPS, memory,
-  thermal) — `UNVERIFIED` until measured on a mid-range Android device
-  (MOBILE_FIRST.md §24/§25).
+- **ANDROID VERIFIED** (physical device): install + launch, touch
+  joystick/look/buttons on a real screen, safe-area/notch behavior,
+  orientation changes, app pause/resume autosave, and **all mobile
+  performance** (FPS, memory, thermal) — the full A–T checklist in
+  `godot/ANDROID_VERIFICATION.md`. `UNVERIFIED` until run on a mid-range
+  Android device (MOBILE_FIRST.md §24/§25). **Phase 2 stays BLOCKED until
+  this gate passes.**
 
 ## Note on headless render noise
 

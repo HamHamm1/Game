@@ -5,8 +5,14 @@
 > deliberately deferred to "Phase 1." Read this to know *what to do next*;
 > read the other docs to know *how and why*.
 >
-> Status: **Phase 0 (Research) is complete.** Phase 1 has **not** started —
-> no gameplay code exists yet. This roadmap governs when it does.
+> Status update: **Phase 0 done; Phase 1 + Phase 1b (mobile foundation)
+> implemented and `STATICALLY VALIDATED` + `HEADLESS TESTED`** (VALIDATION.md).
+> **Phase 2 is BLOCKED** until the Phase 1/1b Android verification gate
+> (`godot/ANDROID_VERIFICATION.md`, checklist A–T) passes on a real device —
+> which requires an APK built where the Android SDK is reachable
+> (ANDROID_BUILD.md). No world-building until then. (The prose below is the
+> original Phase-0 plan and predates the mobile-first requirement; see
+> MOBILE_FIRST.md where they differ.)
 >
 > Rule of the whole plan (DESIGN.md / master-prompt §43):
 > **Small → Stable → Modular → Expandable → Beautiful.** Get the

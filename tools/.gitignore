@@ -2,3 +2,9 @@
 godot
 *.zip
 .headless_test.log
+android-sdk/
+android/
+*.keystore
+*.apk
+*.aab
+*.tpz

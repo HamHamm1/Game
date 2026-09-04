@@ -109,6 +109,20 @@ confirmed by its test. **Everything below is `IMPLEMENTED` only** — see
 > **Mobile performance is `UNVERIFIED`** until run on a real Android device
 > (M10). PC preview is not proof (MOBILE_FIRST.md §25).
 
+## Android build & verification
+
+The project is Android-first. Build/install steps and the reproducible
+export preset are in **`../ANDROID_BUILD.md`**; the on-device gate is
+**`ANDROID_VERIFICATION.md`** (checklist A–T). In this container the export
+config is validated up to the SDK boundary (preset + templates accepted),
+but **no APK is built** — the Android SDK can't be installed here
+(`dl.google.com` blocked). An actual APK needs a machine that can reach the
+Android SDK; `ANDROID VERIFIED` needs a real device. **Phase 2 is BLOCKED
+until the A–T gate passes.**
+
+Automated Android export-config check: `tools/validate_android_export.sh`
+(also runs as step 5 of `tools/run_validation.sh`).
+
 ## Structure (mirrors ARCHITECTURE.md §2, rooted here for now)
 
 ```

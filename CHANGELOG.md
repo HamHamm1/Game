@@ -13,6 +13,28 @@ Status labels follow AI_RULES.md Rule 11:
 
 ## [Unreleased]
 
+### Android export path — configured & validated to the SDK boundary
+
+Set up a reproducible Godot 4.3 Android debug export. **No APK was built
+here** — the Android SDK cannot be installed in this container
+(`dl.google.com` blocked by egress policy, HTTP 403), and that is reported,
+not pretended.
+
+- **Added** `godot/export_presets.cfg` (Android, arm64-v8a, non-gradle
+  debug; offline — no permissions; immersive; Mobile renderer),
+  `tools/make_debug_keystore.sh`, `tools/install_export_templates.sh`,
+  `tools/validate_android_export.sh` (classifies export outcome), and wired
+  the export-config check into `tools/run_validation.sh` (step 5).
+- **Did in-container:** JDK 21 + debug keystore ✅ · Godot 4.3 export
+  templates downloaded + installed ✅ · headless `--export-debug` **loads
+  the preset and accepts the templates**, stopping only at *"A valid
+  Android SDK path is required"* → classified **EXPORT CONFIG VALID**.
+- **Docs:** `ANDROID_BUILD.md` (prereqs, SDK/keystore setup, build/install
+  steps, container status, troubleshooting), `godot/ANDROID_VERIFICATION.md`
+  (on-device checklist A–T), VALIDATION.md/README updated.
+- **Phase 2 remains BLOCKED** until the A–T Android verification gate passes
+  on a real device.
+
 ### Automated validation — `STATICALLY VALIDATED` + `HEADLESS TESTED`
 
 Project is Android-first, developed without a desktop. Added an automated
