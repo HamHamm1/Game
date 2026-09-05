@@ -62,9 +62,16 @@ static func _build(key: StringName) -> StandardMaterial3D:
 		# --- Structural / trim / doors ---
 		&"wood_dark": return _mk(Color(0.30, 0.22, 0.16), 0.7)       # posts/beams/trunks/trim
 		&"wood_door": return _mk(Color(0.44, 0.30, 0.20), 0.7)
-		# --- Foliage ---
+		# --- Foliage / vegetation (M2.4-B) ---
 		&"foliage": return _mk(Color(0.26, 0.42, 0.24), 1.0)
 		&"foliage_dark": return _mk(Color(0.20, 0.34, 0.20), 1.0)
+		&"grass_blade": return _mk(Color(0.36, 0.50, 0.26), 0.95)
+		&"fern": return _mk(Color(0.24, 0.40, 0.24), 0.95)
+		&"shrub": return _mk(Color(0.28, 0.44, 0.26), 0.98)
+		&"flower_warm": return _mk(Color(0.86, 0.62, 0.30), 0.8)   # warm yellow bloom
+		&"flower_pale": return _mk(Color(0.85, 0.80, 0.86), 0.8)   # pale/white bloom
+		&"rock": return _mk(Color(0.46, 0.45, 0.43), 0.85)
+		&"moss": return _mk(Color(0.30, 0.40, 0.24), 1.0)
 		# --- Interiors ---
 		&"floor_wood": return _mk(Color(0.40, 0.30, 0.22), 0.85)
 		&"wall_interior": return _mk(Color(0.62, 0.56, 0.48), 0.9)

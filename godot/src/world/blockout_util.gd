@@ -72,8 +72,18 @@ static func visual_box_mat(size: Vector3, pos: Vector3, material: Material) -> M
 ## A simple blockout tree: a collidable trunk plus a mesh-only canopy.
 ## Trees are obstacles the player bumps into (trunk collides), but the
 ## canopy above head height is visual only.
-static func add_tree(parent: Node, pos: Vector3) -> void:
+static func add_tree(parent: Node, pos: Vector3, scale: float = 1.0,
+		canopy_end: float = 140.0) -> void:
+	var s := maxf(scale, 0.1)
 	parent.add_child(static_box_mat(
-		Vector3(0.4, 3.0, 0.4), pos + Vector3(0.0, 1.5, 0.0), MaterialLibrary.get_mat(&"wood_dark")))
-	parent.add_child(visual_box_mat(
-		Vector3(2.2, 2.2, 2.2), pos + Vector3(0.0, 3.8, 0.0), MaterialLibrary.get_mat(&"foliage")))
+		Vector3(0.4 * s, 3.0 * s, 0.4 * s), pos + Vector3(0.0, 1.5 * s, 0.0),
+		MaterialLibrary.get_mat(&"wood_dark")))
+	# Canopy is visual-only; give it a visibility_range so distant canopies cull
+	# (M2.4-B LOD). Trunk stays always-present for its collision.
+	var canopy := visual_box_mat(
+		Vector3(2.2 * s, 2.2 * s, 2.2 * s), pos + Vector3(0.0, 3.8 * s, 0.0),
+		MaterialLibrary.get_mat(&"foliage"))
+	canopy.visibility_range_end = canopy_end
+	canopy.visibility_range_end_margin = canopy_end * 0.12
+	canopy.visibility_range_fade_mode = GeometryInstance3D.VISIBILITY_RANGE_FADE_SELF
+	parent.add_child(canopy)

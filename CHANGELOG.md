@@ -13,6 +13,47 @@ Status labels follow AI_RULES.md Rule 11:
 
 ## [Unreleased]
 
+### Phase 2 M2.4-B — Vegetation (instanced, composition-driven)
+
+Second step of the M2.4 art pass (`godot/M2.4_ART_DESIGN.md`). Adds composed
+vegetation — used as **composition** (framing water/paths/buildings, the
+village↔forest transition, depth, "stop and look" corners), **not** blanket
+greening. GPU-instanced, deterministic, LOD-culled, density-gated. **Not**
+ANDROID VERIFIED. No terrain/hero-buildings/lights/interiors (later M2.4).
+
+- **NEW `godot/src/world/vegetation_kit.gd`** (`VegetationKit`) — cached,
+  shared, low-poly, **texture-free** species meshes (grass blade, fern, shrub,
+  flower, rock) as cheap primitives; owns mesh data only.
+- **NEW `godot/src/world/vegetation_field.gd`** (`VegetationField`) — builds a
+  `MultiMeshInstance3D` over a zone with **deterministic jittered-grid**
+  placement (seeded — between uniform and random), density from
+  `GraphicsManager.vegetation` (`target_count`), a shared M2.4-A material, and
+  `visibility_range` LOD with a soft fade. No collision, no wind, reads
+  GraphicsManager only.
+- **`godot/src/world/material_library.gd`** — added vegetation material keys
+  (grass_blade, fern, shrub, flower_warm, flower_pale, rock, moss).
+- **`godot/src/world/blockout_util.gd`** — `add_tree` now takes a scale and
+  gives the canopy a `visibility_range` LOD (trunk keeps its collision).
+- **`godot/src/world/regions/blockout_town.gd`** — `_build_vegetation()`
+  places composed fields: forest understory (village↔forest transition),
+  river banks and pond surround (frame water), the park (inviting blooms),
+  a west green approach, small path-framing clusters clear of the street and
+  doorways, and a few varied trees framing the bathhouse hero. Forest-edge
+  trees now vary in scale. The street corridor, doorways, spawn, entry/exit
+  points, door, and pickups are all kept clear/unchanged.
+- **`godot/tests/headless_test.gd`** — +vegetation suite (density scaling;
+  shared species mesh; deterministic count + transform; LOD range set; shared
+  material identity; LOW thins vs HIGH).
+
+Untouched: M2.2 lighting, M2.3 weather, player movement, location entry/exit
+contracts, save format, interaction systems, `project.godot`. No vegetation
+collision, no wind, no dynamic lights.
+
+Validated: `tools/run_validation.sh` → static 82/82, headless import clean,
+headless boot clean, headless suite **115/115**, Android export config valid.
+NOT ANDROID VERIFIED — whether the composition reads as real Japanese
+countryside requires the on-device test.
+
 ### Phase 2 M2.4-A — Shared material library (texture-free)
 
 First step of the M2.4 art pass (`godot/M2.4_ART_DESIGN.md`, added here).

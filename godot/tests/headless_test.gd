@@ -50,6 +50,7 @@ func _run() -> void:
 	_test_lighting_controller()
 	_test_weather()
 	_test_materials()
+	_test_vegetation()
 
 func _test_item_registry() -> void:
 	_check(ItemRegistry.has_definition(&"fish"), "ItemRegistry has fish")
@@ -369,3 +370,37 @@ func _test_materials() -> void:
 	var c3 := MaterialLibrary.tuned_color(Color(0.10, 0.20, 0.30))
 	_check(c1 != c3, "tuned_color distinguishes colours")
 	_check(absf(c1.roughness - 0.9) < 0.001 and c1.metallic == 0.0, "tuned_color applies tuning")
+
+## M2.4-B — vegetation: density scaling, deterministic placement, LOD, shared
+## meshes/materials, ownership. On-device is the real gate for composition.
+func _test_vegetation() -> void:
+	# Density math scales with the vegetation intent.
+	_check(VegetationField.target_count(100, 1.0) == 100, "veg count full at intent 1.0")
+	_check(VegetationField.target_count(100, 0.4) == 40, "veg count scaled at LOW intent")
+	_check(VegetationField.target_count(100, 0.0) == 0, "veg count zero at intent 0")
+
+	# Shared species mesh (one Mesh reused across fields).
+	_check(VegetationKit.mesh(&"grass") == VegetationKit.mesh(&"grass"), "veg mesh shared per species")
+
+	# Deterministic placement: same params -> identical count and transforms.
+	Settings.graphics_preset = "HIGH"
+	var a := VegetationField.scatter(&"grass", &"grass_blade", Vector3(0, 0, 0), 5.0, 5.0, 80, 4242, 0.2, 0.8, 1.2, 45.0)
+	var b := VegetationField.scatter(&"grass", &"grass_blade", Vector3(0, 0, 0), 5.0, 5.0, 80, 4242, 0.2, 0.8, 1.2, 45.0)
+	_check(a.multimesh.instance_count == b.multimesh.instance_count, "veg placement deterministic (count)")
+	_check(a.multimesh.instance_count > 0, "veg field populated at HIGH")
+	_check(a.multimesh.get_instance_transform(0).origin.is_equal_approx(
+		b.multimesh.get_instance_transform(0).origin), "veg placement deterministic (transform)")
+
+	# LOD range set; material is the shared library instance.
+	_check(a.visibility_range_end > 0.0, "veg field has an LOD cull range")
+	_check(a.material_override == MaterialLibrary.get_mat(&"grass_blade"), "veg field uses the shared material")
+
+	# Density responds to preset: LOW yields fewer instances than HIGH.
+	Settings.graphics_preset = "LOW"
+	var low := VegetationField.scatter(&"grass", &"grass_blade", Vector3(0, 0, 0), 5.0, 5.0, 80, 4242, 0.2, 0.8, 1.2, 45.0)
+	_check(low.multimesh.instance_count < a.multimesh.instance_count, "LOW preset thins vegetation")
+
+	a.free()
+	b.free()
+	low.free()
+	Settings.graphics_preset = "MEDIUM"
