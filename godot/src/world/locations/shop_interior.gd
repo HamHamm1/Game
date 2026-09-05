@@ -3,6 +3,9 @@ extends Node3D
 ## with a shop counter, a couple of shelf blockouts, a PlayerSpawn, and a
 ## LocationExitPoint. No shop/economy system yet (Phase 4).
 
+## Lighting category tag read by RegionLightingController (M2.2).
+@export var lighting_category: StringName = &"commercial"
+
 func _ready() -> void:
 	var wall := Color(0.54, 0.50, 0.44)
 	var floor_col := Color(0.30, 0.28, 0.24)

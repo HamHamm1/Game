@@ -13,6 +13,60 @@ Status labels follow AI_RULES.md Rule 11:
 
 ## [Unreleased]
 
+### Phase 2 M2.2 — Time-of-day + lighting system
+
+Implemented the time-of-day and location lighting system per
+`godot/M2.2_LIGHTING_DESIGN.md` (the canonical M2.2 reference, added in this
+commit). Expresses the locked creative direction: a beautiful, peaceful
+Japanese-village look that is readable and inviting by default — **not** a
+"day = safe / night = horror" switch. **No weather (that's M2.3), no
+particles, no new art/materials, no NPCs/cooking/dialogue, no save-format or
+`project.godot` change.** `IMPLEMENTED · STATICALLY VALIDATED · HEADLESS
+TESTED` — **not** ANDROID VERIFIED (beauty/atmosphere require the developer's
+on-device test).
+
+- **NEW `godot/src/world/lighting_profile.gd`** (`class_name LightingProfile`)
+  — typed value object + pure resolution logic. A continuous time-of-day
+  curve from a keyframe table (deep-night → dawn → morning → **midday** →
+  late-afternoon → **evening/golden hero** → dusk → night) interpolated with
+  midnight wraparound, so the day reads smoothly with no per-block switch. A
+  separate warm **interior baseline** (its own higher readability floor,
+  modulated subtly by the outside time). Restrained **category modifiers**
+  (residential/commercial/natural/water/landmark/threshold/interior — tiny
+  warmth + ≤4% ambient nudges, character not a color grade). A sparse local
+  **mystery modifier** (small cool shift + ≤10% dim, never red/horror, never
+  map-wide). Readability floors (`EXTERIOR_MIN_AMBIENT`/`INTERIOR_MIN_AMBIENT`)
+  guarantee night is navigable and interiors are never dark.
+- **NEW `godot/src/world/region_lighting_controller.gd`**
+  (`class_name RegionLightingController`) — one controller for the whole
+  game's single environment. Subscribes to `minute_passed`,
+  `region_loaded`, `location_entered/exited`, `game_loaded`; resolves a
+  profile for the current minute + context and writes **only** the mood
+  properties (sun rotation/energy/color, ambient color/energy, background +
+  fog tint). Event-driven, no `_process`. Reads each scene's optional
+  `lighting_category` / `lighting_mystery` data tags.
+- **`godot/src/world/world_root.gd`** — instantiates and wires the controller
+  (passing the existing `_sun`, `_environment`, and the two loaders) before
+  the first region loads. `_apply_graphics` still owns the GraphicsManager
+  cost knobs (shadows/fog-density/glow/ssao/scale/msaa/view-distance); the
+  two write **disjoint** properties, so LOW stays LOW.
+- **Scene data tags** — `@export var lighting_category` added (data only, no
+  geometry change): `blockout_town`=residential, `blockout_interior`
+  (player home)=residential, `restaurant`/`shop`/`workshop`=commercial,
+  `bathhouse`=landmark.
+- **`godot/tests/headless_test.gd`** — +2 suites (profile invariants +
+  controller). New checks assert: night ambient ≥ floor with a low non-zero
+  sun; evening warmer than midday; continuity across a keyframe boundary;
+  interior warmer/readable and independent of exterior; category nudges ≤10%
+  and above floor; mystery dims slightly + cools (not red) + stays above
+  floor; and the controller leaves **every** GraphicsManager-owned property
+  untouched.
+- **Save/load:** unchanged — lighting is derived from `TimeManager`
+  (already saved) + context; no lighting state is persisted.
+
+Validated: `tools/run_validation.sh` → static 75/75, headless import clean,
+headless boot clean, headless suite **77/77**, Android export config valid.
+
 ### M2.0 — Canonical art-direction reconciliation (documentation only)
 
 Corrected the canonical creative/visual direction after the M2.1 on-device

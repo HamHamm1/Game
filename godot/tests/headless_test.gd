@@ -46,6 +46,8 @@ func _run() -> void:
 	_test_save_roundtrip()
 	_test_interactable_verbs()
 	_test_game_input()
+	_test_lighting_profiles()
+	_test_lighting_controller()
 
 func _test_item_registry() -> void:
 	_check(ItemRegistry.has_definition(&"fish"), "ItemRegistry has fish")
@@ -156,3 +158,98 @@ func _test_game_input() -> void:
 	_check(GameInput.get_move_vector().y < -0.5, "touch move forward")
 	GameInput.set_touch_move(Vector2.ZERO)
 	_check(GameInput.get_move_vector().length() < 0.01, "touch move cleared")
+
+## M2.2 — the pure lighting-profile logic (no GPU needed). Proves resolution
+## and the readability/restraint invariants; it CANNOT prove beauty — that is
+## the on-device test (M2.2_LIGHTING_DESIGN.md §0/§13).
+func _test_lighting_profiles() -> void:
+	var ext_floor := LightingProfile.EXTERIOR_MIN_AMBIENT
+	var int_floor := LightingProfile.INTERIOR_MIN_AMBIENT
+
+	# Night is never black, but the sun is a low non-zero moon fill.
+	var night := LightingProfile.exterior_at(1350)
+	_check(night.ambient_energy >= ext_floor, "exterior night ambient >= floor")
+	_check(night.sun_energy > 0.0 and night.sun_energy < 0.4, "night sun is a low non-zero fill")
+	var deep := LightingProfile.exterior_at(150)
+	_check(deep.ambient_energy >= ext_floor, "deep-night ambient >= floor")
+
+	# Evening reads warmer than midday (warmth = red - blue in the sun color).
+	var evening := LightingProfile.exterior_at(1110)
+	var midday := LightingProfile.exterior_at(720)
+	_check((evening.sun_color.r - evening.sun_color.b) > (midday.sun_color.r - midday.sun_color.b),
+		"evening sun warmer than midday")
+
+	# Continuity across a keyframe boundary (no abrupt jump).
+	var a := LightingProfile.exterior_at(715)
+	var b := LightingProfile.exterior_at(725)
+	_check(absf(a.ambient_energy - b.ambient_energy) < 0.05, "exterior lighting continuous near midday")
+
+	# Interior baseline: readable and warmer than the exterior night.
+	var inight := LightingProfile.interior_at(1350)
+	_check(inight.ambient_energy >= int_floor, "interior night ambient >= interior floor")
+	_check(inight.ambient_color.r > night.ambient_color.r, "interior warmer than exterior at night")
+	var iday := LightingProfile.interior_at(720)
+	_check(iday.ambient_energy >= int_floor, "interior day ambient >= interior floor")
+
+	# Category modifiers are restrained (character, not a color grade): the
+	# ambient nudge stays within ~10% and never drops below the floor.
+	var base_day := LightingProfile.resolve(720, false, &"", 0.0)
+	for cat in ["residential", "commercial", "natural", "water", "landmark", "threshold", "interior"]:
+		var r := LightingProfile.resolve(720, false, StringName(cat), 0.0)
+		var delta := absf(r.ambient_energy - base_day.ambient_energy) / base_day.ambient_energy
+		_check(delta <= 0.10, "category '%s' ambient nudge <= 10%%" % cat)
+		_check(r.ambient_energy >= ext_floor, "category '%s' still >= floor" % cat)
+
+	# Mystery is a sparse local modifier: slightly cooler + slightly dimmer,
+	# but still clamped above the readability floor. Never darkens to black.
+	var m0 := LightingProfile.resolve(720, false, &"", 0.0)
+	var m1 := LightingProfile.resolve(720, false, &"", 1.0)
+	_check(m1.ambient_energy <= m0.ambient_energy, "mystery dims slightly")
+	_check(m1.ambient_energy >= ext_floor, "mystery still >= floor")
+	_check((m1.ambient_color.b - m1.ambient_color.r) > (m0.ambient_color.b - m0.ambient_color.r),
+		"mystery shifts cooler, not warmer/red")
+
+## M2.2 — the controller applies the resolved profile to a sun + environment
+## and, crucially, leaves every GraphicsManager-owned property untouched
+## (M2.2_LIGHTING_DESIGN.md §7).
+func _test_lighting_controller() -> void:
+	var sun := DirectionalLight3D.new()
+	var env := Environment.new()
+	var ctrl := RegionLightingController.new()
+	ctrl.setup(sun, env, null, null)
+	add_child(ctrl)  # _ready connects signals + applies once
+
+	# Sentinels on the GraphicsManager-owned properties — must survive apply.
+	sun.shadow_enabled = true
+	sun.directional_shadow_max_distance = 42.0
+	env.fog_enabled = true
+	env.fog_density = 0.5
+	env.glow_enabled = true
+	env.ssao_enabled = true
+
+	# Exterior night: readable ambient, low non-zero sun.
+	ctrl._interior = false
+	ctrl._category = &""
+	ctrl._mystery = 0.0
+	ctrl.apply_for_minute(1350)
+	var ext_energy := env.ambient_light_energy
+	_check(ext_energy >= LightingProfile.EXTERIOR_MIN_AMBIENT, "controller exterior night readable")
+	_check(sun.light_energy > 0.0, "controller sets a non-zero sun fill")
+
+	# Interior context uses its own, higher floor — independent of exterior.
+	ctrl._interior = true
+	ctrl.apply_for_minute(1350)
+	_check(env.ambient_light_energy >= LightingProfile.INTERIOR_MIN_AMBIENT,
+		"controller interior night warm/readable")
+	_check(env.ambient_light_energy > ext_energy, "interior brighter than exterior night")
+
+	# Graphics-owned properties were NOT touched by the controller.
+	_check(sun.shadow_enabled == true, "controller leaves shadow_enabled alone")
+	_check(absf(sun.directional_shadow_max_distance - 42.0) < 0.01, "controller leaves shadow distance alone")
+	_check(env.fog_enabled == true, "controller leaves fog_enabled alone")
+	_check(absf(env.fog_density - 0.5) < 0.01, "controller leaves fog_density alone")
+	_check(env.glow_enabled == true, "controller leaves glow_enabled alone")
+	_check(env.ssao_enabled == true, "controller leaves ssao_enabled alone")
+
+	ctrl.queue_free()
+	sun.free()

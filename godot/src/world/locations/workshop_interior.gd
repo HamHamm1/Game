@@ -3,6 +3,9 @@ extends Node3D
 ## working room with a workbench, a tool rack, a PlayerSpawn, and a
 ## LocationExitPoint. No crafting system yet.
 
+## Lighting category tag read by RegionLightingController (M2.2).
+@export var lighting_category: StringName = &"commercial"
+
 func _ready() -> void:
 	var wall := Color(0.48, 0.44, 0.40)
 	var floor_col := Color(0.28, 0.26, 0.24)

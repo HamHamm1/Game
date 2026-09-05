@@ -16,6 +16,7 @@ var pause_menu: PauseMenu
 
 var _sun: DirectionalLight3D
 var _environment: Environment
+var _lighting: RegionLightingController
 var _in_location: bool = false
 var _return_position: Vector3 = Vector3.ZERO
 
@@ -57,6 +58,15 @@ func _ready() -> void:
 	WorldEvents.location_transition_requested.connect(_on_enter_location)
 	WorldEvents.location_exit_requested.connect(_on_exit_location)
 
+	# Time-of-day + location lighting (M2.2). Drives the single sun/environment
+	# from the game clock; writes only mood props (GraphicsManager still owns
+	# the cost knobs via _apply_graphics). Created before the region loads so it
+	# catches the first region_loaded signal.
+	_lighting = RegionLightingController.new()
+	_lighting.name = "RegionLightingController"
+	_lighting.setup(_sun, _environment, region_loader, location_loader)
+	add_child(_lighting)
+
 	var region := region_loader.load_region(START_REGION)
 	_place_player_at_spawn(region, "PlayerSpawn")
 
@@ -89,8 +99,10 @@ func _place_player_at_spawn(root: Node3D, spawn_name: String) -> void:
 		player.teleport_to((marker as Node3D).global_position)
 
 ## One lighting environment + sun for the whole game (avoids multiple
-## WorldEnvironment conflicts). Real time-of-day × location lighting
-## profiles arrive in Phase 2 (ART_DIRECTION.md §3).
+## WorldEnvironment conflicts). The static values set here are just the boot
+## defaults; RegionLightingController (M2.2) then drives them from the game
+## clock and location context (M2.2_LIGHTING_DESIGN.md). GraphicsManager still
+## owns the cost knobs via _apply_graphics — the two write disjoint properties.
 func _setup_environment() -> void:
 	var world_env := WorldEnvironment.new()
 	world_env.name = "WorldEnvironment"

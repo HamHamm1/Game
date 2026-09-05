@@ -26,6 +26,10 @@ const SHOP_INTERIOR       := "res://src/world/locations/shop_interior.tscn"
 const WORKSHOP_INTERIOR   := "res://src/world/locations/workshop_interior.tscn"
 const BATHHOUSE_INTERIOR  := "res://src/world/locations/bathhouse_interior.tscn"
 
+## Lighting category tag read by RegionLightingController (M2.2). The town is
+## a residential village street; category modifiers are subtle (design §6).
+@export var lighting_category: StringName = &"residential"
+
 func _ready() -> void:
 	_build_ground()
 	_build_street()

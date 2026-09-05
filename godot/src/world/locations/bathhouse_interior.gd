@@ -5,6 +5,10 @@ extends Node3D
 ## PlayerSpawn/LocationExitPoint. No water surface art, steam, or lighting
 ## profile yet (Phase 2 M2.2/M2.4 and Phase 4 atmosphere).
 
+## Lighting category tag read by RegionLightingController (M2.2). The hero
+## landmark — a subtly warmer, inviting interior.
+@export var lighting_category: StringName = &"landmark"
+
 func _ready() -> void:
 	var wall := Color(0.60, 0.48, 0.36)
 	var floor_col := Color(0.34, 0.28, 0.22)

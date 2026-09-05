@@ -5,6 +5,9 @@ extends Node3D
 ## counter, a PlayerSpawn, and a LocationExitPoint back outside. No cooking
 ## system, NPCs, or menu — those are Phase 3+/4.
 
+## Lighting category tag read by RegionLightingController (M2.2).
+@export var lighting_category: StringName = &"commercial"
+
 func _ready() -> void:
 	var wall := Color(0.58, 0.48, 0.38)
 	var floor_col := Color(0.36, 0.30, 0.24)

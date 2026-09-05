@@ -3,6 +3,10 @@ extends Node3D
 ## A small enclosed room with a PlayerSpawn, a pickup, and a LocationExitPoint
 ## to return outside. Instantiated at LocationLoader.OFFSET by the loader.
 
+## Lighting category tag read by RegionLightingController (M2.2). Also the
+## player home — a lived-in residential interior.
+@export var lighting_category: StringName = &"residential"
+
 func _ready() -> void:
 	var wall := Color(0.5, 0.47, 0.44)
 	# Floor.
