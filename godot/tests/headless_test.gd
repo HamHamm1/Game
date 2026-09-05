@@ -49,6 +49,7 @@ func _run() -> void:
 	_test_lighting_profiles()
 	_test_lighting_controller()
 	_test_weather()
+	_test_materials()
 
 func _test_item_registry() -> void:
 	_check(ItemRegistry.has_definition(&"fish"), "ItemRegistry has fish")
@@ -340,3 +341,31 @@ func _test_weather() -> void:
 	sun.free()
 
 	WeatherManager.load_save_data(wsave)  # restore
+
+## M2.4-A — the shared material library: sharing/identity, tuning, and the
+## arbitrary-colour cache. On-device is the real gate for whether the tuned
+## materials + M2.2 lighting make the greybox beautiful.
+func _test_materials() -> void:
+	var a := MaterialLibrary.get_mat(&"wall_wood_warm")
+	var b := MaterialLibrary.get_mat(&"wall_wood_warm")
+	_check(a == b, "material library shares one instance per key")
+	_check(a != null and a is StandardMaterial3D, "named material is a StandardMaterial3D")
+
+	var water := MaterialLibrary.get_mat(&"water")
+	var ground := MaterialLibrary.get_mat(&"ground")
+	_check(water.roughness < ground.roughness, "water glossier than ground")
+	_check(water.roughness < 0.3, "water roughness tuned low for sun sparkle")
+
+	var wood := MaterialLibrary.get_mat(&"wood_dark")
+	_check(wood.metallic == 0.0, "village wood is non-metallic")
+
+	var fallback := MaterialLibrary.get_mat(&"does_not_exist")
+	_check(fallback != null and fallback is StandardMaterial3D, "unknown key returns a safe fallback")
+
+	# Arbitrary-colour cache: shared per colour, distinct across colours, tuned.
+	var c1 := MaterialLibrary.tuned_color(Color(0.40, 0.32, 0.24))
+	var c2 := MaterialLibrary.tuned_color(Color(0.40, 0.32, 0.24))
+	_check(c1 == c2, "tuned_color shares one instance per colour")
+	var c3 := MaterialLibrary.tuned_color(Color(0.10, 0.20, 0.30))
+	_check(c1 != c3, "tuned_color distinguishes colours")
+	_check(absf(c1.roughness - 0.9) < 0.001 and c1.metallic == 0.0, "tuned_color applies tuning")

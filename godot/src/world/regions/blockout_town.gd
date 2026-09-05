@@ -39,28 +39,28 @@ func _ready() -> void:
 
 	# 2. Player home (enterable, west side).
 	_build_house(Vector3(-14.0, 0.0, 15.0),
-		Color(0.72, 0.62, 0.48), Color(0.55, 0.42, 0.32),
+		&"wall_wood_warm", &"roof_warm",
 		HOME_INTERIOR, "Enter home")
 
 	# 3. Restaurant (enterable, east side).
 	_build_house(Vector3(14.0, 0.0, 15.0),
-		Color(0.70, 0.42, 0.34), Color(0.48, 0.32, 0.26),
+		&"wall_red", &"roof_dark",
 		RESTAURANT_INTERIOR, "Enter restaurant")
 
 	# 4. Shop (enterable, west side).
 	_build_house(Vector3(-14.0, 0.0, 0.0),
-		Color(0.58, 0.60, 0.50), Color(0.44, 0.42, 0.30),
+		&"wall_wood_sage", &"roof_warm",
 		SHOP_INTERIOR, "Enter shop")
 
 	# 10. Workshop (enterable, east side).
 	_build_house(Vector3(14.0, 0.0, -2.0),
-		Color(0.52, 0.50, 0.46), Color(0.38, 0.36, 0.32),
+		&"wall_wood_grey", &"roof_dark",
 		WORKSHOP_INTERIOR, "Enter workshop")
 
 	# A couple of non-enterable NPC houses to make the residential street
 	# feel populated — visual blockouts only, no interiors yet.
-	_build_blocked_house(Vector3(-14.0, 0.0, -14.0), Color(0.66, 0.56, 0.44))
-	_build_blocked_house(Vector3(14.0, 0.0, -14.0), Color(0.60, 0.54, 0.44))
+	_build_blocked_house(Vector3(-14.0, 0.0, -14.0), &"wall_wood_warm")
+	_build_blocked_house(Vector3(14.0, 0.0, -14.0), &"wall_wood_sage")
 
 	# 7. Alley — a narrow walled corridor between the workshop area and the
 	#    blocked NPC house on the east side. Two low walls implying an alley.
@@ -93,15 +93,15 @@ func _build_ground() -> void:
 	# 100×100 walkable ground plane, deliberately larger than the built area
 	# so the player can wander to the town's edges without hitting an
 	# invisible wall in blockout play.
-	add_child(BlockoutUtil.static_box(
-		Vector3(100.0, 0.4, 100.0), Vector3(0.0, -0.2, 0.0), Color(0.44, 0.48, 0.40)))
+	add_child(BlockoutUtil.static_box_mat(
+		Vector3(100.0, 0.4, 100.0), Vector3(0.0, -0.2, 0.0), MaterialLibrary.get_mat(&"ground")))
 
 func _build_street() -> void:
 	# 1. A paved stripe down the middle of the town — visual only (the
 	#    ground already carries collision). Runs north-south from the
 	#    bathhouse to the south spawn.
-	add_child(BlockoutUtil.visual_box(
-		Vector3(6.0, 0.02, 55.0), Vector3(0.0, 0.01, -3.0), Color(0.52, 0.50, 0.46)))
+	add_child(BlockoutUtil.visual_box_mat(
+		Vector3(6.0, 0.02, 55.0), Vector3(0.0, 0.01, -3.0), MaterialLibrary.get_mat(&"path")))
 
 # --- Buildings --------------------------------------------------------------
 
@@ -109,22 +109,24 @@ func _build_street() -> void:
 ## only, above head), a coloured door slab that carries a LocationEntryPoint
 ## into the given interior scene. Footprint ≈ 6×5.
 func _build_house(center: Vector3,
-		wall_col: Color, roof_col: Color,
+		wall_key: StringName, roof_key: StringName,
 		interior: String, prompt: String) -> void:
+	var wall := MaterialLibrary.get_mat(wall_key)
+	var roof := MaterialLibrary.get_mat(roof_key)
 	# Back and side walls.
-	add_child(BlockoutUtil.static_box(Vector3(6.0, 3.0, 0.3), center + Vector3(0.0, 1.5, -2.5), wall_col))
-	add_child(BlockoutUtil.static_box(Vector3(0.3, 3.0, 5.0), center + Vector3(-3.0, 1.5, 0.0), wall_col))
-	add_child(BlockoutUtil.static_box(Vector3(0.3, 3.0, 5.0), center + Vector3(3.0, 1.5, 0.0), wall_col))
+	add_child(BlockoutUtil.static_box_mat(Vector3(6.0, 3.0, 0.3), center + Vector3(0.0, 1.5, -2.5), wall))
+	add_child(BlockoutUtil.static_box_mat(Vector3(0.3, 3.0, 5.0), center + Vector3(-3.0, 1.5, 0.0), wall))
+	add_child(BlockoutUtil.static_box_mat(Vector3(0.3, 3.0, 5.0), center + Vector3(3.0, 1.5, 0.0), wall))
 	# Front wall in two pieces, leaving a doorway gap in the middle.
-	add_child(BlockoutUtil.static_box(Vector3(2.4, 3.0, 0.3), center + Vector3(-1.8, 1.5, 2.5), wall_col))
-	add_child(BlockoutUtil.static_box(Vector3(2.4, 3.0, 0.3), center + Vector3(1.8, 1.5, 2.5), wall_col))
+	add_child(BlockoutUtil.static_box_mat(Vector3(2.4, 3.0, 0.3), center + Vector3(-1.8, 1.5, 2.5), wall))
+	add_child(BlockoutUtil.static_box_mat(Vector3(2.4, 3.0, 0.3), center + Vector3(1.8, 1.5, 2.5), wall))
 	# Roof (visual only, above head — no collision needed).
-	add_child(BlockoutUtil.visual_box(
-		Vector3(6.3, 0.3, 5.3), center + Vector3(0.0, 3.15, 0.0), roof_col))
+	add_child(BlockoutUtil.visual_box_mat(
+		Vector3(6.3, 0.3, 5.3), center + Vector3(0.0, 3.15, 0.0), roof))
 
 	# Door slab as the interactable that loads the interior.
-	var entry_body := BlockoutUtil.static_box(
-		Vector3(1.2, 2.4, 0.2), center + Vector3(0.0, 1.2, 2.5), Color(0.5, 0.35, 0.2))
+	var entry_body := BlockoutUtil.static_box_mat(
+		Vector3(1.2, 2.4, 0.2), center + Vector3(0.0, 1.2, 2.5), MaterialLibrary.get_mat(&"wood_door"))
 	add_child(entry_body)
 	var entry := LocationEntryPoint.new()
 	entry.location_scene = interior
@@ -134,40 +136,41 @@ func _build_house(center: Vector3,
 
 ## A non-enterable house — same footprint, no doorway gap, no entry point.
 ## Visual/collision blocker to make the street feel populated.
-func _build_blocked_house(center: Vector3, wall_col: Color) -> void:
+func _build_blocked_house(center: Vector3, wall_key: StringName) -> void:
+	var wall := MaterialLibrary.get_mat(wall_key)
 	# Solid four walls.
-	add_child(BlockoutUtil.static_box(Vector3(6.0, 3.0, 0.3), center + Vector3(0.0, 1.5, -2.5), wall_col))
-	add_child(BlockoutUtil.static_box(Vector3(6.0, 3.0, 0.3), center + Vector3(0.0, 1.5, 2.5), wall_col))
-	add_child(BlockoutUtil.static_box(Vector3(0.3, 3.0, 5.0), center + Vector3(-3.0, 1.5, 0.0), wall_col))
-	add_child(BlockoutUtil.static_box(Vector3(0.3, 3.0, 5.0), center + Vector3(3.0, 1.5, 0.0), wall_col))
+	add_child(BlockoutUtil.static_box_mat(Vector3(6.0, 3.0, 0.3), center + Vector3(0.0, 1.5, -2.5), wall))
+	add_child(BlockoutUtil.static_box_mat(Vector3(6.0, 3.0, 0.3), center + Vector3(0.0, 1.5, 2.5), wall))
+	add_child(BlockoutUtil.static_box_mat(Vector3(0.3, 3.0, 5.0), center + Vector3(-3.0, 1.5, 0.0), wall))
+	add_child(BlockoutUtil.static_box_mat(Vector3(0.3, 3.0, 5.0), center + Vector3(3.0, 1.5, 0.0), wall))
 	# Roof (visual only).
-	add_child(BlockoutUtil.visual_box(
-		Vector3(6.3, 0.3, 5.3), center + Vector3(0.0, 3.15, 0.0), Color(0.42, 0.34, 0.28)))
+	add_child(BlockoutUtil.visual_box_mat(
+		Vector3(6.3, 0.3, 5.3), center + Vector3(0.0, 3.15, 0.0), MaterialLibrary.get_mat(&"roof_warm")))
 
 ## 6. Bathhouse landmark — larger footprint (~14×12), taller (~5m), stepped
 ##    roof so it reads as the hero building from a distance. Enterable via a
 ##    central doorway.
 func _build_bathhouse(center: Vector3) -> void:
-	var wall := Color(0.62, 0.44, 0.32)
-	var roof := Color(0.36, 0.24, 0.20)
+	var wall := MaterialLibrary.get_mat(&"wall_wood_warm")
+	var roof := MaterialLibrary.get_mat(&"roof_warm")
 	# Back and side walls.
-	add_child(BlockoutUtil.static_box(Vector3(14.0, 5.0, 0.3), center + Vector3(0.0, 2.5, -6.0), wall))
-	add_child(BlockoutUtil.static_box(Vector3(0.3, 5.0, 12.0), center + Vector3(-7.0, 2.5, 0.0), wall))
-	add_child(BlockoutUtil.static_box(Vector3(0.3, 5.0, 12.0), center + Vector3(7.0, 2.5, 0.0), wall))
+	add_child(BlockoutUtil.static_box_mat(Vector3(14.0, 5.0, 0.3), center + Vector3(0.0, 2.5, -6.0), wall))
+	add_child(BlockoutUtil.static_box_mat(Vector3(0.3, 5.0, 12.0), center + Vector3(-7.0, 2.5, 0.0), wall))
+	add_child(BlockoutUtil.static_box_mat(Vector3(0.3, 5.0, 12.0), center + Vector3(7.0, 2.5, 0.0), wall))
 	# Front wall in two pieces around a central doorway.
-	add_child(BlockoutUtil.static_box(Vector3(6.0, 5.0, 0.3), center + Vector3(-4.0, 2.5, 6.0), wall))
-	add_child(BlockoutUtil.static_box(Vector3(6.0, 5.0, 0.3), center + Vector3(4.0, 2.5, 6.0), wall))
+	add_child(BlockoutUtil.static_box_mat(Vector3(6.0, 5.0, 0.3), center + Vector3(-4.0, 2.5, 6.0), wall))
+	add_child(BlockoutUtil.static_box_mat(Vector3(6.0, 5.0, 0.3), center + Vector3(4.0, 2.5, 6.0), wall))
 	# Stepped roof (three visual tiers, no collision above head).
-	add_child(BlockoutUtil.visual_box(
+	add_child(BlockoutUtil.visual_box_mat(
 		Vector3(14.4, 0.3, 12.4), center + Vector3(0.0, 5.15, 0.0), roof))
-	add_child(BlockoutUtil.visual_box(
+	add_child(BlockoutUtil.visual_box_mat(
 		Vector3(10.0, 0.6, 8.0), center + Vector3(0.0, 5.6, 0.0), roof))
-	add_child(BlockoutUtil.visual_box(
+	add_child(BlockoutUtil.visual_box_mat(
 		Vector3(5.0, 0.8, 4.0), center + Vector3(0.0, 6.3, 0.0), roof))
 
 	# Door slab.
-	var entry_body := BlockoutUtil.static_box(
-		Vector3(1.6, 2.8, 0.2), center + Vector3(0.0, 1.4, 6.0), Color(0.5, 0.30, 0.20))
+	var entry_body := BlockoutUtil.static_box_mat(
+		Vector3(1.6, 2.8, 0.2), center + Vector3(0.0, 1.4, 6.0), MaterialLibrary.get_mat(&"wood_door"))
 	add_child(entry_body)
 	var entry := LocationEntryPoint.new()
 	entry.location_scene = BATHHOUSE_INTERIOR
@@ -180,8 +183,8 @@ func _build_bathhouse(center: Vector3) -> void:
 func _build_park(center: Vector3) -> void:
 	# 5. A grass patch (visual only, sits just above the ground plane) with a
 	#    simple bench so the space reads as a park.
-	add_child(BlockoutUtil.visual_box(
-		Vector3(14.0, 0.04, 12.0), center + Vector3(0.0, 0.02, 0.0), Color(0.36, 0.52, 0.32)))
+	add_child(BlockoutUtil.visual_box_mat(
+		Vector3(14.0, 0.04, 12.0), center + Vector3(0.0, 0.02, 0.0), MaterialLibrary.get_mat(&"grass_bright")))
 	# Bench: two legs + a seat.
 	var bench_col := Color(0.42, 0.32, 0.24)
 	add_child(BlockoutUtil.static_box(Vector3(0.3, 0.5, 0.4), center + Vector3(-1.2, 0.25, 0.0), bench_col))
@@ -192,14 +195,14 @@ func _build_pond(center: Vector3) -> void:
 	# 9. Visual pond (no collision — sits above the ground plane which
 	#    already carries collision, so the player can safely walk over it
 	#    for now; real water/collision refinement is Phase 4 atmosphere).
-	add_child(BlockoutUtil.visual_box(
-		Vector3(8.0, 0.05, 6.0), center + Vector3(0.0, 0.05, 0.0), Color(0.32, 0.44, 0.56)))
+	add_child(BlockoutUtil.visual_box_mat(
+		Vector3(8.0, 0.05, 6.0), center + Vector3(0.0, 0.05, 0.0), MaterialLibrary.get_mat(&"water")))
 
 func _build_river() -> void:
 	# 9. Long visual water strip running north-south along the east edge of
 	#    the town, between the buildings and the forest edge.
-	add_child(BlockoutUtil.visual_box(
-		Vector3(4.0, 0.05, 60.0), Vector3(30.0, 0.05, 0.0), Color(0.30, 0.42, 0.54)))
+	add_child(BlockoutUtil.visual_box_mat(
+		Vector3(4.0, 0.05, 60.0), Vector3(30.0, 0.05, 0.0), MaterialLibrary.get_mat(&"water")))
 
 func _build_forest_edge() -> void:
 	# 8. A row of tree blockouts east of the river. Not a full forest —

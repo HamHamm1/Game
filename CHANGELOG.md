@@ -13,6 +13,45 @@ Status labels follow AI_RULES.md Rule 11:
 
 ## [Unreleased]
 
+### Phase 2 M2.4-A — Shared material library (texture-free)
+
+First step of the M2.4 art pass (`godot/M2.4_ART_DESIGN.md`, added here).
+Replaces per-primitive flat colors with a small, cohesive, **texture-free**
+shared material library, tuned so M2.2 lighting reads each surface as a
+material (wood matte, tile lightly sheened, water catching the sun) rather
+than flat paint. **Materials-only** — no geometry, vegetation, terrain, or
+hero buildings yet (M2.4-B+). `IMPLEMENTED · STATICALLY VALIDATED · HEADLESS
+TESTED` — **not** ANDROID VERIFIED.
+
+- **NEW `godot/src/world/material_library.gd`** (`MaterialLibrary`) — a static
+  cache of named, shared, tuned `StandardMaterial3D`s (ground/grass/path/
+  water/stone, wall tones, roofs, structural wood, foliage, interiors, a
+  reserved metal) plus `tuned_color(color)` — a cached tuned material for
+  arbitrary-colour props. No textures/normal/AO maps, no emission. Owns look
+  data only; writes no environment/lights.
+- **`godot/src/world/blockout_util.gd`** — colour `static_box`/`visual_box`
+  now route through `MaterialLibrary.tuned_color` (so every existing primitive
+  is shared + tuned with no call-site change); added `static_box_mat`/
+  `visual_box_mat` taking an explicit shared material; `add_tree` uses named
+  foliage/wood.
+- **`godot/src/world/regions/blockout_town.gd`** — major surfaces switched to
+  named materials (ground, street/path, house walls/roofs with per-building
+  variety, bathhouse, park lawn, pond, river); geometry, spawn, entry points,
+  door, and pickups unchanged. Interiors improve automatically via the tuned
+  colour path (named interior materials are a later pass).
+- **`godot/tests/headless_test.gd`** — +material suite (per-key sharing/
+  identity; water glossier than ground; wood non-metallic; unknown-key safe
+  fallback; `tuned_color` shares per colour, distinguishes colours, applies
+  tuning).
+
+Untouched (per M2.4-A constraints): M2.2 lighting, M2.3 weather, player
+movement, location entry/exit contracts, save format, interaction systems.
+
+Validated: `tools/run_validation.sh` → static 80/80, headless import clean,
+headless boot clean, headless suite **105/105**, Android export config valid.
+NOT ANDROID VERIFIED — whether the tuned materials + lighting make the
+greybox beautiful requires the on-device test.
+
 ### Phase 2 M2.3 — Weather foundation
 
 Implemented the peaceful, Android-first weather foundation per

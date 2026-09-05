@@ -6,8 +6,15 @@ extends RefCounted
 ## and interior blockouts don't duplicate construction logic (AI_RULES.md
 ## Rule 3/9).
 
-## A solid, collidable, coloured box (mesh + StaticBody3D + collision).
+## A solid, collidable box with a shared, tuned material (M2.4-A). The colour
+## resolves to a cached MaterialLibrary material, so identical colours share
+## one material instance (batching) and get the tuned roughness/metallic.
 static func static_box(size: Vector3, pos: Vector3, color: Color) -> StaticBody3D:
+	return static_box_mat(size, pos, MaterialLibrary.tuned_color(color))
+
+## A solid, collidable box using an explicit shared material (M2.4-A) — pass
+## MaterialLibrary.get_mat(&"key") for a named village surface.
+static func static_box_mat(size: Vector3, pos: Vector3, material: Material) -> StaticBody3D:
 	var body := StaticBody3D.new()
 	body.position = pos
 
@@ -15,9 +22,7 @@ static func static_box(size: Vector3, pos: Vector3, color: Color) -> StaticBody3
 	var box := BoxMesh.new()
 	box.size = size
 	mesh.mesh = box
-	var mat := StandardMaterial3D.new()
-	mat.albedo_color = color
-	mesh.material_override = mat
+	mesh.material_override = material
 	body.add_child(mesh)
 
 	var col := CollisionShape3D.new()
@@ -52,21 +57,23 @@ static func add_spawn(parent: Node, spawn_name: String, pos: Vector3) -> Marker3
 ## water surfaces, painted street stripes. Keeps node count down vs.
 ## static_box when collision would be wasted (MOBILE_FIRST.md §6/§10).
 static func visual_box(size: Vector3, pos: Vector3, color: Color) -> MeshInstance3D:
+	return visual_box_mat(size, pos, MaterialLibrary.tuned_color(color))
+
+## Mesh-only box using an explicit shared material (M2.4-A).
+static func visual_box_mat(size: Vector3, pos: Vector3, material: Material) -> MeshInstance3D:
 	var mesh := MeshInstance3D.new()
 	mesh.position = pos
 	var box := BoxMesh.new()
 	box.size = size
 	mesh.mesh = box
-	var mat := StandardMaterial3D.new()
-	mat.albedo_color = color
-	mesh.material_override = mat
+	mesh.material_override = material
 	return mesh
 
 ## A simple blockout tree: a collidable trunk plus a mesh-only canopy.
 ## Trees are obstacles the player bumps into (trunk collides), but the
 ## canopy above head height is visual only.
 static func add_tree(parent: Node, pos: Vector3) -> void:
-	parent.add_child(static_box(
-		Vector3(0.4, 3.0, 0.4), pos + Vector3(0.0, 1.5, 0.0), Color(0.35, 0.25, 0.18)))
-	parent.add_child(visual_box(
-		Vector3(2.2, 2.2, 2.2), pos + Vector3(0.0, 3.8, 0.0), Color(0.28, 0.42, 0.24)))
+	parent.add_child(static_box_mat(
+		Vector3(0.4, 3.0, 0.4), pos + Vector3(0.0, 1.5, 0.0), MaterialLibrary.get_mat(&"wood_dark")))
+	parent.add_child(visual_box_mat(
+		Vector3(2.2, 2.2, 2.2), pos + Vector3(0.0, 3.8, 0.0), MaterialLibrary.get_mat(&"foliage")))
