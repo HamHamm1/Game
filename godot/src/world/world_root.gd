@@ -17,6 +17,7 @@ var pause_menu: PauseMenu
 var _sun: DirectionalLight3D
 var _environment: Environment
 var _lighting: RegionLightingController
+var _weather_fx: WeatherFX
 var _in_location: bool = false
 var _return_position: Vector3 = Vector3.ZERO
 
@@ -66,6 +67,13 @@ func _ready() -> void:
 	_lighting.name = "RegionLightingController"
 	_lighting.setup(_sun, _environment, region_loader, location_loader)
 	add_child(_lighting)
+
+	# Weather FX (M2.3): exterior rain/mist visuals. Reads WeatherManager +
+	# GraphicsManager; writes no environment/lights. Rain follows the player.
+	_weather_fx = WeatherFX.new()
+	_weather_fx.name = "WeatherFX"
+	_weather_fx.setup(player)
+	add_child(_weather_fx)
 
 	var region := region_loader.load_region(START_REGION)
 	_place_player_at_spawn(region, "PlayerSpawn")

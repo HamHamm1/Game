@@ -48,6 +48,7 @@ func _run() -> void:
 	_test_game_input()
 	_test_lighting_profiles()
 	_test_lighting_controller()
+	_test_weather()
 
 func _test_item_registry() -> void:
 	_check(ItemRegistry.has_definition(&"fish"), "ItemRegistry has fish")
@@ -253,3 +254,89 @@ func _test_lighting_controller() -> void:
 
 	ctrl.queue_free()
 	sun.free()
+
+## M2.3 — weather data, determinism, save/load, the lighting fold (CLEAR is
+## identity; rain/mist stay readable), FX gating, and ownership (weather never
+## touches GraphicsManager-owned properties). On-device is still the real gate.
+func _test_weather() -> void:
+	# Deterministic rolls: identical seed -> identical sequence.
+	var r1 := RandomNumberGenerator.new()
+	r1.seed = 12345
+	var r2 := RandomNumberGenerator.new()
+	r2.seed = 12345
+	var seq1: Array = []
+	var seq2: Array = []
+	for i in 20:
+		seq1.append(WeatherTypes.roll(r1))
+		seq2.append(WeatherTypes.roll(r2))
+	_check(seq1 == seq2, "weather roll deterministic for same seed")
+
+	# Clear-dominant distribution (~55%).
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 999
+	var clear := 0
+	for i in 400:
+		if WeatherTypes.roll(rng) == WeatherTypes.State.CLEAR:
+			clear += 1
+	_check(clear > 160, "weather is clear-dominant")
+	_check(WeatherTypes.state_name(WeatherTypes.State.LIGHT_RAIN) == "Light Rain", "weather state name")
+
+	# CLEAR weather is identity — the M2.2 look is preserved exactly.
+	var base := LightingProfile.resolve(720, false, &"", 0.0)
+	var clear_mod := WeatherTypes.light_mod(WeatherTypes.State.CLEAR)
+	var withclear := LightingProfile.resolve(720, false, &"", 0.0, clear_mod, 1.0)
+	_check(absf(base.ambient_energy - withclear.ambient_energy) < 0.0001
+		and base.sun_color.is_equal_approx(withclear.sun_color), "CLEAR weather is identity")
+
+	# Rain desaturates + darkens, but stays >= readability floor (day AND night).
+	var rain_mod := WeatherTypes.light_mod(WeatherTypes.State.LIGHT_RAIN)
+	var rainy := LightingProfile.resolve(720, false, &"", 0.0, rain_mod, 1.0)
+	_check(rainy.ambient_energy <= base.ambient_energy, "rain darkens vs clear day")
+	_check(rainy.ambient_energy >= LightingProfile.EXTERIOR_MIN_AMBIENT, "rain day still >= floor")
+	_check(absf(rainy.sun_color.r - rainy.sun_color.b) <= absf(base.sun_color.r - base.sun_color.b),
+		"rain desaturates")
+	var rainy_night := LightingProfile.resolve(1350, false, &"", 0.0, rain_mod, 1.0)
+	_check(rainy_night.ambient_energy >= LightingProfile.EXTERIOR_MIN_AMBIENT, "rain night still navigable")
+
+	# Modifier blend interpolates.
+	var mid := WeatherTypes.blend_mod(clear_mod, rain_mod, 0.5)
+	_check(absf(mid.darken - rain_mod.darken * 0.5) < 0.0001, "blend_mod interpolates")
+
+	# FX gating: on outdoors above LOW; off on LOW; off indoors.
+	_check(WeatherFX.allow_fx(1.0, false) == true, "FX allowed HIGH exterior")
+	_check(WeatherFX.allow_fx(0.4, false) == false, "FX off on LOW effects tier")
+	_check(WeatherFX.allow_fx(1.0, true) == false, "FX off indoors")
+	_check(WeatherTypes.fx_spec(WeatherTypes.State.LIGHT_RAIN).rain > 0.0, "rain state emits rain FX")
+	_check(WeatherTypes.fx_spec(WeatherTypes.State.CLEAR).rain == 0.0, "clear state has no rain FX")
+
+	# WeatherManager save/load round-trip + backward-compatible default.
+	var wsave := WeatherManager.get_save_data()
+	WeatherManager.state = WeatherTypes.State.MIST
+	WeatherManager.wind = 0.9
+	var saved := WeatherManager.get_save_data()
+	WeatherManager.load_save_data(saved)
+	_check(WeatherManager.state == WeatherTypes.State.MIST and absf(WeatherManager.wind - 0.9) < 0.01,
+		"weather save/load roundtrip")
+	WeatherManager.load_save_data({})
+	_check(WeatherManager.state == WeatherTypes.State.CLEAR, "empty save -> CLEAR default")
+
+	# Ownership: the controller applies weather but leaves GraphicsManager-owned
+	# properties (fog_density, shadows) untouched, and stays readable.
+	var sun := DirectionalLight3D.new()
+	var env := Environment.new()
+	var ctrl := RegionLightingController.new()
+	ctrl.setup(sun, env, null, null)
+	add_child(ctrl)
+	env.fog_density = 0.5
+	sun.shadow_enabled = true
+	WeatherManager.state = WeatherTypes.State.LIGHT_RAIN
+	ctrl._snap_weather()
+	ctrl._interior = false
+	ctrl.apply_for_minute(720)
+	_check(absf(env.fog_density - 0.5) < 0.01, "weather does not touch fog_density")
+	_check(sun.shadow_enabled == true, "weather does not touch shadow_enabled")
+	_check(env.ambient_light_energy >= LightingProfile.EXTERIOR_MIN_AMBIENT, "rainy day readable via controller")
+	ctrl.queue_free()
+	sun.free()
+
+	WeatherManager.load_save_data(wsave)  # restore

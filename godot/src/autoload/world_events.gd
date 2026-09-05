@@ -16,6 +16,11 @@ signal minute_passed(day_index: int, minutes_into_day: int)
 signal time_block_changed(old_block: int, new_block: int)
 signal day_started(day_index: int)
 
+# --- Weather (WeatherManager, GAME_SYSTEMS.md §2, M2.3) ---
+## Emitted when the weather state changes (day-boundary roll or the optional
+## intra-day transition). States are WeatherTypes.State values.
+signal weather_changed(old_state: int, new_state: int)
+
 # --- World / scene loading (ARCHITECTURE.md §3) ---
 signal region_loaded(scene_path: String)
 signal location_entered(scene_path: String)

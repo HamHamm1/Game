@@ -23,6 +23,13 @@ var _interior: bool = false
 var _category: StringName = &""
 var _mystery: float = 0.0
 
+# Weather (M2.3): a crossfade between the previous and current weather look.
+const WEATHER_FADE_SECONDS := 3.0
+var _wmod_from: WeatherTypes.LightMod = WeatherTypes.LightMod.new()
+var _wmod_to: WeatherTypes.LightMod = WeatherTypes.LightMod.new()
+var _wt: float = 1.0
+var _wtween: Tween
+
 ## Called by world_root before add_child, so refs exist when _ready runs.
 func setup(sun: DirectionalLight3D, env: Environment,
 		region_loader: RegionLoader, location_loader: LocationLoader) -> void:
@@ -37,6 +44,8 @@ func _ready() -> void:
 	WorldEvents.location_entered.connect(_on_location_entered)
 	WorldEvents.location_exited.connect(_on_location_exited)
 	WorldEvents.game_loaded.connect(_on_game_loaded)
+	WorldEvents.weather_changed.connect(_on_weather_changed)
+	_snap_weather()
 	_refresh()
 
 func _on_minute_passed(_day: int, _minutes: int) -> void:
@@ -58,7 +67,32 @@ func _on_location_exited() -> void:
 	_apply_current()
 
 func _on_game_loaded() -> void:
+	_snap_weather()  # restored weather state applies immediately (no fade)
 	_refresh()
+
+## Crossfade the weather look when the state changes.
+func _on_weather_changed(_old: int, new_state: int) -> void:
+	_wmod_from = _current_wmod()
+	_wmod_to = WeatherTypes.light_mod(new_state)
+	_wt = 0.0
+	if _wtween != null and _wtween.is_valid():
+		_wtween.kill()
+	_wtween = create_tween()
+	_wtween.tween_method(_set_wt, 0.0, 1.0, WEATHER_FADE_SECONDS)
+
+func _set_wt(v: float) -> void:
+	_wt = v
+	_apply_current()
+
+## Snap the weather look to the current WeatherManager state (no fade).
+func _snap_weather() -> void:
+	var mod: WeatherTypes.LightMod = WeatherManager.light_mod() if WeatherManager != null else WeatherTypes.LightMod.new()
+	_wmod_from = mod
+	_wmod_to = mod
+	_wt = 1.0
+
+func _current_wmod() -> WeatherTypes.LightMod:
+	return WeatherTypes.blend_mod(_wmod_from, _wmod_to, _wt)
 
 ## Re-derive context from whichever scene is currently active, then apply.
 func _refresh() -> void:
@@ -102,7 +136,8 @@ func _apply_current() -> void:
 func apply_for_minute(minute: int) -> void:
 	if _sun == null or _environment == null:
 		return
-	var p := LightingProfile.resolve(minute, _interior, _category, _mystery)
+	var p := LightingProfile.resolve(minute, _interior, _category, _mystery,
+		_current_wmod(), 1.0)
 	# Mood-only writes. GraphicsManager owns shadows/fog-density/glow/ssao/etc.
 	_sun.rotation_degrees = Vector3(p.sun_pitch_deg, p.sun_yaw_deg, 0.0)
 	_sun.light_energy = p.sun_energy

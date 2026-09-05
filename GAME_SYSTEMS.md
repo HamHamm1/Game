@@ -99,6 +99,17 @@ boundary (and may schedule intra-day transitions), emits
 §4.6). Rolls are **weighted by season/region later**; for the MVP a simple
 weighted table per region is enough.
 
+> **M2.3 implemented subset** (`godot/M2.3_WEATHER_DESIGN.md`): the peaceful
+> foundation — `CLEAR`, `OVERCAST` (≈cloudy), `LIGHT_RAIN` (≈rain, gentle),
+> `MIST` (≈fog, **localized**, never global) — plus a cross-cutting `wind`
+> scalar (not a mutually-exclusive state). **Heavy rain / storm / global fog
+> are deferred** (stormy/horror-adjacent). Weather affects the look through a
+> subtle **lighting modifier** (folded into the M2.2 lighting resolve), never
+> by writing the environment directly and never via heavy global fog or a
+> screen filter. `WeatherManager` boots CLEAR (preserving the M2.2 look),
+> rolls deterministically on the day boundary, and may schedule at most one
+> optional intra-day transition.
+
 **Effects (each subscriber reacts on its own):**
 - **Lighting** — weather is one input to the active lighting profile
   (ART_DIRECTION.md §3): overcast desaturates and flattens; rain darkens

@@ -184,6 +184,11 @@ with an object, pick up an item, save and load position+inventory.
 - `TimeManager` (day/night, time blocks) + `RegionLightingController`
   (lighting profiles, ART §3).
 - `WeatherManager` foundation (state + signal; visual hookup light).
+  **M2.3 (done):** CLEAR/OVERCAST/LIGHT_RAIN/MIST + wind; deterministic
+  day-boundary roll + one optional intra-day transition; a subtle lighting
+  modifier folded into the M2.2 resolve (CLEAR = identity); localized mist +
+  preset-gated rain FX (LOW off); no global fog, no screen filter, no storm.
+  See `godot/M2.3_WEATHER_DESIGN.md`.
 
 **Deliverable:** the player can move through the slice across a day/night
 cycle with coherent lighting; it *feels* like the target look, small.

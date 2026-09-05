@@ -13,6 +13,56 @@ Status labels follow AI_RULES.md Rule 11:
 
 ## [Unreleased]
 
+### Phase 2 M2.3 — Weather foundation
+
+Implemented the peaceful, Android-first weather foundation per
+`godot/M2.3_WEATHER_DESIGN.md`. Subset: `CLEAR` / `OVERCAST` / `LIGHT_RAIN` /
+`MIST` (localized) + a `wind` scalar. **CLEAR preserves the M2.2 look
+exactly.** No heavy global fog, no screen filters, no storm; heavy rain /
+storm / global fog deferred. Deferred to later passes: lanterns/street/window/
+practical lights, wet-material response, detailed vegetation-wind response,
+advanced weather/audio. `IMPLEMENTED · STATICALLY VALIDATED · HEADLESS
+TESTED` — **not** ANDROID VERIFIED.
+
+- **NEW `godot/src/world/weather_types.gd`** (`WeatherTypes`) — typed `State`
+  enum, a `LightMod` (lighting) and `FxSpec` (rain/mist/wetness) value object
+  per state, `blend_mod()`, and a Clear-dominant weighted `roll()`. LightMod
+  deltas are deliberately subtle (naturally diffused daylight, not a filter).
+- **NEW `godot/src/autoload/weather_manager.gd`** (autoload, after
+  `TimeManager`) — deterministic state machine: boots CLEAR, rolls on
+  `day_started` from a seeded RNG, schedules at most one optional intra-day
+  transition, emits `weather_changed`. Publishes DATA only (`current_state`,
+  `current_wind`, `light_mod`, `fx_spec`); **never writes Environment,
+  DirectionalLight3D, fog_density, or any GraphicsManager-owned property.**
+  Savable `"weather"`.
+- **NEW `godot/src/world/weather_fx.gd`** (`WeatherFX`, world_root child) —
+  one player-following `CPUParticles3D` rain emitter + a few localized mist
+  planes. Preset-gated (`allow_fx`: LOW/interiors → off) and interior-gated.
+  No lights, no per-object rain, no global fog.
+- **M2.2 integration hook (approved):** `WorldEvents.weather_changed`;
+  `LightingProfile.apply_weather()` (subtle desaturate/darken/tint/fog-tint,
+  **CLEAR = identity**) folded into `resolve()` as
+  **base → category → weather → mystery → clamp** (weather args optional, so
+  M2.2 callers are unchanged); `RegionLightingController` subscribes,
+  crossfades between weather looks, and resyncs on load. The readability
+  clamp stays last — weather never breaches the night/interior floors. No
+  M2.2 keyframes, floors, category logic, or ownership changed.
+- **`godot/src/world/world_root.gd`** — instantiates `WeatherFX`.
+- **`godot/project.godot`** — registers the `WeatherManager` autoload.
+- **`godot/tests/headless_test.gd`** — +weather suite (deterministic +
+  Clear-dominant rolls; CLEAR identity; rain desaturates/darkens yet stays ≥
+  readability floor day and night; `blend_mod`; FX gating; save/load +
+  empty-save→CLEAR; controller applies weather but leaves `fog_density` and
+  shadows untouched).
+- **`GAME_SYSTEMS.md` §2 / `TECHNICAL_ROADMAP.md` Phase 2** — reconciled to
+  record the M2.3 subset and the localized-mist / lighting-mod approach.
+- **Save/load:** new savable `"weather"`; **backward compatible** — old saves
+  without the key load as `CLEAR` (SaveManager loads only present keys).
+
+Validated: `tools/run_validation.sh` → static 79/79, headless import clean,
+headless boot clean, headless suite **96/96**, Android export config valid.
+NOT ANDROID VERIFIED — atmosphere/comfort require the on-device test.
+
 ### Phase 2 M2.2 — Time-of-day + lighting system
 
 Implemented the time-of-day and location lighting system per

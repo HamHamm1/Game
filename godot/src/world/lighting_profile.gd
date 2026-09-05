@@ -194,6 +194,39 @@ static func apply_mystery(p: LightingProfile, strength: float) -> LightingProfil
 	r.fog_color = r.fog_color.lerp(cool, 0.12 * s)
 	return r
 
+static func _desaturate(c: Color, amt: float) -> Color:
+	var g := c.get_luminance()
+	return c.lerp(Color(g, g, g), clampf(amt, 0.0, 1.0))
+
+## Fold a weather LightMod into the profile (M2.3). Subtle: desaturate +
+## slight darken + small cool tint + fog-tint bias. `blend` scales the whole
+## effect for smooth transitions. A null mod, blend <= 0, or the CLEAR all-zero
+## mod all return the profile unchanged — so the M2.2 look is preserved exactly.
+static func apply_weather(p: LightingProfile, mod: WeatherTypes.LightMod,
+		blend: float) -> LightingProfile:
+	if mod == null:
+		return p
+	var b := clampf(blend, 0.0, 1.0)
+	var desat := mod.desaturation * b
+	var darken := mod.darken * b
+	var tint_s := mod.tint_strength * b
+	var fog_s := mod.fog_tint_strength * b
+	if desat <= 0.0 and darken <= 0.0 and tint_s <= 0.0 and fog_s <= 0.0:
+		return p
+	var r := p.copy()
+	if desat > 0.0:
+		r.sun_color = _desaturate(r.sun_color, desat)
+		r.ambient_color = _desaturate(r.ambient_color, desat)
+	if darken > 0.0:
+		r.sun_energy *= (1.0 - darken)
+		r.ambient_energy *= (1.0 - darken)
+	if tint_s > 0.0:
+		r.ambient_color = r.ambient_color.lerp(mod.tint, tint_s)
+		r.bg_color = r.bg_color.lerp(mod.tint, tint_s * 0.6)
+	if fog_s > 0.0:
+		r.fog_color = r.fog_color.lerp(mod.fog_tint, fog_s)
+	return r
+
 ## Enforce the readability floor. Interiors and exteriors have separate floors
 ## so interior readability never forces the outdoor world brighter.
 static func clamp_readability(p: LightingProfile, interior: bool) -> LightingProfile:
@@ -202,11 +235,16 @@ static func clamp_readability(p: LightingProfile, interior: bool) -> LightingPro
 		p.ambient_energy = floor_e
 	return p
 
-## The full resolve: base (context) -> category -> mystery -> readability clamp.
+## The full resolve: base (context) -> category -> weather -> mystery ->
+## readability clamp (M2.2_LIGHTING_DESIGN.md + M2.3 §3). The weather args are
+## optional and default to the identity, so callers that pass none (and CLEAR
+## weather) get exactly the M2.2 result.
 static func resolve(minute: int, interior: bool, category: StringName,
-		mystery: float) -> LightingProfile:
+		mystery: float, weather_mod: WeatherTypes.LightMod = null,
+		weather_blend: float = 0.0) -> LightingProfile:
 	var base := interior_at(minute) if interior else exterior_at(minute)
 	base = apply_category(base, category)
+	base = apply_weather(base, weather_mod, weather_blend)
 	base = apply_mystery(base, mystery)
 	base = clamp_readability(base, interior)
 	return base

@@ -32,6 +32,7 @@ GameInput="*res://src/autoload/game_input.gd"
 SaveManager="*res://src/autoload/save_manager.gd"
 ItemRegistry="*res://src/autoload/item_registry.gd"
 TimeManager="*res://src/autoload/time_manager.gd"
+WeatherManager="*res://src/autoload/weather_manager.gd"
 AutosaveManager="*res://src/autoload/autosave_manager.gd"
 AppLifecycle="*res://src/autoload/app_lifecycle.gd"
 
