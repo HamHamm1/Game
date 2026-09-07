@@ -13,6 +13,62 @@ Status labels follow AI_RULES.md Rule 11:
 
 ## [Unreleased]
 
+### Phase 2 M2.4-B — Playable hero houses + modular village architecture system
+
+Upgrades the two-hero-house staging into a **fully playable, varied village**:
+House A/B become **enterable** via the existing building entry system, and a
+**reusable modular Japanese house kit** produces visually distinct archetypes
+(C/D/E/F) across three fidelity tiers. M2.1 layout, M2.2 lighting, M2.3 weather,
+and all gameplay systems are untouched. **NOT** ANDROID VERIFIED — visual
+success is judged only by the owner's device test.
+
+- **Playable A/B (Phase 1).** `hero_village.gd` now attaches a front-door
+  `LocationEntryPoint` (the EXISTING entry contract — `WorldEvents` →
+  `world_root._on_enter_location` → separate interior scene at offset, with the
+  return position saved for exit) to each hero house. The door slab sits **proud
+  of the box collider on the +z face** so the interaction raycast reaches it;
+  the Meshy collider is the simple box (never the ~0.4M-tri mesh), so it can't
+  block entry. Which painted facade the door lands on is asset-dependent and is
+  a **device-test item**.
+- **NEW `godot/src/world/locations/house_interior_wood.{gd,tscn}`** — a shared
+  warm-wood interior (floor/walls/ceiling/beams/furniture) with a deterministic
+  `PlayerSpawn` just inside and a `LocationExitPoint` on the door. Carries
+  `lighting_category = residential` (M2.2). Used by A, B, and enterable kit
+  houses — no parallel entry system invented.
+- **NEW `godot/src/world/japanese_house_kit.gd`** (`JapaneseHouseKit`) — a
+  grid-friendly **modular kit**: a `Spec` of controlled parameters (width,
+  depth, wall height, roof type gable/hipped/shallow, roof height, eave
+  overhang, wall/roof material, foundation, engawa, porch, side extension,
+  window count) drives `build()`, which assembles stone plinth, corner posts,
+  clad walls with a doorway gap + lintel, framed windows, a **PrismMesh gable /
+  hipped / shallow roof with deep eaves**, optional engawa deck / porch hood /
+  side wing, an enterable-or-solid front door, and **ONE simple box collider**
+  (never per-wall, never a render mesh). Archetype presets **HOUSE C** (compact
+  hipped), **HOUSE D** (long engawa, shallow roof), **HOUSE E** (tall thatched
+  gable), **HOUSE F** (large gable + side wing) — SAME art direction, DIFFERENT
+  architecture, not rescaled copies. `background_house()` is the cheapest tier:
+  a single clad volume + roof, **no collision**, **visibility-range LOD**.
+- **`godot/src/world/material_library.gd`** — added kit surfaces
+  `roof_tile`, `roof_thatch`, `cedar_aged`, `timber_light`, `deck_wood`,
+  `glass_dark` (shared/tuned, texture-free, reused across all houses).
+- **`hero_village.gd` rewritten** into a composed **mountain village**: 2 hero +
+  10 modular reachable houses (6 enterable, 6 optional/solid) on curved stone
+  lanes with a branch, varied setbacks/facing/clusters; ~21 **background** kit
+  houses on raised mounds (rear ridge + flank hills); selective dressing
+  (firewood, stone lanterns, a fence run, flower pots, a water bucket — not prop
+  spam); denser trees incl. a rear conifer ridge; gardens near the lanes.
+  Vegetation exclusions carve every reachable house + lane + dressing.
+- **Fidelity hierarchy (LOD):** HERO (Meshy, 2K PBR, import LODs) > VILLAGE
+  (kit, moderate primitives, box collision) > BACKGROUND (minimal geometry, no
+  collision, visibility-range fade). Materials shared across tiers for batching.
+- **Tests** `tests/headless_test.gd` +16 checks (`_test_house_kit`): archetype
+  variation, simple box collision, exactly-one wired entry on enterable houses,
+  no entry on optional houses, collision-free LOD background tier, interior
+  spawn/exit round-trip. Suite 128 → **144/144**.
+
+- **NEW assets** `godot/assets/meshes/houses/house_a.glb`, `house_b.glb`
+  (Phase-1 hero, unchanged; see below).
+
 ### Phase 2 M2.4 — Hero architecture: original Meshy Japanese houses + staged hero village
 
 First real high-fidelity asset integration. Two **original GLB houses** (owner-

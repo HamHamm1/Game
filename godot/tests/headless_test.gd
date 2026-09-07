@@ -51,6 +51,7 @@ func _run() -> void:
 	_test_weather()
 	_test_materials()
 	_test_vegetation()
+	_test_house_kit()
 
 func _test_item_registry() -> void:
 	_check(ItemRegistry.has_definition(&"fish"), "ItemRegistry has fish")
@@ -450,3 +451,92 @@ func _test_vegetation() -> void:
 	high_field.free()
 	low_field.free()
 	Settings.graphics_preset = "MEDIUM"
+
+## M2.4-B — modular Japanese house kit: controlled variation, simple (box)
+## collision never the render mesh, the EXISTING entry system wired for
+## enterable houses, and a cheaper collision-free LOD background tier.
+## On-device is the real gate for how the houses LOOK.
+func _test_house_kit() -> void:
+	var c := JapaneseHouseKit.house_c()
+	var d := JapaneseHouseKit.house_d()
+	var e := JapaneseHouseKit.house_e()
+	var f := JapaneseHouseKit.house_f()
+	# Archetypes are genuinely distinct architecture, not one mesh rescaled.
+	_check(c.roof == &"hipped" and e.roof == &"gable" and d.roof == &"shallow",
+		"archetypes vary roof type (hipped/gable/shallow)")
+	_check(d.width > f.width and f.width > e.width and e.width >= c.width - 0.1,
+		"archetypes vary footprint width")
+	_check(e.roof_key == &"roof_thatch" and c.roof_key == &"roof_tile",
+		"archetypes vary roof material (thatch vs tile)")
+	_check(d.engawa and not c.engawa and f.side_ext,
+		"archetypes vary features (engawa / side extension)")
+
+	# Enterable build: ONE box collider (never the render mesh) + a wired entry.
+	var enter := JapaneseHouseKit.build(c, "res://src/world/locations/house_interior_wood.tscn", "Enter")
+	var bodies := _nodes_of(enter, "StaticBody3D")
+	var box_cols := 0
+	for b in bodies:
+		for cs in _nodes_of(b, "CollisionShape3D"):
+			if (cs as CollisionShape3D).shape is BoxShape3D:
+				box_cols += 1
+	_check(box_cols >= 1, "kit house uses simple BoxShape3D collision")
+	var main := enter.get_node_or_null("Collision")
+	_check(main != null and main is StaticBody3D, "kit house has one dedicated body-collider")
+	var entries := _find_entries(enter)
+	_check(entries.size() == 1, "enterable kit house wires exactly one LocationEntryPoint")
+	if entries.size() == 1:
+		var ep := entries[0] as LocationEntryPoint
+		_check(ep.location_scene.ends_with("house_interior_wood.tscn"), "entry points at the interior scene")
+		_check(ep.spawn_name == "PlayerSpawn", "entry targets the PlayerSpawn marker")
+		_check(ep.get_parent() is StaticBody3D, "entry sits on a collidable door (raycast-reachable)")
+	enter.free()
+
+	# Optional (non-enterable) build: collidable, but NO entry point.
+	var solid := JapaneseHouseKit.build(c, "")
+	_check(_find_entries(solid).size() == 0, "optional kit house has no entry point")
+	_check(_nodes_of(solid, "StaticBody3D").size() >= 1, "optional kit house still collides")
+	solid.free()
+
+	# Background tier: NO collision, meshes carry a visibility-range LOD.
+	var bg := JapaneseHouseKit.background_house(e, 300.0)
+	_check(_nodes_of(bg, "StaticBody3D").is_empty(), "background house has no collision")
+	var meshes := _nodes_of(bg, "MeshInstance3D")
+	var lodded := meshes.size() > 0
+	for m in meshes:
+		if (m as MeshInstance3D).visibility_range_end <= 0.0:
+			lodded = false
+	_check(lodded, "background house meshes have a visibility-range LOD")
+	bg.free()
+
+	# The interior it enters into exposes a spawn + an exit (round trip closes).
+	var interior := (load("res://src/world/locations/house_interior_wood.tscn") as PackedScene).instantiate()
+	add_child(interior)
+	_check(interior.find_child("PlayerSpawn", true, false) != null, "interior has a PlayerSpawn")
+	_check(_nodes_of(interior, "LocationExitPoint").size() == 1, "interior has one LocationExitPoint")
+	interior.free()
+
+## Recursively collect descendants whose class matches `type_name` (built-in or
+## a project class_name).
+func _nodes_of(root: Node, type_name: String) -> Array:
+	var out: Array = []
+	for n in _descendants(root):
+		if n.is_class(type_name) or (n.get_script() != null and _script_is(n, type_name)):
+			out.append(n)
+	return out
+
+func _script_is(n: Node, type_name: String) -> bool:
+	var s := n.get_script() as Script
+	return s != null and s.get_global_name() == StringName(type_name)
+
+func _find_entries(root: Node) -> Array:
+	var out: Array = []
+	for n in _descendants(root):
+		if n is LocationEntryPoint:
+			out.append(n)
+	return out
+
+func _descendants(n: Node) -> Array:
+	var out: Array = [n]
+	for c in n.get_children():
+		out.append_array(_descendants(c))
+	return out

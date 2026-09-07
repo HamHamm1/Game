@@ -67,6 +67,13 @@ static func _build(key: StringName) -> StandardMaterial3D:
 		# --- Roofs ---
 		&"roof_dark": return _mk(Color(0.24, 0.23, 0.26), 0.7)       # charcoal tile, slight sheen
 		&"roof_warm": return _mk(Color(0.34, 0.26, 0.22), 0.75)
+		&"roof_tile": return _mk(Color(0.29, 0.31, 0.34), 0.65)      # blue-grey kawara tile
+		&"roof_thatch": return _mk(Color(0.42, 0.34, 0.22), 0.95)    # kayabuki thatch, matte
+		# --- Kit timber / cladding (M2.4-B modular houses) ---
+		&"cedar_aged": return _mk(Color(0.46, 0.38, 0.30), 0.85)     # weathered dark cedar
+		&"timber_light": return _mk(Color(0.74, 0.66, 0.52), 0.82)   # pale planed timber
+		&"deck_wood": return _mk(Color(0.52, 0.42, 0.30), 0.8)       # engawa veranda boards
+		&"glass_dark": return _mk(Color(0.14, 0.17, 0.19), 0.35)     # shoji/window recess
 		# --- Structural / trim / doors ---
 		&"wood_dark": return _mk(Color(0.30, 0.22, 0.16), 0.7)       # posts/beams/trunks/trim
 		&"wood_door": return _mk(Color(0.44, 0.30, 0.20), 0.7)

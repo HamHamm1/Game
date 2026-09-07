@@ -22,3 +22,15 @@ pack, which was NOT imported due to redistribution/EULA concerns.)
 of near-camera hero buildings, with import-generated LODs and simple box
 collision (never the full mesh as a collider). 2K PBR textures preserved at
 source quality; VRAM compression (ETC2/ASTC) + mipmaps applied on import.
+
+## Meshes — Village architecture (modular kit)
+
+The M2.4-B village houses (archetypes **C / D / E / F** and the background
+backdrop houses) are **not imported binary assets** — they are **original
+geometry generated in code** at runtime by
+`godot/src/world/japanese_house_kit.gd` from Godot primitive meshes
+(`BoxMesh`, `PrismMesh`) and the shared, texture-free `MaterialLibrary`. There
+is no third-party mesh, texture, or pack behind them, so there is nothing to
+license: they are owner-authored project source. The same applies to the shared
+interior `house_interior_wood.gd` and all environmental dressing (fences,
+firewood, lanterns, pots) — all code-built primitives.
