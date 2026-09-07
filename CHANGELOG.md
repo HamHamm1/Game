@@ -13,6 +13,34 @@ Status labels follow AI_RULES.md Rule 11:
 
 ## [Unreleased]
 
+### Phase 2 M2.4-B — Device fixes: all houses enterable, no wall-clipping, human scale, grass continuity
+
+Four device-reported issues fixed. House A/B assets and M2.1–M2.3 untouched.
+**NOT** ANDROID VERIFIED.
+
+- **Every house (A–H) enterable.** The village is now exactly 8 real GLB houses
+  (2 hero + 6 village: House 3 ×3, House 7 ×2, House 4 manor ×1), and ALL 8 wire
+  a `LocationEntryPoint` at their real doorway through the existing entry system.
+- **No walk-through.** The compound collider now sits at each model's real wall
+  lines (measured x_min/x_max/z_back/z_front), full wall height, wall thickness
+  raised to 0.4 m, with only the doorway gap open (filled by the invisible entry
+  trigger). Back + both sides + two front pieces = ≥5 simple boxes per house;
+  the render mesh is never a collider.
+- **Human scale.** Village widths are now chosen from **door height** (validated
+  against a 1.75 m reference so a person matches the doorway), not a blind
+  6–10 m: House 3 ≈ **9.0 m** (2-storey farmhouse), House 4 ≈ **13.0 m** (manor/
+  hall landmark), House 7 ≈ **12.5 m** (2-storey minka). Uniform scale only — no
+  stretch. GLB_PROFILES widths updated (House 4 10→13, House 7 8.5→12.5).
+- **Grass pop-in fixed.** `VegetationField.scatter_tiled` replaces the single
+  large grass field with a grid of independent chunk tiles, each with its own
+  visibility-range measured to that tile and a large (60%) fade margin so
+  neighbouring tiles' fade bands overlap. Near tiles stay solid; only distant
+  tiles fade, gradually — the cover no longer vanishes on the sides while
+  walking. Deterministic, grounded, exclusion-masked as before.
+- **Tests** `_test_glb_houses` (8 houses, all enterable, ≥5-box compound
+  collider, render-mesh-never-collided) + `_test_grass_chunked` (multiple tiles,
+  overlapping fade margins). Suite 197 → **204/204**.
+
 ### Phase 2 M2.4-B — Three real GLB village houses replace the primitive kit
 
 The reachable village is now **real imported architecture**, not greybox. Three

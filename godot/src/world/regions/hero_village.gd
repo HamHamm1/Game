@@ -91,16 +91,20 @@ const GLB_PROFILES := {
 		"width": 6.8, "x_min": -0.85, "x_max": 0.90, "z_back": -0.45, "z_front": 0.45,
 		"y_top": 0.055, "door_x": -0.25, "door_gap": 0.42,
 	},
-	HOUSE_3: {   # village: two-storey gabled farmhouse, stepped central door
-		"width": 9.0, "x_min": -0.72, "x_max": 0.75, "z_back": -0.63, "z_front": 0.49,
+	# Village widths are chosen from DOOR HEIGHT for believable human scale
+	# (validated against a 1.75 m reference): a person matches the doorway, so the
+	# houses no longer read as short. x_min/x_max/z_back/z_front are the real wall
+	# lines, so the compound collider matches the visible walls (no walk-through).
+	HOUSE_3: {   # two-storey gabled farmhouse, stepped central door
+		"width": 9.0, "x_min": -0.73, "x_max": 0.75, "z_back": -0.63, "z_front": 0.49,
 		"y_top": 0.45, "door_x": 0.18, "door_gap": 0.34,
 	},
-	HOUSE_4: {   # village: large low manor/hall, wrap-around engawa, genkan on -x
-		"width": 10.0, "x_min": -0.72, "x_max": 0.72, "z_back": -0.60, "z_front": 0.45,
+	HOUSE_4: {   # large manor/hall, wrap-around engawa, genkan on -x (landmark)
+		"width": 13.0, "x_min": -0.80, "x_max": 0.80, "z_back": -0.60, "z_front": 0.45,
 		"y_top": -0.04, "door_x": -0.17, "door_gap": 0.30,
 	},
-	HOUSE_7: {   # village: two-storey minka, -x side wing, veranda doors centre
-		"width": 8.5, "x_min": -0.78, "x_max": 0.80, "z_back": -0.60, "z_front": 0.40,
+	HOUSE_7: {   # two-storey minka, -x side wing, veranda doors centre
+		"width": 12.5, "x_min": -0.80, "x_max": 0.82, "z_back": -0.60, "z_front": 0.40,
 		"y_top": -0.05, "door_x": 0.10, "door_gap": 0.34,
 	},
 }
@@ -130,7 +134,7 @@ func _glb_house(path: String, pos: Vector3, yaw_deg: float,
 	var mid_y := (lo.y + hi.y) * 0.5
 	var mid_z := (lo.z + hi.z) * 0.5
 	var wall_h := hi.y - lo.y
-	const T := 0.3
+	const T := 0.4   # thick enough that the player can never tunnel a wall
 
 	# Compound INVISIBLE collision (children of the house so they rotate with it).
 	# Back + two sides fully enclose; two front pieces flank a clear doorway gap.
@@ -178,21 +182,17 @@ func _col(size: Vector3, pos: Vector3) -> StaticBody3D:
 	return body
 
 func _place_glb_houses() -> void:
-	# HERO pair (unchanged placement + scale). Irregular, never side-by-side.
-	_glb_house(HOUSE_A, Vector3(-7.5, 0.0, -3.0), 22.0, INTERIOR)
-	_glb_house(HOUSE_B, Vector3(8.0, 0.0, -13.0), -38.0, INTERIOR)
-
-	# VILLAGE — the three real GLB models, staged around the hero pair at varied
-	# rotations, spacing + setbacks. House 4 (large manor/hall) is the set-back
-	# northern landmark; House 3 + House 7 are the surrounding homes. A subset is
-	# enterable; the rest are solid (still collidable) "optional interior" houses.
-	_glb_house(HOUSE_4, Vector3(-5.0, 0.0, -34.0), 6.0, INTERIOR, "Enter hall")   # landmark, enterable
-	_glb_house(HOUSE_3, Vector3(-24.0, 0.0, -16.0), 34.0, INTERIOR)              # enterable
-	_glb_house(HOUSE_3, Vector3(15.0, 0.0, -5.0), -42.0, "")                     # optional
-	_glb_house(HOUSE_3, Vector3(-23.0, 0.0, 4.0), 12.0, "")                      # optional
-	_glb_house(HOUSE_7, Vector3(13.0, 0.0, -24.0), -26.0, INTERIOR)             # enterable
-	_glb_house(HOUSE_7, Vector3(-17.0, 0.0, -26.0), 46.0, "")                    # optional
-	_glb_house(HOUSE_7, Vector3(12.0, 0.0, 6.0), -20.0, "")                      # optional
+	# EIGHT real houses (A–H), EVERY one enterable via the existing entry system.
+	# House 4 (large manor/hall) is the set-back northern landmark; House 3 and
+	# House 7 are the surrounding homes. Widely spaced for the larger scale.
+	_glb_house(HOUSE_A, Vector3(-7.5, 0.0, -3.0), 22.0, INTERIOR, "Enter house")   # A (hero)
+	_glb_house(HOUSE_B, Vector3(8.0, 0.0, -13.0), -38.0, INTERIOR, "Enter house")  # B (hero)
+	_glb_house(HOUSE_4, Vector3(-6.5, 0.0, -42.0), 5.0, INTERIOR, "Enter hall")    # C = manor landmark
+	_glb_house(HOUSE_3, Vector3(-28.0, 0.0, -16.0), 32.0, INTERIOR)               # D
+	_glb_house(HOUSE_3, Vector3(18.0, 0.0, -6.0), -40.0, INTERIOR)               # E
+	_glb_house(HOUSE_3, Vector3(-26.0, 0.0, 6.0), 10.0, INTERIOR)                # F
+	_glb_house(HOUSE_7, Vector3(15.0, 0.0, -28.0), -28.0, INTERIOR)              # G
+	_glb_house(HOUSE_7, Vector3(-30.0, 0.0, -34.0), 48.0, INTERIOR)              # H
 
 # --- BACKGROUND tier (cheap, unreachable, on the mounds) --------------------
 
@@ -316,9 +316,12 @@ func _veg(species: StringName, mat: StringName, center: Vector3, hx: float, hz: 
 		end_dist, _excl))
 
 func _build_vegetation() -> void:
-	# Broad grass lawn across the reachable valley — exclusions carve houses,
-	# lanes + dressing out of it.
-	_veg(&"grass", &"grass_blade", Vector3(0.0, 0.0, -8.0), 30.0, 26.0, 1500, 3001, 0.8, 1.35, 46.0)
+	# Broad grass lawn across the reachable valley — CHUNKED into tiles with
+	# overlapping fade so the cover stays continuous around the player and never
+	# pops on the sides while walking (the previous single-field pop-in bug).
+	# Exclusions carve houses, lanes + dressing out of it.
+	add_child(VegetationField.scatter_tiled(&"grass", &"grass_blade",
+		-46.0, -52.0, 46.0, 20.0, 12.0, 0.42, 3001, 0.8, 1.35, 80.0, _excl))
 	# Framing + hillside trees (varied silhouette/scale) for the mountain feel.
 	var trees := [
 		[Vector3(-20.0, 0.0, -6.0), 1.6, 0], [Vector3(20.0, 0.0, 0.0), 1.7, 2],

@@ -105,3 +105,61 @@ static func scatter(species: StringName, material_key: StringName, center: Vecto
 	mmi.visibility_range_end_margin = end_dist * 0.12
 	mmi.visibility_range_fade_mode = GeometryInstance3D.VISIBILITY_RANGE_FADE_SELF
 	return mmi
+
+## CHUNKED ground cover over a whole area — the robust fix for grass "pop-in".
+## Instead of ONE big MultiMesh (whose single visibility_range makes the entire
+## field fade in/out as a unit as the camera moves), the area is split into a
+## grid of independent chunk tiles. Each tile is its own MultiMeshInstance3D
+## whose visibility_range is measured to THAT tile, so near tiles are always
+## solid and only genuinely distant tiles fade — with a large fade margin and
+## end distances set so neighbouring tiles' fade bands OVERLAP, the cover stays
+## visually continuous around the player and never abruptly vanishes on the
+## sides. Deterministic (per-tile seed), grounded + exclusion-masked like scatter.
+## Returns a parent Node3D holding the tile instances.
+static func scatter_tiled(species: StringName, material_key: StringName,
+		min_x: float, min_z: float, max_x: float, max_z: float, tile: float,
+		density_per_m2: float, rng_seed: int, s_min: float, s_max: float,
+		base_end_dist: float, exclusions: Array[Rect2] = []) -> Node3D:
+	var root := Node3D.new()
+	root.name = "GrassTiles_" + String(species)
+	var intent := _intent()
+	if intent <= 0.0:
+		return root
+	var mat := MaterialLibrary.get_mat(material_key)
+	var mesh := VegetationKit.mesh(species)
+	var offset := VegetationKit.ground_offset(species)
+	var per_tile := int(round(density_per_m2 * tile * tile * intent))
+	# Generous, overlapping fade so tiles blend rather than pop.
+	var end_dist := base_end_dist * lod_scale()
+	var margin := end_dist * 0.6
+	var cols := int(ceil((max_x - min_x) / tile))
+	var rows := int(ceil((max_z - min_z) / tile))
+	var cell := 0
+	for r in rows:
+		for c in cols:
+			var cx := min_x + (float(c) + 0.5) * tile
+			var cz := min_z + (float(r) + 0.5) * tile
+			cell += 1
+			var kept := compute_transforms(Vector3(cx, 0.0, cz), tile * 0.5, tile * 0.5,
+				per_tile, rng_seed + cell * 131, s_min, s_max, offset, exclusions)
+			if kept.is_empty():
+				continue
+			var mm := MultiMesh.new()
+			mm.transform_format = MultiMesh.TRANSFORM_3D
+			mm.use_colors = true
+			mm.mesh = mesh
+			mm.instance_count = kept.size()
+			var crng := RandomNumberGenerator.new()
+			crng.seed = rng_seed + cell * 131 + 7
+			for i in kept.size():
+				mm.set_instance_transform(i, kept[i])
+				var v := crng.randf_range(0.82, 1.0)
+				mm.set_instance_color(i, Color(v, v * 1.02, v * 0.96))
+			var mmi := MultiMeshInstance3D.new()
+			mmi.multimesh = mm
+			mmi.material_override = mat
+			mmi.visibility_range_end = end_dist
+			mmi.visibility_range_end_margin = margin
+			mmi.visibility_range_fade_mode = GeometryInstance3D.VISIBILITY_RANGE_FADE_SELF
+			root.add_child(mmi)
+	return root

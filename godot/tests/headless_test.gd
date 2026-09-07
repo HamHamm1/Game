@@ -53,6 +53,7 @@ func _run() -> void:
 	_test_vegetation()
 	_test_house_kit()
 	_test_glb_houses()
+	_test_grass_chunked()
 
 func _test_item_registry() -> void:
 	_check(ItemRegistry.has_definition(&"fish"), "ItemRegistry has fish")
@@ -531,11 +532,11 @@ func _test_glb_houses() -> void:
 	for child in region.get_children():
 		if child is Node3D and _has_complex_mesh(child):
 			houses.append(child)
-	_check(houses.size() == 9, "region stages 9 real GLB houses (2 hero + 7 village)")
+	_check(houses.size() == 8, "region stages 8 real GLB houses (A-H)")
 	var enterable := 0
 	for house in houses:
 		var entries := _find_entries(house)
-		_check(entries.size() <= 1, "GLB house has at most one entry point")
+		_check(entries.size() == 1, "every GLB house has exactly one entry point")
 		if entries.size() == 1:
 			enterable += 1
 			var ep := entries[0] as LocationEntryPoint
@@ -551,12 +552,29 @@ func _test_glb_houses() -> void:
 			for cs in _nodes_of(b, "CollisionShape3D"):
 				if (cs as CollisionShape3D).shape is BoxShape3D:
 					box_bodies += 1
-		_check(box_bodies >= 4, "GLB house has a compound box collider (>=4 simple boxes)")
+		_check(box_bodies >= 5, "GLB house has a compound wall collider (>=5 simple boxes)")
 		# The render mesh itself carries no collision.
 		for mi in _nodes_of(house, "MeshInstance3D"):
 			_check(_nodes_of(mi, "StaticBody3D").is_empty(), "GLB render mesh is not used as collision")
-	_check(enterable == 5, "5 of the GLB houses are enterable (A, B + 3 village)")
+	_check(enterable == 8, "EVERY GLB house (A-H) is enterable")
 	region.free()
+
+## M2.4-B — grass is CHUNKED (many tiles), not one big field, so it can't pop in
+## and out as a unit; each tile carries an overlapping visibility-range fade.
+func _test_grass_chunked() -> void:
+	var excl: Array[Rect2] = []
+	var tiles := VegetationField.scatter_tiled(&"grass", &"grass_blade",
+		-20.0, -20.0, 20.0, 20.0, 12.0, 0.4, 99, 0.8, 1.3, 60.0, excl)
+	add_child(tiles)
+	var mmis := _nodes_of(tiles, "MultiMeshInstance3D")
+	_check(mmis.size() >= 4, "grass is split into multiple chunk tiles")
+	var faded := mmis.size() > 0
+	for m in mmis:
+		var mmi := m as MultiMeshInstance3D
+		if mmi.visibility_range_end <= 0.0 or mmi.visibility_range_end_margin < mmi.visibility_range_end * 0.4:
+			faded = false
+	_check(faded, "each grass tile has a large overlapping fade margin")
+	tiles.free()
 
 ## True if the subtree holds a MeshInstance3D with a non-primitive (imported)
 ## mesh — i.e. a hero GLB, as opposed to the kit's BoxMesh/PrismMesh primitives.
