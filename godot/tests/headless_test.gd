@@ -52,6 +52,7 @@ func _run() -> void:
 	_test_materials()
 	_test_vegetation()
 	_test_house_kit()
+	_test_hero_houses()
 
 func _test_item_registry() -> void:
 	_check(ItemRegistry.has_definition(&"fish"), "ItemRegistry has fish")
@@ -514,6 +515,52 @@ func _test_house_kit() -> void:
 	_check(interior.find_child("PlayerSpawn", true, false) != null, "interior has a PlayerSpawn")
 	_check(_nodes_of(interior, "LocationExitPoint").size() == 1, "interior has one LocationExitPoint")
 	interior.free()
+
+## M2.4-B — hero houses A/B: each must be enterable through the existing entry
+## system, with the entry point INVISIBLE (no door-slab mesh) and a COMPOUND box
+## collider that leaves a doorway gap (not one sealing box, never the render
+## mesh). This guards the device-reported "floating door slab" regression.
+## Visual door-vs-mesh alignment is confirmed separately by the offscreen render.
+func _test_hero_houses() -> void:
+	var region := (load("res://src/world/regions/hero_village.tscn") as PackedScene).instantiate()
+	add_child(region)
+	# Hero houses are the region children carrying a complex (imported GLB) mesh;
+	# every other building is built from primitive meshes.
+	var houses: Array = []
+	for child in region.get_children():
+		if child is Node3D and _has_complex_mesh(child):
+			houses.append(child)
+	_check(houses.size() == 2, "region stages the two hero houses")
+	for house in houses:
+		var entries := _find_entries(house)
+		_check(entries.size() == 1, "hero house has exactly one entry point")
+		if entries.size() == 1:
+			var trigger := (entries[0] as Node).get_parent()
+			_check(trigger is StaticBody3D, "hero entry sits on a collidable (raycast-reachable) body")
+			_check(_nodes_of(trigger, "MeshInstance3D").is_empty(),
+				"hero entry trigger is INVISIBLE (no door-slab mesh)")
+		# Compound collision: several simple box bodies, never a single sealing box.
+		var bodies := _nodes_of(house, "StaticBody3D")
+		var box_bodies := 0
+		for b in bodies:
+			for cs in _nodes_of(b, "CollisionShape3D"):
+				if (cs as CollisionShape3D).shape is BoxShape3D:
+					box_bodies += 1
+		_check(box_bodies >= 4, "hero house has a compound box collider (>=4 simple boxes)")
+		# The mesh itself carries no collision (render mesh is never a collider).
+		for mi in _nodes_of(house, "MeshInstance3D"):
+			_check(_nodes_of(mi, "StaticBody3D").is_empty(), "hero render mesh is not used as collision")
+	region.free()
+
+## True if the subtree holds a MeshInstance3D with a non-primitive (imported)
+## mesh — i.e. a hero GLB, as opposed to the kit's BoxMesh/PrismMesh primitives.
+func _has_complex_mesh(n: Node) -> bool:
+	for d in _descendants(n):
+		if d is MeshInstance3D:
+			var mesh := (d as MeshInstance3D).mesh
+			if mesh != null and not (mesh is PrimitiveMesh):
+				return true
+	return false
 
 ## Recursively collect descendants whose class matches `type_name` (built-in or
 ## a project class_name).

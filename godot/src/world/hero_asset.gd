@@ -46,6 +46,24 @@ static func make_house(glb_path: String, target_width: float = 7.0,
 		root.add_child(body)
 	return root
 
+## The mesh AABB (in raw GLB-local space) and the uniform scale make_house
+## applies for a given target width. Lets a caller map REAL measured points on
+## the mesh (e.g. the actual doorway/wall lines, read off rendered elevations)
+## into the built house's local node space: node = (raw - aabb.position) * scale.
+## This is how the hero-house entrance/collision is derived from actual geometry
+## rather than guessed from the bounding box.
+static func aabb_and_scale(glb_path: String, target_width: float) -> Dictionary:
+	var packed := load(glb_path) as PackedScene
+	if packed == null:
+		return {"aabb": AABB(Vector3(-1, -1, -1), Vector3(2, 2, 2)), "scale": 1.0}
+	var inst := packed.instantiate() as Node3D
+	var mi := _find_mesh(inst)
+	var aabb := mi.get_aabb() if mi != null else AABB(Vector3(-1, -1, -1), Vector3(2, 2, 2))
+	var footprint := maxf(aabb.size.x, aabb.size.z)
+	var s := target_width / maxf(footprint, 0.001)
+	inst.queue_free()
+	return {"aabb": aabb, "scale": s}
+
 ## The footprint (x/z size in metres) of a built house, for laying out
 ## vegetation exclusions around it.
 static func footprint_of(node: Node3D) -> Vector2:

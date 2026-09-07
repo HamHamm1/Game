@@ -54,45 +54,107 @@ func _build_ground() -> void:
 		Vector3(18.0, 4.5, 44.0), Vector3(40.0, 1.0, -18.0), MaterialLibrary.get_mat(&"grass_bright")))
 
 # --- HERO tier (Meshy houses A/B) ------------------------------------------
+#
+# The entrance + collision for each hero house are DERIVED FROM THE ACTUAL MESH,
+# not the bounding box. The real doorway of these Meshy houses sits behind a deep
+# eave + veranda, so the AABB front face is ~1.5 m proud of the true door — which
+# is why the earlier guessed door slab floated in front of the facade. Each house
+# has a measured "profile" of real wall/door lines in RAW mesh space (read off
+# rendered orthographic elevations), mapped into the built node space via
+# HeroAsset.aabb_and_scale (node = (raw - aabb.position) * scale). From that we
+# build: an INVISIBLE entry trigger AT the real doorway (no visible slab), and a
+# simple compound of INVISIBLE box colliders (back + 2 sides + 2 front pieces)
+# that leaves the doorway gap and the veranda clear so the player walks up to the
+# actual door. The render mesh is never used as collision. Front is local +z for
+# both houses (confirmed: back/sides are solid walls; the veranda+door is on +z).
 
-## Place one hero house: grounded, rotated, on a centred stone plinth, with a
-## front-door LocationEntryPoint (the EXISTING entry system) if `interior` is
-## given. The Meshy house extends +x/+z from its local origin, so the footprint
-## centre and the +z front face are computed from the collider footprint.
+## Measured real-geometry profile per hero house, in RAW GLB-local coordinates
+## (metres, before scaling). x_min/x_max = enclosed wall span; z_back = rear wall;
+## z_front = the true front wall / sliding-door line (well inside the eave);
+## y_top = top of the walls (roof above is not collided); door_x = doorway centre
+## in x; door_gap = clear doorway width (raw). All read off the orthographic
+## elevations rendered from the actual GLBs.
+const HERO_PROFILES := {
+	HOUSE_A: {   # open engawa house: wide central veranda opening
+		"x_min": -0.68, "x_max": 0.68, "z_back": -0.34, "z_front": 0.47,
+		"y_top": 0.11, "door_x": 0.0, "door_gap": 0.5,
+	},
+	HOUSE_B: {   # gabled entry, door on the main block (left of the +x side wing)
+		"x_min": -0.85, "x_max": 0.90, "z_back": -0.45, "z_front": 0.45,
+		"y_top": 0.055, "door_x": -0.25, "door_gap": 0.42,
+	},
+}
+
+## Place one hero house: grounded, rotated, on a stone plinth under the walls,
+## with mesh-derived compound collision + an invisible entry trigger at the real
+## doorway (the EXISTING entry system) when `interior` is given.
 func _hero_house(path: String, pos: Vector3, yaw_deg: float, width: float,
 		interior: String, prompt: String) -> void:
-	var h := HeroAsset.make_house(path, width, true)
+	# collide=false: we build our own mesh-derived collider, never the AABB box.
+	var h := HeroAsset.make_house(path, width, false)
 	h.position = pos
 	h.rotation_degrees = Vector3(0.0, yaw_deg, 0.0)
 	add_child(h)
-	var fp := HeroAsset.footprint_of(h)
 
-	# Front door slab on the +z face (proud of the box collider so the
-	# interaction raycast reaches it), carried by the house so it rotates with
-	# the yaw. NOTE: which painted facade this lands on is asset-dependent and
-	# wants on-device confirmation; functionally the door is reachable + enters.
-	var door := BlockoutUtil.static_box_mat(
-		Vector3(1.2, 2.3, 0.18), Vector3(fp.x * 0.5, 1.15, fp.y + 0.12),
-		MaterialLibrary.get_mat(&"wood_door"))
-	h.add_child(door)
+	var m := HeroAsset.aabb_and_scale(path, width)
+	var aabb: AABB = m["aabb"]
+	var s: float = m["scale"]
+	var p: Dictionary = HERO_PROFILES[path]
+
+	# Map the raw wall/door lines into the built house's local node space.
+	var lo := (Vector3(p["x_min"], aabb.position.y, p["z_back"]) - aabb.position) * s
+	var hi := (Vector3(p["x_max"], p["y_top"], p["z_front"]) - aabb.position) * s
+	var doorx := (float(p["door_x"]) - aabb.position.x) * s
+	var half := float(p["door_gap"]) * s * 0.5
+	var mid_y := (lo.y + hi.y) * 0.5
+	var mid_z := (lo.z + hi.z) * 0.5
+	var wall_h := hi.y - lo.y
+	const T := 0.3
+
+	# Compound INVISIBLE collision (children of the house so they rotate with it).
+	# Back + two sides fully enclose; two front pieces flank a clear doorway gap.
+	h.add_child(_col(Vector3(hi.x - lo.x, wall_h, T), Vector3((lo.x + hi.x) * 0.5, mid_y, lo.z)))       # back
+	h.add_child(_col(Vector3(T, wall_h, hi.z - lo.z), Vector3(lo.x, mid_y, mid_z)))                     # left
+	h.add_child(_col(Vector3(T, wall_h, hi.z - lo.z), Vector3(hi.x, mid_y, mid_z)))                     # right
+	var fl_w := maxf((doorx - half) - lo.x, 0.0)
+	if fl_w > 0.05:
+		h.add_child(_col(Vector3(fl_w, wall_h, T), Vector3((lo.x + (doorx - half)) * 0.5, mid_y, hi.z)))  # front-left
+	var fr_w := maxf(hi.x - (doorx + half), 0.0)
+	if fr_w > 0.05:
+		h.add_child(_col(Vector3(fr_w, wall_h, T), Vector3(((doorx + half) + hi.x) * 0.5, mid_y, hi.z)))  # front-right
+
+	# Invisible entry trigger sitting IN the doorway gap, slightly proud of the
+	# wall line so the interaction raycast resolves it (not the flanking walls).
 	if not interior.is_empty():
+		var trigger := _col(Vector3(half * 2.0, wall_h, T), Vector3(doorx, mid_y, hi.z + 0.06))
+		h.add_child(trigger)
 		var entry := LocationEntryPoint.new()
 		entry.location_scene = interior
 		entry.spawn_name = "PlayerSpawn"
 		entry.prompt = prompt
-		door.add_child(entry)
+		trigger.add_child(entry)
 
-	# Stone plinth centred under the house footprint (rotated to match).
-	var basis := Basis(Vector3.UP, deg_to_rad(yaw_deg))
-	var center := pos + basis * Vector3(fp.x * 0.5, 0.0, fp.y * 0.5)
-	var plinth := BlockoutUtil.static_box_mat(
-		Vector3(fp.x + 1.2, 0.3, fp.y + 1.2), center + Vector3(0.0, 0.15, 0.0),
-		MaterialLibrary.get_mat(&"stone"))
-	plinth.rotation_degrees = Vector3(0.0, yaw_deg, 0.0)
-	add_child(plinth)
+	# Stone plinth under the walls (not out to the eaves), rotates with the house.
+	var pc := Vector3((lo.x + hi.x) * 0.5, 0.0, (lo.z + hi.z) * 0.5)
+	h.add_child(BlockoutUtil.visual_box_mat(
+		Vector3((hi.x - lo.x) + 0.8, 0.3, (hi.z - lo.z) + 0.8), pc + Vector3(0.0, 0.15, 0.0),
+		MaterialLibrary.get_mat(&"stone")))
 
-	var pad := maxf(fp.x, fp.y) + 2.5
-	_excl.append(Rect2(center.x - pad * 0.5, center.z - pad * 0.5, pad, pad))
+	# Vegetation exclusion around the real footprint (world space).
+	var world_c := h.to_global(pc)
+	var pad := maxf(hi.x - lo.x, hi.z - lo.z) + 3.0
+	_excl.append(Rect2(world_c.x - pad * 0.5, world_c.z - pad * 0.5, pad, pad))
+
+## An invisible collision-only box (StaticBody3D + CollisionShape3D, no mesh).
+func _col(size: Vector3, pos: Vector3) -> StaticBody3D:
+	var body := StaticBody3D.new()
+	body.position = pos
+	var cs := CollisionShape3D.new()
+	var box := BoxShape3D.new()
+	box.size = size
+	cs.shape = box
+	body.add_child(cs)
+	return body
 
 func _place_hero_houses() -> void:
 	# Irregular placement + rotation — never side-by-side. BOTH enterable.

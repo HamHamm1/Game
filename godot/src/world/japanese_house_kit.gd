@@ -40,6 +40,12 @@ class Spec:
 	var porch := false           # small pitched entry hood over the door
 	var side_ext := false        # a lower attached wing (genkan / storage)
 	var windows := 2             # window pairs on the flanks
+	## The doorway is part of the architectural spec (never a generic side): its
+	## centre is `door_x` metres from the front-wall centre, and it is `door_w`
+	## wide. build() opens the front wall AND places the entry there, so the
+	## interaction point can never drift off the actual doorway.
+	var door_x := 0.0
+	var door_w := 1.4
 
 # --- Archetype presets ------------------------------------------------------
 # SAME palette + construction, DIFFERENT massing. Each reads as its own house.
@@ -110,20 +116,27 @@ static func build(spec: Spec, interior_path: String = "", prompt: String = "Ente
 				Vector3(POST * 2.0, h + 0.1, POST * 2.0),
 				Vector3(sx * (w * 0.5 - POST), h * 0.5, sz * (d * 0.5 - POST)), trim))
 
-	# Walls (visual only — one box collider is added at the end). Front (+z) is
-	# split around a central doorway gap; the door itself is added below.
-	var door_gap := 1.4
+	# Walls (visual only — one box collider is added at the end). The front (+z)
+	# wall is opened around the ARCHITECTURAL doorway (spec.door_x / door_w), and
+	# the door + entry below use the same doorway — so they can never disagree.
+	var door_gap: float = spec.door_w
+	var dcx: float = clampf(spec.door_x, -(w * 0.5 - door_gap * 0.5 - WALL_T), w * 0.5 - door_gap * 0.5 - WALL_T)
+	var door_l := dcx - door_gap * 0.5
+	var door_r := dcx + door_gap * 0.5
 	root.add_child(BlockoutUtil.visual_box_mat(Vector3(w, h, WALL_T), Vector3(0.0, h * 0.5, -d * 0.5), wall))     # back
 	root.add_child(BlockoutUtil.visual_box_mat(Vector3(WALL_T, h, d), Vector3(-w * 0.5, h * 0.5, 0.0), wall))     # left
 	root.add_child(BlockoutUtil.visual_box_mat(Vector3(WALL_T, h, d), Vector3(w * 0.5, h * 0.5, 0.0), wall))      # right
-	var side := (w - door_gap) * 0.5
-	root.add_child(BlockoutUtil.visual_box_mat(
-		Vector3(side, h, WALL_T), Vector3(-(door_gap * 0.5 + side * 0.5), h * 0.5, d * 0.5), wall))               # front L
-	root.add_child(BlockoutUtil.visual_box_mat(
-		Vector3(side, h, WALL_T), Vector3(door_gap * 0.5 + side * 0.5, h * 0.5, d * 0.5), wall))                  # front R
+	var fl_w := door_l - (-w * 0.5)
+	if fl_w > 0.05:
+		root.add_child(BlockoutUtil.visual_box_mat(
+			Vector3(fl_w, h, WALL_T), Vector3((-w * 0.5 + door_l) * 0.5, h * 0.5, d * 0.5), wall))               # front L
+	var fr_w := (w * 0.5) - door_r
+	if fr_w > 0.05:
+		root.add_child(BlockoutUtil.visual_box_mat(
+			Vector3(fr_w, h, WALL_T), Vector3((door_r + w * 0.5) * 0.5, h * 0.5, d * 0.5), wall))                # front R
 	# Lintel over the doorway.
 	root.add_child(BlockoutUtil.visual_box_mat(
-		Vector3(door_gap + 0.3, h - 2.2, WALL_T), Vector3(0.0, h - (h - 2.2) * 0.5, d * 0.5), trim))
+		Vector3(door_gap + 0.3, h - 2.2, WALL_T), Vector3(dcx, h - (h - 2.2) * 0.5, d * 0.5), trim))
 
 	# Eave band (dark) at the top of the walls — the strong horizontal line.
 	root.add_child(BlockoutUtil.visual_box_mat(Vector3(w + 0.2, 0.22, d + 0.2), Vector3(0.0, h + 0.02, 0.0), trim))
@@ -138,9 +151,9 @@ static func build(spec: Spec, interior_path: String = "", prompt: String = "Ente
 	if spec.side_ext:
 		_add_side_ext(root, spec)
 
-	# --- Front door: enterable or solid -------------------------------------
+	# --- Front door: enterable or solid (in the architectural doorway) ------
 	var door_body := BlockoutUtil.static_box_mat(
-		Vector3(door_gap, 2.2, 0.16), Vector3(0.0, 1.1, d * 0.5 + 0.08),
+		Vector3(door_gap, 2.2, 0.16), Vector3(dcx, 1.1, d * 0.5 + 0.08),
 		MaterialLibrary.get_mat(&"wood_door"))
 	root.add_child(door_body)
 	if not interior_path.is_empty():

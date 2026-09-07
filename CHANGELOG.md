@@ -22,14 +22,26 @@ House A/B become **enterable** via the existing building entry system, and a
 and all gameplay systems are untouched. **NOT** ANDROID VERIFIED — visual
 success is judged only by the owner's device test.
 
-- **Playable A/B (Phase 1).** `hero_village.gd` now attaches a front-door
-  `LocationEntryPoint` (the EXISTING entry contract — `WorldEvents` →
-  `world_root._on_enter_location` → separate interior scene at offset, with the
-  return position saved for exit) to each hero house. The door slab sits **proud
-  of the box collider on the +z face** so the interaction raycast reaches it;
-  the Meshy collider is the simple box (never the ~0.4M-tri mesh), so it can't
-  block entry. Which painted facade the door lands on is asset-dependent and is
-  a **device-test item**.
+- **Playable A/B (Phase 1).** `hero_village.gd` makes each hero house enterable
+  through the EXISTING entry contract (`LocationEntryPoint` → `WorldEvents` →
+  `world_root._on_enter_location` → separate interior scene at offset, return
+  position saved for exit).
+- **Door-alignment fix (device-reported).** The first attempt placed a visible
+  wood door slab on the AABB **+z** face — but these Meshy houses have deep eaves
+  and a recessed veranda, so the AABB front is ~1.5 m proud of the real door and
+  the slab floated in front of the facade. Fixed by DERIVING the entrance from
+  the ACTUAL MESH: the houses were rendered to orthographic elevations offscreen
+  (xvfb + opengl3), the real wall/door lines measured in raw-mesh space, and
+  mapped into node space via a new `HeroAsset.aabb_and_scale`
+  (`node = (raw − aabb.position) · scale`). Per house `HERO_PROFILES` now drives
+  (a) an **invisible entry trigger AT the real doorway** (no visible slab), and
+  (b) a **simple compound of invisible box colliders** (back + two sides + two
+  front pieces flanking a clear doorway gap) inset to the true wall line, so the
+  deep-eave veranda is walkable and the player reaches the actual door. Verified
+  with a debug overlay render: House A trigger on the central genkan opening;
+  House B trigger on the main-block double-door (offset left of the +x side
+  wing). The render mesh is never used as collision. Final look is a
+  **device-test item**.
 - **NEW `godot/src/world/locations/house_interior_wood.{gd,tscn}`** — a shared
   warm-wood interior (floor/walls/ceiling/beams/furniture) with a deterministic
   `PlayerSpawn` just inside and a `LocationExitPoint` on the door. Carries
