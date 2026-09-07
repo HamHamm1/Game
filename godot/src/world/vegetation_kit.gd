@@ -1,10 +1,12 @@
 class_name VegetationKit
 extends RefCounted
-## M2.4-B — cheap, cached, low-poly meshes for instanced vegetation. One shared
-## Mesh per species (a MultiMesh reuses it across all its instances, and all
-## fields of a species share this one). No textures, no alpha shaders — solid
-## low-poly geometry that reads as ground cover at density under M2.2 lighting
-## (M2.4_ART_DESIGN.md §M2.4-B). Owns mesh data only; no scene/environment access.
+## M2.4 (rebuild) — cached, shared, low-poly species meshes for instanced
+## vegetation. Every mesh is authored BASE-AT-ORIGIN (its ground-contact point
+## is local y=0) so a field can ground it by putting the instance origin at the
+## ground height — no floating, no guessing. Sphere-based species (shrub/rock)
+## instead report a `ground_offset` so their centre sits the right amount above
+## the surface. Meshes are texture-free but shaped to read as real plants at
+## first-person distance (no triangular spikes). Owns mesh data only.
 
 static var _cache: Dictionary = {}   # StringName -> Mesh
 
@@ -15,37 +17,31 @@ static func mesh(species: StringName) -> Mesh:
 	_cache[species] = m
 	return m
 
+## How far the mesh's origin sits ABOVE the ground-contact point, in mesh-local
+## units (multiplied by the instance scale by the field). 0 for base-anchored
+## meshes; positive for centre-origin spheres so they rest on the surface.
+static func ground_offset(species: StringName) -> float:
+	match species:
+		&"shrub": return 0.40   # dome bottom rests on ground
+		&"rock": return 0.28    # rock sits slightly sunk into the ground
+	return 0.0
+
 static func _build(species: StringName) -> Mesh:
 	match species:
 		&"grass":
-			# A small low-poly tuft of 5 angled blades (B.1 fix): reads as a
-			# grass clump at first-person distance, not a triangular spike.
-			# Double-sided geometry (~20 tris) so it lights correctly from any
-			# angle without a special shader.
-			return _grass_tuft()
+			return _tuft(6, 0.34, 0.42, Color.WHITE)   # upright clump
 		&"fern":
-			# A wider, lower frond clump.
-			var p := PrismMesh.new()
-			p.size = Vector3(0.5, 0.5, 0.05)
-			return p
-		&"shrub":
-			# A small rounded bush blob (low sphere).
-			var s := SphereMesh.new()
-			s.radius = 0.45
-			s.height = 0.8
-			s.radial_segments = 6
-			s.rings = 3
-			return s
+			return _tuft(5, 0.30, 0.85, Color.WHITE)   # lower, arched fronds
 		&"flower":
-			# A tiny bloom (small low sphere) sat on a short stem look via scale.
+			return _flower()
+		&"shrub":
 			var s := SphereMesh.new()
-			s.radius = 0.12
-			s.height = 0.24
-			s.radial_segments = 5
-			s.rings = 2
+			s.radius = 0.42
+			s.height = 0.80
+			s.radial_segments = 7
+			s.rings = 4
 			return s
 		&"rock":
-			# A faceted low rock.
 			var s := SphereMesh.new()
 			s.radius = 0.5
 			s.height = 0.7
@@ -57,32 +53,53 @@ static func _build(species: StringName) -> Mesh:
 			b.size = Vector3(0.2, 0.2, 0.2)
 			return b
 
-## A small tuft of 5 angled tapered blades fanned around a common base. Each
-## blade is a double-sided quad so it lights from any angle without a shader.
-## ~20 tris — extremely cheap, and reads as a grass clump, not a spike.
-static func _grass_tuft() -> ArrayMesh:
+## A tuft of `blades` curved, tapered, double-sided blades fanned around the
+## base (local y=0). `lean` (0..1) bends the tip outward — low for upright
+## grass, high for arched ferns. Reads as a clump, not a spike.
+static func _tuft(blades: int, height: float, lean: float, tint: Color) -> ArrayMesh:
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
-	var blades := 5
 	for i in blades:
 		var yaw := TAU * float(i) / float(blades) + 0.35
 		var dir := Vector3(sin(yaw), 0.0, cos(yaw))
 		var side := Vector3(cos(yaw), 0.0, -sin(yaw))
-		var h := 0.36 + 0.05 * float(i % 2)     # slight height variety
-		var lean := 0.14                         # outward lean at the tip
-		var base := dir * 0.02
-		var tip := base + Vector3(0.0, h, 0.0) + dir * lean
-		var b0 := base - side * 0.045
-		var b1 := base + side * 0.045
-		var t0 := tip - side * 0.012
-		var t1 := tip + side * 0.012
-		_quad(st, b0, b1, t1, t0)
+		var h := height * (0.85 + 0.3 * float(i % 2))       # height variety
+		var out := lean * h
+		var base := dir * 0.03
+		var mid := base + Vector3(0.0, h * 0.55, 0.0) + dir * (out * 0.35)
+		var tip := base + Vector3(0.0, h, 0.0) + dir * out
+		var bw := 0.05
+		var mw := 0.035
+		# base->mid, then mid->tip, each a double-sided quad.
+		_quad(st, base - side * bw, base + side * bw, mid + side * mw, mid - side * mw, tint)
+		_quad(st, mid - side * mw, mid + side * mw, tip, tip, tint)
 	st.generate_normals()
 	return st.commit()
 
-## Two triangles for a quad, added twice with opposite winding (double-sided).
-static func _quad(st: SurfaceTool, a: Vector3, b: Vector3, c: Vector3, d: Vector3) -> void:
-	st.add_vertex(a); st.add_vertex(b); st.add_vertex(c)
-	st.add_vertex(a); st.add_vertex(c); st.add_vertex(d)
-	st.add_vertex(a); st.add_vertex(c); st.add_vertex(b)
-	st.add_vertex(a); st.add_vertex(d); st.add_vertex(c)
+## A small flower: a green stem plus a warm bloom, coloured with vertex colours
+## (one shared vertex-colour material draws both). Base-anchored.
+static func _flower() -> ArrayMesh:
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var green := Color(0.32, 0.46, 0.26)
+	var bloom := Color(0.90, 0.78, 0.42)
+	var h := 0.26
+	# Stem (a thin double-sided blade).
+	var s := Vector3(1, 0, 0)
+	_quad(st, Vector3(-0.012, 0, 0), Vector3(0.012, 0, 0),
+		Vector3(0.008, h, 0), Vector3(-0.008, h, 0), green)
+	# Bloom: two small crossed petals near the top.
+	var top := Vector3(0, h, 0)
+	for a in [0.0, PI * 0.5]:
+		var d := Vector3(sin(a), 0, cos(a))
+		var n := Vector3(cos(a), 0, -sin(a))
+		_quad(st, top - d * 0.06 - n * 0.02, top - d * 0.06 + n * 0.02,
+			top + d * 0.06 + n * 0.02, top + d * 0.06 - n * 0.02, bloom)
+	st.generate_normals()
+	return st.commit()
+
+## Two triangles for a quad, added with both windings (double-sided), tinted.
+static func _quad(st: SurfaceTool, a: Vector3, b: Vector3, c: Vector3, d: Vector3, col: Color) -> void:
+	for v in [a, b, c, a, c, d, a, c, b, a, d, c]:
+		st.set_color(col)
+		st.add_vertex(v)

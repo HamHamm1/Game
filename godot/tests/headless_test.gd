@@ -382,43 +382,69 @@ func _test_vegetation() -> void:
 	# Shared species mesh (one Mesh reused across fields).
 	_check(VegetationKit.mesh(&"grass") == VegetationKit.mesh(&"grass"), "veg mesh shared per species")
 
-	# B.1 — grass is a low-poly tuft (custom ArrayMesh), not a primitive spike.
+	# Grass is a base-anchored low-poly tuft (custom ArrayMesh), not a spike.
 	var gmesh := VegetationKit.mesh(&"grass")
 	_check(gmesh is ArrayMesh, "grass mesh is a custom tuft (ArrayMesh)")
 	_check(gmesh.get_surface_count() >= 1 and gmesh.surface_get_array_len(0) >= 30,
 		"grass tuft has multiple blades")
 
-	# Placement is verified via compute_transforms (a MultiMesh's transforms do
-	# not read back reliably headless). Deterministic: same params -> identical.
+	# GROUNDING — Y is derived from the ground representation, never floated.
+	_check(GroundSampler.height_at(12.3, -4.5) == GroundSampler.GROUND_Y, "ground sampler returns the flat ground height")
 	var no_excl: Array[Rect2] = []
-	var p1 := VegetationField.compute_transforms(Vector3.ZERO, 5.0, 5.0, 80, 4242, 0.2, 0.8, 1.2, no_excl)
-	var p2 := VegetationField.compute_transforms(Vector3.ZERO, 5.0, 5.0, 80, 4242, 0.2, 0.8, 1.2, no_excl)
-	_check(p1.size() == 80, "veg fills all candidates when unmasked")
-	_check(p1.size() == p2.size(), "veg placement deterministic (count)")
-	_check(p1.size() > 0 and p1[0].origin.is_equal_approx(p2[0].origin), "veg placement deterministic (transform)")
+	# Base-anchored species (grass, offset 0) sit exactly on the ground (y≈0).
+	var g := VegetationField.compute_transforms(Vector3.ZERO, 5.0, 5.0, 60, 4242, 0.9, 1.3, 0.0, no_excl)
+	var grounded := true
+	for t in g:
+		if absf(t.origin.y - GroundSampler.height_at(t.origin.x, t.origin.z)) > 0.001:
+			grounded = false
+	_check(grounded, "base-anchored vegetation rests on the ground (no float/sink)")
+	# Centre-origin species rest on the surface by their ground_offset*scale.
+	var sh := VegetationField.compute_transforms(Vector3.ZERO, 5.0, 5.0, 40, 55, 1.0, 1.0, 0.40, no_excl)
+	_check(sh.size() > 0 and absf(sh[0].origin.y - 0.40) < 0.001, "offset species rest on the surface, not sunk")
+	_check(VegetationKit.ground_offset(&"grass") == 0.0 and VegetationKit.ground_offset(&"shrub") > 0.0,
+		"ground offsets: grass base-anchored, shrub lifted")
 
-	# B.1 — exclusion masking: nothing is PLACED inside an exclusion zone.
-	var excl: Array[Rect2] = [Rect2(-3.0, -3.0, 6.0, 6.0)]   # 6x6 no-plant zone at origin
-	var masked := VegetationField.compute_transforms(Vector3.ZERO, 6.0, 6.0, 220, 7777, 0.2, 0.8, 1.2, excl)
+	# Deterministic placement: same params -> identical.
+	var p1 := VegetationField.compute_transforms(Vector3.ZERO, 5.0, 5.0, 80, 4242, 0.8, 1.2, 0.0, no_excl)
+	var p2 := VegetationField.compute_transforms(Vector3.ZERO, 5.0, 5.0, 80, 4242, 0.8, 1.2, 0.0, no_excl)
+	_check(p1.size() == 80, "veg fills all candidates when unmasked")
+	_check(p1.size() == p2.size() and p1[0].origin.is_equal_approx(p2[0].origin), "veg placement deterministic")
+
+	# Exclusion masking: nothing is PLACED in water/road/doorway/building zones.
+	var excl: Array[Rect2] = [Rect2(-3.0, -3.0, 6.0, 6.0)]
+	var masked := VegetationField.compute_transforms(Vector3.ZERO, 6.0, 6.0, 220, 7777, 0.8, 1.2, 0.0, excl)
 	var inside := 0
 	for t in masked:
 		if excl[0].has_point(Vector2(t.origin.x, t.origin.z)):
 			inside += 1
 	_check(inside == 0, "no vegetation placed inside an exclusion zone")
-	_check(masked.size() > 0, "vegetation still placed outside the exclusion zone")
-	var full := VegetationField.compute_transforms(Vector3.ZERO, 6.0, 6.0, 220, 7777, 0.2, 0.8, 1.2, no_excl)
-	_check(masked.size() < full.size(), "exclusion removes some placements")
-	var masked2 := VegetationField.compute_transforms(Vector3.ZERO, 6.0, 6.0, 220, 7777, 0.2, 0.8, 1.2, excl)
+	var full := VegetationField.compute_transforms(Vector3.ZERO, 6.0, 6.0, 220, 7777, 0.8, 1.2, 0.0, no_excl)
+	_check(masked.size() > 0 and masked.size() < full.size(), "exclusion removes some placements, keeps the rest")
+	var masked2 := VegetationField.compute_transforms(Vector3.ZERO, 6.0, 6.0, 220, 7777, 0.8, 1.2, 0.0, excl)
 	_check(masked.size() == masked2.size(), "excluded placement remains deterministic")
 
-	# Field node: density responds to preset; LOD range + shared material set.
+	# Vegetation materials carry per-instance/vertex colour variation.
+	_check(MaterialLibrary.get_mat(&"grass_blade").vertex_color_use_as_albedo, "grass material accepts colour variation")
+	_check(MaterialLibrary.get_mat(&"flower_vcol").vertex_color_use_as_albedo, "flower material uses vertex colours")
+
+	# LOD tiering via view distance: LOW < HIGH < ULTRA (ULTRA shows veg farther).
+	Settings.graphics_preset = "LOW"
+	var lod_low := VegetationField.lod_scale()
 	Settings.graphics_preset = "HIGH"
-	var high_field := VegetationField.scatter(&"grass", &"grass_blade", Vector3.ZERO, 5.0, 5.0, 80, 4242, 0.2, 0.8, 1.2, 45.0)
+	var lod_high := VegetationField.lod_scale()
+	Settings.graphics_preset = "ULTRA"
+	var lod_ultra := VegetationField.lod_scale()
+	_check(lod_low < lod_high and lod_high < lod_ultra, "LOD range scales LOW < HIGH < ULTRA")
+
+	# Field node: density responds to preset; LOD range + shared material + colours.
+	Settings.graphics_preset = "HIGH"
+	var high_field := VegetationField.scatter(&"grass", &"grass_blade", Vector3.ZERO, 5.0, 5.0, 80, 4242, 0.9, 1.3, 45.0)
 	_check(high_field.multimesh.instance_count > 0, "veg field populated at HIGH")
+	_check(high_field.multimesh.use_colors, "veg field enables per-instance colour")
 	_check(high_field.visibility_range_end > 0.0, "veg field has an LOD cull range")
 	_check(high_field.material_override == MaterialLibrary.get_mat(&"grass_blade"), "veg field uses the shared material")
 	Settings.graphics_preset = "LOW"
-	var low_field := VegetationField.scatter(&"grass", &"grass_blade", Vector3.ZERO, 5.0, 5.0, 80, 4242, 0.2, 0.8, 1.2, 45.0)
+	var low_field := VegetationField.scatter(&"grass", &"grass_blade", Vector3.ZERO, 5.0, 5.0, 80, 4242, 0.9, 1.3, 45.0)
 	_check(low_field.multimesh.instance_count < high_field.multimesh.instance_count, "LOW preset thins vegetation")
 
 	high_field.free()

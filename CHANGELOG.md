@@ -13,6 +13,50 @@ Status labels follow AI_RULES.md Rule 11:
 
 ## [Unreleased]
 
+### Phase 2 M2.4 — RESTART: Japanese Rural Village Visual Foundation (vegetation rebuilt)
+
+The M2.4-B/B.1 vegetation was **rejected on device** (floating triangular
+spikes, instances floating above ground, possible water placement, still
+greybox). M2.4 vegetation was **rebuilt from scratch** — M2.1/M2.2/M2.3 and
+player/camera/interaction/save/entry-exit are untouched. **Not** ANDROID
+VERIFIED; the next APK is judged by "does vegetation look grounded and does
+this start to look like a beautiful Japanese rural village?"
+
+- **NEW `godot/src/world/ground_sampler.gd`** (`GroundSampler`) — the single
+  source of ground height. Vegetation Y is derived from `height_at(x,z)` (flat
+  blockout → y=0; the seam for a heightmap/raycast backend), never a hardcoded
+  Y. Pure/deterministic (headless-testable); `raycast_height()` provided for
+  the terrain phase.
+- **Rebuilt `vegetation_kit.gd`** — all meshes **base-anchored** (contact point
+  at local y=0) so nothing floats/sinks; centre-origin spheres report a
+  `ground_offset`. Grass is a curved, tapered, double-sided low-poly **tuft**
+  (not a spike); ferns arched; flowers carry stem/bloom **vertex colours**;
+  shrub/rock low spheres.
+- **Rebuilt `vegetation_field.gd`** — grounded placement (`compute_transforms`,
+  pure), deterministic jittered grid, `Rect2` exclusion (water/road/building/
+  doorway) applied to PLACEMENT, per-instance colour + scale + rotation
+  variation (MultiMesh `use_colors`), density from `GraphicsManager.vegetation`,
+  and `visibility_range` LOD scaled by `view_distance` (`lod_scale`) so ULTRA
+  shows vegetation farther than HIGH/MED.
+- **`blockout_util.add_tree`** — trunk (collidable, base-anchored) + rounded
+  canopy of overlapping foliage blobs, 3 silhouette variants, varied scale;
+  canopy blobs LOD-culled. No placeholder cubes.
+- **`material_library.gd`** — vegetation keys now accept per-instance/per-vertex
+  colour (`vertex_color_use_as_albedo`); added `flower_vcol`.
+- **`blockout_town._build_vegetation`** — composed ecological zones: a broad
+  village lawn (carved by exclusions into the gaps), forest transition, stream
+  banks, pond edges, park, small gardens, path edges, and bathhouse surroundings
+  with varied framing trees. Roads/doorways/water kept clear.
+- **`godot/tests/headless_test.gd`** — rebuilt vegetation suite: grounding (base
+  species rest at ground; offset species rest on surface), exclusion (nothing
+  placed in a zone; removes some, keeps rest), determinism, density scaling, LOD
+  tiering LOW<HIGH<ULTRA, and vegetation material colour flags. Placement is
+  verified via the pure `compute_transforms` (never MultiMesh read-back).
+
+Validated: `tools/run_validation.sh` → static 83/83, headless import clean,
+headless boot clean, headless suite **128/128**, Android export config valid.
+NOT ANDROID VERIFIED — grounded look and rural-village feel need the device test.
+
 ### Phase 2 M2.4-B.1 — Vegetation device fixes (grass silhouette + water exclusion)
 
 Two device-visible fixes from the M2.4-B Android test. Not yet re-accepted on

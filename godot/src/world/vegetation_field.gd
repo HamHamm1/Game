@@ -1,15 +1,24 @@
 class_name VegetationField
 extends RefCounted
-## M2.4-B — builds one MultiMeshInstance3D of a vegetation species over a
-## rectangular zone, for composition (framing paths/water/buildings, village↔
-## forest transitions), not blanket greening (M2.4_ART_DESIGN.md §M2.4-B).
+## M2.4 (rebuild) — one MultiMeshInstance3D of a vegetation species over a zone,
+## used for COMPOSITION (ecological zones: lawns, path edges, forest transition,
+## banks, gardens), not blanket greening (M2.4_ART_DESIGN.md). Key properties:
 ##
-## Placement is a DETERMINISTIC jittered grid (seeded): the middle ground
-## between perfectly uniform spacing and excessive randomness the owner asked
-## for. Density scales with GraphicsManager's `vegetation` intent (LOW sparse,
-## ULTRA full). Distance is culled with visibility_range (LOD). No collision,
-## no wind, one shared material (M2.4-A). Reads GraphicsManager only; writes no
-## environment/lights.
+## - GROUNDED: every instance's Y comes from GroundSampler.height_at (the real
+##   ground representation) plus the species' ground_offset*scale, so nothing
+##   floats or sinks. Meshes are base-anchored (see VegetationKit).
+## - EXCLUDED: candidates inside a water/road/building/doorway Rect2 are dropped
+##   from PLACEMENT (not hidden).
+## - DETERMINISTIC: seeded jittered grid -> reproducible builds.
+## - VARIED: per-instance scale, rotation, and colour (MultiMesh instance
+##   colour) so a field never reads as a repeated stamp.
+## - MOBILE: GPU-instanced, shared material, density from GraphicsManager's
+##   `vegetation` intent, distance culled with visibility_range scaled by the
+##   `view_distance` intent (ULTRA shows vegetation farther than HIGH/MED).
+##
+## Reads GraphicsManager only; writes no environment/lights/collision.
+
+const LOD_BASELINE_VIEW := 300.0   # HIGH preset view distance = 1.0x LOD
 
 ## Instance count for a base count under a vegetation intent (0..1).
 static func target_count(base_count: int, intent: float) -> int:
@@ -20,8 +29,13 @@ static func _intent() -> float:
 		return float(GraphicsManager.get_params().get("vegetation", 1.0))
 	return 1.0
 
-## True if the XZ point falls inside any exclusion Rect2 (water/road/building/
-## doorway footprints, in world XZ). Used to keep vegetation off those surfaces.
+## visibility_range scale from the preset view distance (LOW ~0.5x .. ULTRA ~1.7x).
+static func lod_scale() -> float:
+	if GraphicsManager == null:
+		return 1.0
+	var vd := float(GraphicsManager.get_params().get("view_distance", LOD_BASELINE_VIEW))
+	return clampf(vd / LOD_BASELINE_VIEW, 0.5, 2.0)
+
 static func _excluded(x: float, z: float, exclusions: Array[Rect2]) -> bool:
 	var p := Vector2(x, z)
 	for r in exclusions:
@@ -29,14 +43,11 @@ static func _excluded(x: float, z: float, exclusions: Array[Rect2]) -> bool:
 			return true
 	return false
 
-## Pure, deterministic placement: the jittered grid minus any candidate inside
-## an exclusion zone. Exposed so tests can verify placement directly (a
-## MultiMesh's transforms don't read back reliably headless). The RNG is
-## advanced once per CANDIDATE regardless of exclusion, so the surviving layout
-## is identical for a given seed + zones (and identical to no-exclusion when the
-## list is empty). Placement itself is excluded — nothing is merely hidden.
+## Pure, deterministic, GROUNDED placement — the jittered grid minus exclusions,
+## with Y derived from the ground. Exposed so tests verify placement directly
+## (a MultiMesh's transforms don't read back reliably headless).
 static func compute_transforms(center: Vector3, half_x: float, half_z: float,
-		count: int, rng_seed: int, y_base: float, s_min: float, s_max: float,
+		count: int, rng_seed: int, s_min: float, s_max: float, ground_offset: float,
 		exclusions: Array[Rect2]) -> Array[Transform3D]:
 	var kept: Array[Transform3D] = []
 	if count <= 0:
@@ -52,38 +63,44 @@ static func compute_transforms(center: Vector3, half_x: float, half_z: float,
 	for i in count:
 		var col := i % cols
 		var row := i / cols
-		var px := corner.x + (float(col) + 0.5) * cell_w + (rng.randf() - 0.5) * cell_w * 0.8
-		var pz := corner.z + (float(row) + 0.5) * cell_d + (rng.randf() - 0.5) * cell_d * 0.8
+		var px := corner.x + (float(col) + 0.5) * cell_w + (rng.randf() - 0.5) * cell_w * 0.85
+		var pz := corner.z + (float(row) + 0.5) * cell_d + (rng.randf() - 0.5) * cell_d * 0.85
 		var yaw := rng.randf() * TAU
 		var s := lerpf(s_min, s_max, rng.randf())
 		if _excluded(px, pz, exclusions):
 			continue
+		var y := GroundSampler.height_at(px, pz) + ground_offset * s
 		var basis := Basis(Vector3.UP, yaw).scaled(Vector3(s, s, s))
-		kept.append(Transform3D(basis, Vector3(px, y_base, pz)))
+		kept.append(Transform3D(basis, Vector3(px, y, pz)))
 	return kept
 
-## Build a field. `center` is world-space; `half_x`/`half_z` are the zone's half
-## extents; `y_base` lifts instances so they sit on the ground. Returns a
-## MultiMeshInstance3D (instance_count may be 0 at very low density).
+## Build a grounded, composed field node. `base_end_dist` is the species' base
+## LOD cull distance (scaled by the preset). Returns a MultiMeshInstance3D.
 static func scatter(species: StringName, material_key: StringName, center: Vector3,
 		half_x: float, half_z: float, base_count: int, rng_seed: int,
-		y_base: float, s_min: float, s_max: float, end_dist: float,
+		s_min: float, s_max: float, base_end_dist: float,
 		exclusions: Array[Rect2] = []) -> MultiMeshInstance3D:
 	var count := target_count(base_count, _intent())
+	var offset := VegetationKit.ground_offset(species)
 	var kept := compute_transforms(center, half_x, half_z, count, rng_seed,
-		y_base, s_min, s_max, exclusions)
+		s_min, s_max, offset, exclusions)
 
 	var mm := MultiMesh.new()
 	mm.transform_format = MultiMesh.TRANSFORM_3D
+	mm.use_colors = true
 	mm.mesh = VegetationKit.mesh(species)
 	mm.instance_count = kept.size()
+	var crng := RandomNumberGenerator.new()
+	crng.seed = rng_seed + 1
 	for i in kept.size():
 		mm.set_instance_transform(i, kept[i])
+		var v := crng.randf_range(0.82, 1.0)     # subtle value variation
+		mm.set_instance_color(i, Color(v, v * 1.02, v * 0.96))
 
 	var mmi := MultiMeshInstance3D.new()
 	mmi.multimesh = mm
 	mmi.material_override = MaterialLibrary.get_mat(material_key)
-	# LOD: cull the field past its range with a soft fade (cheap on mobile).
+	var end_dist := base_end_dist * lod_scale()
 	mmi.visibility_range_end = end_dist
 	mmi.visibility_range_end_margin = end_dist * 0.12
 	mmi.visibility_range_fade_mode = GeometryInstance3D.VISIBILITY_RANGE_FADE_SELF

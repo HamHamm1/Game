@@ -224,7 +224,7 @@ func _build_forest_edge() -> void:
 	for pos in trunks:
 		# Deterministic scale variation so the edge doesn't read as a uniform row.
 		var s := 0.9 + float((i * 37) % 5) * 0.12
-		BlockoutUtil.add_tree(self, pos, s)
+		BlockoutUtil.add_tree(self, pos, s, i % 3)
 		i += 1
 
 func _build_alley(anchor: Vector3) -> void:
@@ -248,8 +248,8 @@ func _build_alley(anchor: Vector3) -> void:
 var _veg_excl: Array[Rect2] = []
 
 func _veg(species: StringName, mat: StringName, center: Vector3, hx: float, hz: float,
-		base: int, seed: int, y: float, smin: float, smax: float, end_dist: float) -> void:
-	add_child(VegetationField.scatter(species, mat, center, hx, hz, base, seed, y, smin, smax,
+		base: int, seed: int, smin: float, smax: float, end_dist: float) -> void:
+	add_child(VegetationField.scatter(species, mat, center, hx, hz, base, seed, smin, smax,
 		end_dist, _veg_excl))
 
 ## XZ footprints where vegetation must NOT be placed (B.1): water surfaces,
@@ -278,50 +278,61 @@ func _vegetation_exclusions() -> Array[Rect2]:
 
 func _build_vegetation() -> void:
 	_veg_excl = _vegetation_exclusions()
-	# 1. Forest understory east of the river — the village<->forest transition.
-	_veg(&"grass", &"grass_blade", Vector3(39.0, 0.0, -3.0), 5.0, 28.0, 260, 1001, 0.22, 0.8, 1.4, 45.0)
-	_veg(&"fern", &"fern", Vector3(39.0, 0.0, -3.0), 5.0, 28.0, 44, 1002, 0.24, 0.8, 1.3, 55.0)
-	_veg(&"shrub", &"shrub", Vector3(39.0, 0.0, -3.0), 5.0, 28.0, 16, 1003, 0.38, 0.8, 1.3, 75.0)
-	_veg(&"rock", &"rock", Vector3(39.0, 0.0, -3.0), 5.0, 28.0, 12, 1004, 0.18, 0.6, 1.6, 90.0)
 
-	# 2. River banks — frame the water on both sides.
-	_veg(&"grass", &"grass_blade", Vector3(27.8, 0.0, -2.0), 1.2, 30.0, 90, 1101, 0.22, 0.8, 1.3, 45.0)
-	_veg(&"grass", &"grass_blade", Vector3(32.2, 0.0, -2.0), 1.2, 30.0, 90, 1102, 0.22, 0.8, 1.3, 45.0)
-	_veg(&"rock", &"rock", Vector3(27.8, 0.0, -2.0), 1.2, 30.0, 10, 1103, 0.18, 0.6, 1.4, 90.0)
-	_veg(&"rock", &"rock", Vector3(32.2, 0.0, -2.0), 1.2, 30.0, 10, 1104, 0.18, 0.6, 1.4, 90.0)
+	# Village lawns: one broad grass field across the town. The exclusion zones
+	# carve out the street, building footprints and water, leaving natural lawns
+	# in the gaps between buildings (grounded, density varies with the preset).
+	_veg(&"grass", &"grass_blade", Vector3(0.0, 0.0, -2.0), 24.0, 27.0, 1150, 1000, 0.7, 1.35, 42.0)
 
-	# 3. Pond surround — ferns, blooms and rocks framing the water by the park.
-	_veg(&"fern", &"fern", Vector3(-30.0, 0.0, -16.0), 6.5, 5.5, 26, 1201, 0.24, 0.8, 1.2, 55.0)
-	_veg(&"flower", &"flower_warm", Vector3(-30.0, 0.0, -16.0), 6.5, 5.5, 16, 1202, 0.12, 0.7, 1.2, 40.0)
-	_veg(&"rock", &"rock", Vector3(-30.0, 0.0, -16.0), 6.5, 5.5, 10, 1203, 0.18, 0.6, 1.5, 90.0)
-	_veg(&"grass", &"grass_blade", Vector3(-30.0, 0.0, -16.0), 6.5, 5.5, 40, 1204, 0.22, 0.8, 1.3, 45.0)
+	# Forest transition (east of the river): dense understory + shrubs + rocks.
+	_veg(&"grass", &"grass_blade", Vector3(39.0, 0.0, -3.0), 6.0, 28.0, 320, 1101, 0.8, 1.5, 45.0)
+	_veg(&"fern", &"fern", Vector3(39.0, 0.0, -3.0), 6.0, 28.0, 70, 1102, 0.8, 1.4, 55.0)
+	_veg(&"shrub", &"shrub", Vector3(39.0, 0.0, -3.0), 6.0, 28.0, 22, 1103, 0.8, 1.3, 80.0)
+	_veg(&"rock", &"rock", Vector3(40.0, 0.0, -3.0), 5.0, 28.0, 14, 1104, 0.7, 1.7, 95.0)
 
-	# 4. Park — inviting blooms and grass (a "stop and look" corner).
-	_veg(&"grass", &"grass_blade", Vector3(-26.0, 0.0, -6.0), 6.5, 5.5, 120, 1301, 0.22, 0.8, 1.3, 45.0)
-	_veg(&"flower", &"flower_warm", Vector3(-26.0, 0.0, -6.0), 6.5, 5.5, 22, 1302, 0.12, 0.7, 1.2, 40.0)
-	_veg(&"flower", &"flower_pale", Vector3(-26.0, 0.0, -6.0), 6.5, 5.5, 18, 1303, 0.12, 0.7, 1.2, 40.0)
+	# Stream banks: grass + rocks + ferns hugging the river, off the water.
+	_veg(&"grass", &"grass_blade", Vector3(27.6, 0.0, -1.0), 1.4, 30.0, 120, 1201, 0.8, 1.35, 45.0)
+	_veg(&"grass", &"grass_blade", Vector3(32.4, 0.0, -1.0), 1.4, 30.0, 120, 1202, 0.8, 1.35, 45.0)
+	_veg(&"rock", &"rock", Vector3(27.6, 0.0, -1.0), 1.4, 30.0, 12, 1203, 0.7, 1.5, 90.0)
+	_veg(&"rock", &"rock", Vector3(32.4, 0.0, -1.0), 1.4, 30.0, 12, 1204, 0.7, 1.5, 90.0)
 
-	# 5. West green approach — grass + shrubs framing the west side.
-	_veg(&"grass", &"grass_blade", Vector3(-24.0, 0.0, 12.0), 6.0, 12.0, 150, 1401, 0.22, 0.8, 1.3, 45.0)
-	_veg(&"shrub", &"shrub", Vector3(-24.0, 0.0, 12.0), 6.0, 12.0, 10, 1402, 0.38, 0.8, 1.2, 75.0)
+	# Pond edges: reeds (grass), ferns, blooms and rocks framing the water.
+	_veg(&"grass", &"grass_blade", Vector3(-30.0, 0.0, -16.0), 6.5, 5.5, 90, 1301, 0.8, 1.3, 42.0)
+	_veg(&"fern", &"fern", Vector3(-30.0, 0.0, -16.0), 6.5, 5.5, 34, 1302, 0.8, 1.2, 55.0)
+	_veg(&"flower", &"flower_vcol", Vector3(-30.0, 0.0, -16.0), 6.5, 5.5, 26, 1303, 0.8, 1.2, 40.0)
+	_veg(&"rock", &"rock", Vector3(-30.0, 0.0, -16.0), 6.8, 5.8, 12, 1304, 0.7, 1.6, 90.0)
 
-	# 6. Path-framing clusters flanking the street (clear of the 6m paved stripe
-	#    and of doorways) — guide the eye up the town without blocking it.
-	var seed := 1500
-	for zc in [18.0, 8.0, -2.0]:
-		for side in [-5.5, 5.5]:
+	# Park scenic corner: soft grass + blooms + a shrub.
+	_veg(&"grass", &"grass_blade", Vector3(-26.0, 0.0, -6.0), 6.5, 5.5, 160, 1401, 0.8, 1.3, 42.0)
+	_veg(&"flower", &"flower_vcol", Vector3(-26.0, 0.0, -6.0), 6.5, 5.5, 44, 1402, 0.8, 1.25, 40.0)
+	_veg(&"shrub", &"shrub", Vector3(-26.0, 0.0, -6.0), 6.5, 5.5, 8, 1403, 0.8, 1.2, 75.0)
+
+	# Small gardens beside two houses (blooms + a shrub), clear of the doorways.
+	_veg(&"flower", &"flower_vcol", Vector3(-18.6, 0.0, 12.0), 1.4, 2.4, 26, 1501, 0.8, 1.2, 40.0)
+	_veg(&"shrub", &"shrub", Vector3(-18.6, 0.0, 12.0), 1.4, 2.4, 5, 1502, 0.8, 1.1, 70.0)
+	_veg(&"flower", &"flower_vcol", Vector3(18.6, 0.0, -5.0), 1.4, 2.4, 24, 1503, 0.8, 1.2, 40.0)
+
+	# Path edges: taller grass + a few blooms flanking the street (clear of the
+	# 6m paved stripe and doorways) to guide the eye up the town.
+	var seed := 1600
+	for zc in [19.0, 10.0, 1.0, -8.0]:
+		for side in [-4.6, 4.6]:
 			seed += 1
-			_veg(&"grass", &"grass_blade", Vector3(side, 0.0, zc), 1.2, 2.0, 22, seed, 0.22, 0.8, 1.2, 40.0)
+			_veg(&"grass", &"grass_blade", Vector3(side, 0.0, zc), 1.0, 2.2, 30, seed, 0.9, 1.4, 40.0)
 			seed += 1
-			_veg(&"flower", &"flower_pale", Vector3(side, 0.0, zc), 1.2, 2.0, 8, seed, 0.12, 0.7, 1.1, 35.0)
+			_veg(&"flower", &"flower_vcol", Vector3(side, 0.0, zc), 1.0, 2.2, 8, seed, 0.8, 1.15, 35.0)
 
-	# 7. A few composed trees framing the bathhouse hero and thickening depth
-	#    (beside the footprint, not on it). Varied scale, not a uniform row.
-	BlockoutUtil.add_tree(self, Vector3(-11.0, 0.0, -30.0), 1.3)
-	BlockoutUtil.add_tree(self, Vector3(11.0, 0.0, -31.0), 1.4)
-	BlockoutUtil.add_tree(self, Vector3(-9.0, 0.0, -23.0), 1.0)
-	BlockoutUtil.add_tree(self, Vector3(9.0, 0.0, -24.0), 1.1)
-	BlockoutUtil.add_tree(self, Vector3(-21.0, 0.0, 2.0), 1.2)
+	# Bathhouse surroundings: understory apron + framing trees (varied silhouette
+	# and scale, clustered, beside the footprint — not on it).
+	_veg(&"fern", &"fern", Vector3(0.0, 0.0, -20.5), 8.0, 2.5, 40, 1701, 0.8, 1.2, 55.0)
+	_veg(&"grass", &"grass_blade", Vector3(0.0, 0.0, -20.5), 8.0, 2.5, 80, 1702, 0.8, 1.3, 45.0)
+	BlockoutUtil.add_tree(self, Vector3(-11.0, 0.0, -31.0), 1.5, 0)
+	BlockoutUtil.add_tree(self, Vector3(11.5, 0.0, -32.0), 1.7, 2)
+	BlockoutUtil.add_tree(self, Vector3(-9.5, 0.0, -23.0), 1.1, 1)
+	BlockoutUtil.add_tree(self, Vector3(9.5, 0.0, -24.0), 1.2, 0)
+	# Standalone shade trees framing the park and the west approach.
+	BlockoutUtil.add_tree(self, Vector3(-20.0, 0.0, 3.0), 1.3, 2)
+	BlockoutUtil.add_tree(self, Vector3(-33.0, 0.0, -8.0), 1.2, 0)
 
 # --- Freestanding door (preserved from Phase 1) -----------------------------
 
