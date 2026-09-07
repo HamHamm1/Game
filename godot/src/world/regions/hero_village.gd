@@ -37,30 +37,81 @@ const INTERIOR := "res://src/world/locations/house_interior_wood.tscn"
 ## Lighting-profile tag read by RegionLightingController (M2.2). Residential.
 @export var lighting_category: StringName = &"residential"
 
+# M2.4-C — terrain area (metres) + the stream centreline (curved, threaded
+# through the open foreground between the spawn and the houses so it never
+# crosses a building pad). Water surface sits at TerrainField.WATER_Y.
+const TERR_MIN := Vector2(-75.0, -80.0)
+const TERR_MAX := Vector2(75.0, 42.0)
+const TERR_RES := 2.0
+static var STREAM := PackedVector2Array([
+	Vector2(40.0, -12.0), Vector2(34.0, -6.0), Vector2(28.0, 1.0), Vector2(21.0, 7.0),
+	Vector2(12.0, 11.0), Vector2(1.0, 13.5), Vector2(-11.0, 14.5), Vector2(-18.0, 15.5),
+	Vector2(-29.0, 16.5),
+])
+
+## The 8 approved houses (A–H), every one enterable. [path, pos, yaw, prompt].
+const HOUSE_LAYOUT := [
+	[HOUSE_A, Vector3(-7.5, 0.0, -3.0), 22.0, "Enter house"],
+	[HOUSE_B, Vector3(8.0, 0.0, -13.0), -38.0, "Enter house"],
+	[HOUSE_4, Vector3(-6.5, 0.0, -42.0), 5.0, "Enter hall"],
+	[HOUSE_3, Vector3(-28.0, 0.0, -16.0), 32.0, "Enter house"],
+	[HOUSE_3, Vector3(18.0, 0.0, -6.0), -40.0, "Enter house"],
+	[HOUSE_3, Vector3(-26.0, 0.0, 6.0), 10.0, "Enter house"],
+	[HOUSE_7, Vector3(15.0, 0.0, -28.0), -28.0, "Enter house"],
+	[HOUSE_7, Vector3(-30.0, 0.0, -34.0), 48.0, "Enter house"],
+]
+
 var _excl: Array[Rect2] = []
+var _terrain: TerrainField
 
 func _ready() -> void:
-	_build_ground()
-	# Player starts to the south, looking north up the lane toward the village.
-	BlockoutUtil.add_spawn(self, "PlayerSpawn", Vector3(0.0, 0.05, 17.0))
+	# Terrain first: configure the height field with a flat, levelled pad under
+	# each house (so every approved house stays grounded) + the carved stream,
+	# then register it as the ground provider so the chunked vegetation follows.
+	_terrain = TerrainField.new()
+	_terrain.configure(_house_pads(), STREAM)
+	GroundSampler.set_height_provider(_terrain.height_at)
+	add_child(TerrainBuilder.build(_terrain, TERR_MIN.x, TERR_MIN.y, TERR_MAX.x, TERR_MAX.y, TERR_RES))
+
+	# Player starts to the south, looking north across the stream to the village.
+	BlockoutUtil.add_spawn(self, "PlayerSpawn", Vector3(0.0, _g(0.0, 17.0) + 0.2, 17.0))
 	_place_glb_houses()
+	_build_stream()
 	_build_background()
 	_build_lanes()
 	_build_dressing()
 	_build_vegetation()
 
-func _build_ground() -> void:
-	# Broad walkable valley floor.
-	add_child(BlockoutUtil.static_box_mat(
-		Vector3(120.0, 0.4, 120.0), Vector3(0.0, -0.2, 0.0), MaterialLibrary.get_mat(&"ground")))
-	# Raised mounds behind + flanking the village give the mountain-valley depth
-	# the backdrop houses sit on (visual only — the player stays on the floor).
-	add_child(BlockoutUtil.visual_box_mat(
-		Vector3(70.0, 3.0, 16.0), Vector3(0.0, 0.6, -44.0), MaterialLibrary.get_mat(&"grass_bright")))
-	add_child(BlockoutUtil.visual_box_mat(
-		Vector3(18.0, 4.5, 44.0), Vector3(-40.0, 1.0, -18.0), MaterialLibrary.get_mat(&"grass_bright")))
-	add_child(BlockoutUtil.visual_box_mat(
-		Vector3(18.0, 4.5, 44.0), Vector3(40.0, 1.0, -18.0), MaterialLibrary.get_mat(&"grass_bright")))
+## Clear the global ground provider when this region leaves the tree, so nothing
+## keeps sampling this terrain after it is unloaded (and headless tests stay flat).
+func _exit_tree() -> void:
+	if GroundSampler.has_height_provider():
+		GroundSampler.clear_height_provider()
+
+## Terrain height at world XZ (convenience for grounding props/paths/dressing).
+func _g(x: float, z: float) -> float:
+	return _terrain.height_at(x, z) if _terrain != null else 0.0
+
+## Compute a flat levelling pad {center, radius} under each house from its real
+## footprint, so the terrain is level where houses stand (no tilt/sink/float).
+func _house_pads() -> Array:
+	var pads: Array = []
+	for e in HOUSE_LAYOUT:
+		var c := _house_center(e[0], e[1], e[2])
+		var fp := _house_footprint(e[0])
+		pads.append({"center": Vector2(c.x, c.z), "radius": 0.5 * maxf(fp.x, fp.y) + 2.5})
+	return pads
+
+func _house_center(path: String, pos: Vector3, yaw_deg: float) -> Vector3:
+	var fp := _house_footprint(path)
+	var basis := Basis(Vector3.UP, deg_to_rad(yaw_deg))
+	return pos + basis * Vector3(fp.x * 0.5, 0.0, fp.y * 0.5)
+
+func _house_footprint(path: String) -> Vector2:
+	var m := HeroAsset.aabb_and_scale(path, float(GLB_PROFILES[path]["width"]))
+	var aabb: AABB = m["aabb"]
+	var s: float = m["scale"]
+	return Vector2(aabb.size.x * s, aabb.size.z * s)
 
 # --- HERO + VILLAGE tier (real GLB houses) ---------------------------------
 #
@@ -118,8 +169,11 @@ func _glb_house(path: String, pos: Vector3, yaw_deg: float,
 	var width: float = p["width"]
 	# collide=false: we build our own mesh-derived collider, never the AABB box.
 	var h := HeroAsset.make_house(path, width, false)
-	h.position = pos
 	h.rotation_degrees = Vector3(0.0, yaw_deg, 0.0)
+	# Ground the house onto the terrain: its pad is levelled to the terrain height
+	# at its centre, so the base sits flat on the pad (no tilt/sink/float).
+	var center := _house_center(path, pos, yaw_deg)
+	h.position = Vector3(pos.x, _g(center.x, center.z), pos.z)
 	add_child(h)
 
 	var m := HeroAsset.aabb_and_scale(path, width)
@@ -182,17 +236,142 @@ func _col(size: Vector3, pos: Vector3) -> StaticBody3D:
 	return body
 
 func _place_glb_houses() -> void:
-	# EIGHT real houses (A–H), EVERY one enterable via the existing entry system.
-	# House 4 (large manor/hall) is the set-back northern landmark; House 3 and
-	# House 7 are the surrounding homes. Widely spaced for the larger scale.
-	_glb_house(HOUSE_A, Vector3(-7.5, 0.0, -3.0), 22.0, INTERIOR, "Enter house")   # A (hero)
-	_glb_house(HOUSE_B, Vector3(8.0, 0.0, -13.0), -38.0, INTERIOR, "Enter house")  # B (hero)
-	_glb_house(HOUSE_4, Vector3(-6.5, 0.0, -42.0), 5.0, INTERIOR, "Enter hall")    # C = manor landmark
-	_glb_house(HOUSE_3, Vector3(-28.0, 0.0, -16.0), 32.0, INTERIOR)               # D
-	_glb_house(HOUSE_3, Vector3(18.0, 0.0, -6.0), -40.0, INTERIOR)               # E
-	_glb_house(HOUSE_3, Vector3(-26.0, 0.0, 6.0), 10.0, INTERIOR)                # F
-	_glb_house(HOUSE_7, Vector3(15.0, 0.0, -28.0), -28.0, INTERIOR)              # G
-	_glb_house(HOUSE_7, Vector3(-30.0, 0.0, -34.0), 48.0, INTERIOR)              # H
+	# EIGHT real houses (A–H), EVERY one enterable via the existing entry system,
+	# each grounded onto its levelled terrain pad. Layout in HOUSE_LAYOUT.
+	for e in HOUSE_LAYOUT:
+		_glb_house(e[0], e[1], e[2], INTERIOR, e[3])
+
+func _ground_pos(x: float, z: float, lift: float = 0.0) -> Vector3:
+	return Vector3(x, _g(x, z) + lift, z)
+
+# --- STREAM (M2.4-C) --------------------------------------------------------
+
+## A curved stream following STREAM: a water ribbon at WATER_Y (mobile water
+## shader), bank rocks + shoreline reeds, and stepping stones across the crossing.
+## Adds channel exclusions so vegetation never grows in the water.
+func _build_stream() -> void:
+	_build_water_ribbon()
+	_add_stream_exclusions()
+	_build_shoreline()
+	_build_stepping_stones()
+
+func _water_material() -> ShaderMaterial:
+	var m := ShaderMaterial.new()
+	m.shader = load("res://src/world/shaders/stream_water.gdshader")
+	return m
+
+func _stream_tangent(i: int) -> Vector2:
+	if i == 0:
+		return (STREAM[1] - STREAM[0]).normalized()
+	if i == STREAM.size() - 1:
+		return (STREAM[i] - STREAM[i - 1]).normalized()
+	return (STREAM[i + 1] - STREAM[i - 1]).normalized()
+
+func _build_water_ribbon() -> void:
+	var half := _terrain.stream_half_width()
+	var verts := PackedVector3Array()
+	var normals := PackedVector3Array()
+	var uvs := PackedVector2Array()
+	var idx := PackedInt32Array()
+	var run := 0.0
+	for i in STREAM.size():
+		var c := STREAM[i]
+		var nrm := Vector2(-_stream_tangent(i).y, _stream_tangent(i).x)
+		var w := half * (0.9 + 0.35 * sin(float(i) * 1.3))   # varying width
+		var lp := c + nrm * w
+		var rp := c - nrm * w
+		verts.append(Vector3(lp.x, TerrainField.WATER_Y, lp.y))
+		verts.append(Vector3(rp.x, TerrainField.WATER_Y, rp.y))
+		normals.append(Vector3.UP)
+		normals.append(Vector3.UP)
+		uvs.append(Vector2(0.0, run * 0.12))
+		uvs.append(Vector2(1.0, run * 0.12))
+		if i > 0:
+			var b := (i - 1) * 2
+			idx.append_array([b, b + 2, b + 1, b + 1, b + 2, b + 3])
+		if i < STREAM.size() - 1:
+			run += c.distance_to(STREAM[i + 1])
+	var arr := []
+	arr.resize(Mesh.ARRAY_MAX)
+	arr[Mesh.ARRAY_VERTEX] = verts
+	arr[Mesh.ARRAY_NORMAL] = normals
+	arr[Mesh.ARRAY_TEX_UV] = uvs
+	arr[Mesh.ARRAY_INDEX] = idx
+	var mesh := ArrayMesh.new()
+	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arr)
+	var mi := MeshInstance3D.new()
+	mi.name = "StreamWater"
+	mi.mesh = mesh
+	mi.material_override = _water_material()
+	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	add_child(mi)
+
+## Exclude the water channel from vegetation placement (reeds still grow on the
+## banks, just outside this radius).
+func _add_stream_exclusions() -> void:
+	var r := _terrain.stream_half_width() + 0.6
+	for c in STREAM:
+		_excl.append(Rect2(c.x - r, c.y - r, r * 2.0, r * 2.0))
+
+## Bank rocks (wet near the water, drier higher) + shoreline reeds/wet grass.
+func _build_shoreline() -> void:
+	var half := _terrain.stream_half_width()
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 8801
+	for i in STREAM.size():
+		var c := STREAM[i]
+		var nrm := Vector2(-_stream_tangent(i).y, _stream_tangent(i).x)
+		for sgn: float in [-1.0, 1.0]:
+			# a wet stone at the waterline + a drier rock a little up the bank
+			var wet_p := c + nrm * (sgn * (half + rng.randf_range(-0.2, 0.4)))
+			_bank_rock(wet_p, rng.randf_range(0.5, 0.95), true)
+			if rng.randf() < 0.6:
+				var dry_p := c + nrm * (sgn * (half + rng.randf_range(1.4, 2.4)))
+				_bank_rock(dry_p, rng.randf_range(0.4, 0.7), false)
+			# reeds / wet grass just beyond the waterline (deterministic field)
+			var reed_c := c + nrm * (sgn * (half + 1.3))
+			add_child(VegetationField.scatter(&"grass", &"reed",
+				Vector3(reed_c.x, 0.0, reed_c.y), 2.0, 2.0, 26, 5100 + i * 7 + int(sgn),
+				1.1, 2.0, 55.0, _excl))
+			add_child(VegetationField.scatter(&"shrub", &"shrub",
+				Vector3(reed_c.x, 0.0, reed_c.y), 2.2, 2.2, 5, 5300 + i * 7 + int(sgn),
+				0.8, 1.2, 70.0, _excl))
+
+## A river rock: a flattened low-poly sphere grounded on the terrain, wet (sheened,
+## dark, near the water) or dry. Larger ones get a simple box collider.
+func _bank_rock(p: Vector2, scale: float, wet: bool) -> void:
+	var mi := MeshInstance3D.new()
+	var sm := SphereMesh.new()
+	sm.radius = scale
+	sm.height = scale * 1.3
+	sm.radial_segments = 7
+	sm.rings = 4
+	mi.mesh = sm
+	mi.material_override = MaterialLibrary.get_mat(&"wet_stone" if wet else &"river_rock")
+	var y := _g(p.x, p.y)
+	mi.position = Vector3(p.x, y + scale * 0.25, p.y)
+	mi.scale = Vector3(1.15, 0.7, 1.15)
+	add_child(mi)
+	if scale > 0.7:
+		var body := _col(Vector3(scale * 2.0, scale * 1.0, scale * 2.0),
+			Vector3(p.x, y + scale * 0.35, p.y))
+		add_child(body)
+	_excl.append(Rect2(p.x - scale, p.y - scale, scale * 2.0, scale * 2.0))
+
+## Stepping stones across the crossing near x≈0 (level, walkable, simple boxes).
+func _build_stepping_stones() -> void:
+	var pts := [
+		Vector2(0.0, 16.4), Vector2(-0.5, 14.9), Vector2(0.5, 13.4),
+		Vector2(-0.3, 11.9), Vector2(0.2, 10.4),
+	]
+	for p in pts:
+		# Top a touch above the bank so the crossing stays dry; sunk into the bed.
+		var top := 0.12
+		var stone := BlockoutUtil.static_box_mat(
+			Vector3(1.35, 0.7, 1.35), Vector3(p.x, top - 0.35, p.y),
+			MaterialLibrary.get_mat(&"wet_stone"))
+		add_child(stone)
+		_excl.append(Rect2(p.x - 0.9, p.y - 0.9, 1.8, 1.8))
 
 # --- BACKGROUND tier (cheap, unreachable, on the mounds) --------------------
 
@@ -206,66 +385,65 @@ func _build_background() -> void:
 		JapaneseHouseKit.house_c(), JapaneseHouseKit.house_e(),
 		JapaneseHouseKit.house_f(), JapaneseHouseKit.house_d(),
 	]
-	# Rear ridge line.
+	# Rear ridge line — out on the distant rising terrain, grounded to it.
 	for i in 11:
 		var t := float(i) / 10.0
-		var x := lerpf(-32.0, 32.0, t) + rng.randf_range(-2.5, 2.5)
-		var z := -42.0 - rng.randf_range(0.0, 7.0)
+		var x := lerpf(-40.0, 40.0, t) + rng.randf_range(-3.0, 3.0)
+		var z := -58.0 - rng.randf_range(0.0, 9.0)
 		var spec: JapaneseHouseKit.Spec = specs[rng.randi() % specs.size()]
-		_bg_house(spec, Vector3(x, 1.6, z), rng.randf_range(-40.0, 40.0))
+		_bg_house(spec, Vector2(x, z), rng.randf_range(-40.0, 40.0))
 	# Left + right flank hills, angled inward.
 	for i in 5:
-		var z := lerpf(-34.0, -2.0, float(i) / 4.0) + rng.randf_range(-2.0, 2.0)
+		var z := lerpf(-42.0, 2.0, float(i) / 4.0) + rng.randf_range(-2.0, 2.0)
 		var spec_l: JapaneseHouseKit.Spec = specs[rng.randi() % specs.size()]
 		var spec_r: JapaneseHouseKit.Spec = specs[rng.randi() % specs.size()]
-		_bg_house(spec_l, Vector3(-36.0 + rng.randf_range(-2.0, 2.0), 2.0, z), rng.randf_range(50.0, 90.0))
-		_bg_house(spec_r, Vector3(36.0 + rng.randf_range(-2.0, 2.0), 2.0, z), rng.randf_range(-90.0, -50.0))
+		_bg_house(spec_l, Vector2(-52.0 + rng.randf_range(-3.0, 3.0), z), rng.randf_range(50.0, 90.0))
+		_bg_house(spec_r, Vector2(52.0 + rng.randf_range(-3.0, 3.0), z), rng.randf_range(-90.0, -50.0))
 
-func _bg_house(spec: JapaneseHouseKit.Spec, pos: Vector3, yaw_deg: float) -> void:
-	var node := JapaneseHouseKit.background_house(spec, 320.0)
-	node.position = pos
+func _bg_house(spec: JapaneseHouseKit.Spec, xz: Vector2, yaw_deg: float) -> void:
+	var node := JapaneseHouseKit.background_house(spec, 340.0)
+	node.position = Vector3(xz.x, _g(xz.x, xz.y), xz.y)
 	node.rotation_degrees = Vector3(0.0, yaw_deg, 0.0)
 	add_child(node)
 
 # --- Lanes ------------------------------------------------------------------
 
 func _build_lanes() -> void:
-	# A gently curving main lane from the spawn up through the village, with a
-	# short branch toward the eastern cluster. Stones are visual-only.
-	var main := [
-		Vector3(0.0, 0.0, 15.0), Vector3(-1.2, 0.0, 10.0), Vector3(1.0, 0.0, 5.0),
-		Vector3(0.4, 0.0, 0.0), Vector3(-1.6, 0.0, -6.0), Vector3(0.2, 0.0, -12.0),
-		Vector3(1.4, 0.0, -18.0), Vector3(0.0, 0.0, -24.0),
-	]
-	_lane(main, 2.6)
-	var branch := [
-		Vector3(1.0, 0.0, 5.0), Vector3(6.0, 0.0, 4.0), Vector3(11.0, 0.0, 3.5),
-	]
-	_lane(branch, 2.0)
+	# A rural circulation network conforming to the terrain: from the entrance to
+	# the stream crossing (the stepping stones bridge the channel), on through the
+	# village with branches to the house clusters and up to the manor. Curved,
+	# never a straight ribbon; stones are visual-only and grounded to the terrain.
+	_lane([Vector2(0, 17.6), Vector2(0, 16.0)], 2.6)                                  # entrance -> crossing
+	_lane([Vector2(0.5, 9.4), Vector2(-1.5, 4.0), Vector2(1.0, -1.0), Vector2(-1.2, -7.0),
+		Vector2(0.8, -13.0), Vector2(1.6, -19.0), Vector2(-0.6, -25.0), Vector2(-4.0, -32.0)], 2.6)  # crossing -> manor
+	_lane([Vector2(1.0, -1.0), Vector2(7.0, -2.0), Vector2(13.0, -3.5)], 2.0)         # branch east (House E)
+	_lane([Vector2(-1.2, -7.0), Vector2(-9.0, -9.0), Vector2(-17.0, -12.0)], 2.0)     # branch west (Houses D/F)
+	_lane([Vector2(-0.6, -25.0), Vector2(-6.0, -29.0)], 2.0)                          # manor forecourt
 
 func _lane(pts: Array, w: float) -> void:
 	for p in pts:
+		var xz := p as Vector2
 		add_child(BlockoutUtil.visual_box_mat(
-			Vector3(w, 0.06, w), (p as Vector3) + Vector3(0.0, 0.03, 0.0),
+			Vector3(w, 0.06, w), Vector3(xz.x, _g(xz.x, xz.y) + 0.04, xz.y),
 			MaterialLibrary.get_mat(&"path")))
-		_excl.append(Rect2((p as Vector3).x - w * 0.5, (p as Vector3).z - w * 0.5, w, w))
+		_excl.append(Rect2(xz.x - w * 0.5, xz.y - w * 0.5, w, w))
 
 # --- Selective dressing -----------------------------------------------------
 
 func _build_dressing() -> void:
 	# A firewood stack + a stone lantern by the lower cluster; a low fence run
 	# edging the lane; a couple of flower pots + a water bucket at doorsteps.
-	_firewood(Vector3(-10.5, 0.0, 6.0))
-	_firewood(Vector3(12.5, 0.0, -1.5))
-	_lantern(Vector3(2.6, 0.0, 3.0))
-	_lantern(Vector3(-2.4, 0.0, -9.0))
-	_lantern(Vector3(5.0, 0.0, -17.0))
-	_fence_run(Vector3(-4.0, 0.0, 11.0), Vector3(1.0, 0.0, 0.0), 6, 1.1)
-	_fence_run(Vector3(6.0, 0.0, -22.0), Vector3(0.0, 0.0, -1.0), 5, 1.1)
-	_pot(Vector3(-12.6, 0.0, 8.4))
-	_pot(Vector3(15.6, 0.0, 0.6))
-	_pot(Vector3(7.4, 0.0, -25.6))
-	_bucket(Vector3(-15.4, 0.0, -9.6))
+	_firewood(_ground_pos(-10.5, 6.0))
+	_firewood(_ground_pos(12.5, -1.5))
+	_lantern(_ground_pos(2.6, 3.0))
+	_lantern(_ground_pos(-2.4, -9.0))
+	_lantern(_ground_pos(5.0, -17.0))
+	_fence_run(_ground_pos(-6.0, -20.0), Vector3(1.0, 0.0, 0.0), 6, 1.1)
+	_fence_run(_ground_pos(6.0, -24.0), Vector3(0.0, 0.0, -1.0), 5, 1.1)
+	_pot(_ground_pos(-12.6, 8.4))
+	_pot(_ground_pos(15.6, 0.6))
+	_pot(_ground_pos(7.4, -25.6))
+	_bucket(_ground_pos(-15.4, -9.6))
 
 func _firewood(pos: Vector3) -> void:
 	var wood := MaterialLibrary.get_mat(&"wood_door")
@@ -322,20 +500,24 @@ func _build_vegetation() -> void:
 	# Exclusions carve houses, lanes + dressing out of it.
 	add_child(VegetationField.scatter_tiled(&"grass", &"grass_blade",
 		-46.0, -52.0, 46.0, 20.0, 12.0, 0.42, 3001, 0.8, 1.35, 80.0, _excl))
-	# Framing + hillside trees (varied silhouette/scale) for the mountain feel.
+	# Framing + hillside trees (varied silhouette/scale) for the mountain feel,
+	# each grounded to the terrain.
 	var trees := [
-		[Vector3(-20.0, 0.0, -6.0), 1.6, 0], [Vector3(20.0, 0.0, 0.0), 1.7, 2],
-		[Vector3(-15.0, 0.0, 9.0), 1.2, 1], [Vector3(16.0, 0.0, -24.0), 1.8, 0],
-		[Vector3(-23.0, 0.0, -20.0), 2.0, 1], [Vector3(24.0, 0.0, -12.0), 1.9, 1],
-		[Vector3(-28.0, 0.0, -30.0), 2.4, 1], [Vector3(28.0, 0.0, -30.0), 2.4, 1],
-		[Vector3(-9.0, 0.0, 13.0), 1.3, 2], [Vector3(10.0, 0.0, 14.0), 1.4, 0],
+		[-20.0, -6.0, 1.6, 0], [20.0, 0.0, 1.7, 2], [-15.0, 9.0, 1.2, 1],
+		[16.0, -24.0, 1.8, 0], [-23.0, -20.0, 2.0, 1], [24.0, -12.0, 1.9, 1],
+		[-28.0, -30.0, 2.4, 1], [28.0, -30.0, 2.4, 1], [-9.0, 13.0, 1.3, 2],
+		[10.0, 14.0, 1.4, 0],
 	]
 	for t in trees:
-		BlockoutUtil.add_tree(self, t[0], t[1], t[2])
-	# Denser conifers on the rear ridge, behind the backdrop houses.
-	for i in 9:
-		var x := lerpf(-30.0, 30.0, float(i) / 8.0)
-		BlockoutUtil.add_tree(self, Vector3(x, 2.4, -50.0), 2.6, 1)
+		BlockoutUtil.add_tree(self, _ground_pos(t[0], t[1]), t[2], t[3])
+	# Forest edge: denser conifers on the rising rear + flank terrain, grounded.
+	for i in 11:
+		var x := lerpf(-42.0, 42.0, float(i) / 10.0)
+		BlockoutUtil.add_tree(self, _ground_pos(x, -66.0 - float(i % 3) * 3.0), 2.6, 1)
+	for i in 6:
+		var z := lerpf(-44.0, 4.0, float(i) / 5.0)
+		BlockoutUtil.add_tree(self, _ground_pos(-50.0, z), 2.4, 1)
+		BlockoutUtil.add_tree(self, _ground_pos(50.0, z), 2.4, 1)
 	# Foreground garden detail near the lanes: ferns, blooms, rocks, shrubs.
 	_veg(&"fern", &"fern", Vector3(4.5, 0.0, 6.0), 3.5, 4.0, 30, 3002, 0.8, 1.2, 55.0)
 	_veg(&"flower", &"flower_vcol", Vector3(-5.5, 0.0, 4.0), 3.5, 3.0, 34, 3003, 0.8, 1.2, 40.0)

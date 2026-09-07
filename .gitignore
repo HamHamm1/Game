@@ -3,3 +3,7 @@ data/*.json
 *.log
 .DS_Store
 npm-debug.log*
+
+# M2.4-C scratch renders (never committed)
+_render/
+godot/_view.*

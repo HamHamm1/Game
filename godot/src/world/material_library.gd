@@ -87,6 +87,12 @@ static func _build(key: StringName) -> StandardMaterial3D:
 		&"flower_vcol": return _mk_veg(Color(1.0, 1.0, 1.0), 0.85)    # stem+bloom via vertex colour
 		&"rock": return _mk(Color(0.46, 0.45, 0.43), 0.85)
 		&"moss": return _mk_veg(Color(0.32, 0.42, 0.26), 1.0)
+		# --- Terrain / shoreline (M2.4-C) ---
+		&"terrain": return _mk_veg(Color(1.0, 1.0, 1.0), 0.97)       # vertex-coloured ground
+		&"wet_stone": return _mk(Color(0.34, 0.34, 0.33), 0.35)     # damp river rock, slight sheen
+		&"river_rock": return _mk(Color(0.48, 0.47, 0.44), 0.8)     # dry bank rock
+		&"reed": return _mk_veg(Color(0.44, 0.50, 0.30), 0.9)       # reeds / wet grass
+		&"damp_soil": return _mk(Color(0.32, 0.27, 0.21), 0.85)     # wet shoreline earth
 		# --- Interiors ---
 		&"floor_wood": return _mk(Color(0.40, 0.30, 0.22), 0.85)
 		&"wall_interior": return _mk(Color(0.62, 0.56, 0.48), 0.9)

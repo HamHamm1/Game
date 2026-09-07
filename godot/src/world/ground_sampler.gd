@@ -14,8 +14,26 @@ extends RefCounted
 
 const GROUND_Y := 0.0
 
-## Ground height at a world XZ. Flat blockout -> GROUND_Y. Swap for terrain.
-static func height_at(_x: float, _z: float) -> float:
+## Optional terrain height provider (M2.4-C). A region installs one at build time
+## (e.g. `GroundSampler.set_height_provider(terrain.height_at)`); every caller —
+## including the chunked vegetation — then grounds on the terrain with no other
+## change. When none is set the world is the flat blockout plane (GROUND_Y), so
+## existing content and headless tests keep the exact flat behaviour.
+static var _height_provider: Callable = Callable()
+
+static func set_height_provider(fn: Callable) -> void:
+	_height_provider = fn
+
+static func clear_height_provider() -> void:
+	_height_provider = Callable()
+
+static func has_height_provider() -> bool:
+	return _height_provider.is_valid()
+
+## Ground height at a world XZ. Terrain provider if installed, else flat GROUND_Y.
+static func height_at(x: float, z: float) -> float:
+	if _height_provider.is_valid():
+		return float(_height_provider.call(x, z))
 	return GROUND_Y
 
 ## Optional runtime backend: raycast straight down against real collision and

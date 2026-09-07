@@ -54,6 +54,7 @@ func _run() -> void:
 	_test_house_kit()
 	_test_glb_houses()
 	_test_grass_chunked()
+	_test_terrain()
 
 func _test_item_registry() -> void:
 	_check(ItemRegistry.has_definition(&"fish"), "ItemRegistry has fish")
@@ -526,11 +527,14 @@ func _test_house_kit() -> void:
 func _test_glb_houses() -> void:
 	var region := (load("res://src/world/regions/hero_village.tscn") as PackedScene).instantiate()
 	add_child(region)
-	# Real houses are the region children carrying a complex (imported GLB) mesh;
-	# every other building (background) is built from primitive meshes.
+	# M2.4-C: the terrain provider must be active while the region is loaded so the
+	# vegetation grounds on the terrain.
+	_check(GroundSampler.has_height_provider(), "terrain ground provider active while region loaded")
+	# Houses are the region children carrying an entry point (terrain + water are
+	# also non-primitive meshes, so detect by the entry, not by mesh type).
 	var houses: Array = []
 	for child in region.get_children():
-		if child is Node3D and _has_complex_mesh(child):
+		if child is Node3D and _find_entries(child).size() > 0:
 			houses.append(child)
 	_check(houses.size() == 8, "region stages 8 real GLB houses (A-H)")
 	var enterable := 0
@@ -557,7 +561,21 @@ func _test_glb_houses() -> void:
 		for mi in _nodes_of(house, "MeshInstance3D"):
 			_check(_nodes_of(mi, "StaticBody3D").is_empty(), "GLB render mesh is not used as collision")
 	_check(enterable == 8, "EVERY GLB house (A-H) is enterable")
+	# Grounding: each house sits exactly on its levelled terrain pad (no float/sink).
+	var grounded := true
+	for e in region.HOUSE_LAYOUT:
+		var center: Vector3 = region._house_center(e[0], e[1], e[2])
+		var expected := GroundSampler.height_at(center.x, center.z)
+		var best := 999.0
+		for house in houses:
+			var hp: Vector3 = (house as Node3D).position
+			if Vector2(hp.x, hp.z).distance_to(Vector2((e[1] as Vector3).x, (e[1] as Vector3).z)) < 0.5:
+				best = minf(best, absf(hp.y - expected))
+		if best > 0.02:
+			grounded = false
+	_check(grounded, "every house is grounded on its terrain pad")
 	region.free()
+	_check(not GroundSampler.has_height_provider(), "terrain provider cleared when region unloads")
 
 ## M2.4-B — grass is CHUNKED (many tiles), not one big field, so it can't pop in
 ## and out as a unit; each tile carries an overlapping visibility-range fade.
@@ -575,6 +593,30 @@ func _test_grass_chunked() -> void:
 			faded = false
 	_check(faded, "each grass tile has a large overlapping fade margin")
 	tiles.free()
+
+## M2.4-C — terrain height field: deterministic, level building pads (so houses
+## stay grounded), a carved stream channel, and the GroundSampler provider seam.
+func _test_terrain() -> void:
+	var t := TerrainField.new()
+	var pads := [{"center": Vector2(5.0, 5.0), "radius": 6.0}]
+	var stream := PackedVector2Array([Vector2(-24.0, 0.0), Vector2(-4.0, 2.0), Vector2(16.0, 0.0)])
+	t.configure(pads, stream)
+	_check(t.height_at(3.1, 2.2) == t.height_at(3.1, 2.2), "terrain height is deterministic")
+	# Building pad is flat/level within its radius (no tilt under a house).
+	var pc := t.height_at(5.0, 5.0)
+	_check(absf(t.height_at(6.4, 4.6) - pc) < 0.0005, "building pad is flat/level")
+	# The stream carves a real channel: its bed sits below the water surface and
+	# below the nearby banks.
+	var bed := t.height_at(-4.0, 2.0)      # a point on the stream centreline
+	var bank := t.height_at(-4.0, 12.0)    # ~10 m off the stream
+	_check(bed < TerrainField.WATER_Y - 0.2, "stream bed sits below the water surface")
+	_check(bank > bed + 0.3, "stream is a depression below the surrounding banks")
+	_check(TerrainField.WATER_Y < 0.0, "water surface sits below the bank height")
+	# GroundSampler provider round-trips and reverts to flat.
+	GroundSampler.set_height_provider(t.height_at)
+	_check(absf(GroundSampler.height_at(5.0, 5.0) - pc) < 0.0005, "GroundSampler uses the terrain provider")
+	GroundSampler.clear_height_provider()
+	_check(GroundSampler.height_at(5.0, 5.0) == GroundSampler.GROUND_Y, "GroundSampler reverts to flat when cleared")
 
 ## True if the subtree holds a MeshInstance3D with a non-primitive (imported)
 ## mesh — i.e. a hero GLB, as opposed to the kit's BoxMesh/PrismMesh primitives.

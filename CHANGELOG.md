@@ -13,6 +13,53 @@ Status labels follow AI_RULES.md Rule 11:
 
 ## [Unreleased]
 
+### Phase 2 M2.4-C — Hero village terrain, stream & paths
+
+Turns the flat-field hero village into a believable rural mountain-village
+environment: gentle terrain, a carved curved stream, and a natural path network.
+The 8 approved houses (A–H), their entry/exit system, interiors, and compound
+wall collisions are UNCHANGED (only re-grounded onto level pads). M2.1–M2.3,
+weather/lighting, player, save, CI are untouched. **NOT** ANDROID VERIFIED.
+
+- **NEW `godot/src/world/terrain_field.gd`** (`TerrainField`) — deterministic
+  height field: gentle rolling undulation (small in the core, rising to
+  forest-edge hills), **level building pads** under every house (so A–H stay
+  grounded — no tilt/sink/float), and a **carved stream channel** along a curve.
+  Pure/headless-testable.
+- **`godot/src/world/ground_sampler.gd`** — added an optional height provider
+  (the documented terrain seam). The region installs
+  `GroundSampler.set_height_provider(terrain.height_at)`, so the EXISTING chunked
+  vegetation grounds on the terrain with no other change; cleared on unload, so
+  the flat blockout default (and headless tests) are unaffected.
+- **NEW `godot/src/world/terrain_builder.gd`** (`TerrainBuilder`) — builds the
+  terrain from the field: one vertex-coloured `ArrayMesh` (soil/grass/wet/bank
+  variation by height, slope + stream proximity — no flat single colour) plus a
+  matching `HeightMapShape3D` collider sampled from the SAME grid (player can't
+  fall through or float). Cheap: one mesh + one heightmap body.
+- **NEW `godot/src/world/shaders/stream_water.gdshader`** — mobile water
+  (MOBILE_ART_DIRECTION §13): scrolling procedural ripple normals for gentle
+  movement + sun sparkle, fresnel-driven transparency, no planar reflection / SSR
+  / textures.
+- **`hero_village.gd` — M2.4-C staging**: builds the terrain first (pads from the
+  real house footprints), grounds every house / prop / tree / background house /
+  path stone onto it; a **curved stream** (varying-width water ribbon at
+  WATER_Y) threaded through the open foreground with **bank rocks** (wet + dry),
+  **shoreline reeds/wet-grass/shrubs**, and **stepping stones** across the
+  crossing (simple collision); a curved **path network** (entrance → crossing →
+  houses → manor, with branches) conforming to the terrain; and vegetation
+  **exclusions** for the water channel, stepping stones, rocks, paths + houses.
+  Old flat ground box + visual mound boxes removed.
+- **`material_library.gd`** — added `terrain` (vertex-coloured), `wet_stone`,
+  `river_rock`, `reed`, `damp_soil`.
+- **Tests** — `_test_terrain` (deterministic height, level pads, stream channel
+  below water + banks, GroundSampler provider round-trip) + grounding assertions
+  in `_test_glb_houses` (every house sits exactly on its pad; provider active
+  while loaded, cleared on unload). Suite 204 → **214/214**.
+- **Preserved**: House A–H assets/transforms (only y re-grounded), entry/exit +
+  interiors, compound wall collisions, player/camera/interaction/save,
+  TimeManager/WeatherManager/WeatherFX/RegionLightingController/GraphicsManager,
+  the chunked vegetation + its exclusions, Android export + CI.
+
 ### Phase 2 M2.4-B — Device fixes: all houses enterable, no wall-clipping, human scale, grass continuity
 
 Four device-reported issues fixed. House A/B assets and M2.1–M2.3 untouched.
