@@ -245,11 +245,39 @@ func _build_alley(anchor: Vector3) -> void:
 ## doorways clear (M2.4_ART_DESIGN.md §M2.4-B). Deterministic (seeded);
 ## density scales with GraphicsManager.vegetation; distance is LOD-culled.
 
+var _veg_excl: Array[Rect2] = []
+
 func _veg(species: StringName, mat: StringName, center: Vector3, hx: float, hz: float,
 		base: int, seed: int, y: float, smin: float, smax: float, end_dist: float) -> void:
-	add_child(VegetationField.scatter(species, mat, center, hx, hz, base, seed, y, smin, smax, end_dist))
+	add_child(VegetationField.scatter(species, mat, center, hx, hz, base, seed, y, smin, smax,
+		end_dist, _veg_excl))
+
+## XZ footprints where vegetation must NOT be placed (B.1): water surfaces,
+## the paved street, building footprints, and doorway approaches. Centre/size
+## helper keeps them readable; kept a little generous so plants don't poke
+## through edges.
+static func _rect(cx: float, cz: float, w: float, d: float) -> Rect2:
+	return Rect2(cx - w * 0.5, cz - d * 0.5, w, d)
+
+func _vegetation_exclusions() -> Array[Rect2]:
+	var e: Array[Rect2] = []
+	# Water surfaces (river strip + pond) — banks beside them stay plantable.
+	e.append(_rect(30.0, 0.0, 4.4, 60.4))     # river (visual 4x60 at x30)
+	e.append(_rect(-30.0, -16.0, 8.4, 6.4))   # pond (visual 8x6)
+	# Paved street corridor (visual stripe 6 wide, z -30.5..24.5).
+	e.append(_rect(0.0, -3.0, 6.6, 56.0))
+	# Building footprints (+ a little toward the doorway on the +z front).
+	for c in [Vector2(-14.0, 15.0), Vector2(14.0, 15.0), Vector2(-14.0, 0.0),
+			Vector2(14.0, -2.0), Vector2(-14.0, -14.0), Vector2(14.0, -14.0)]:
+		e.append(_rect(c.x, c.y + 0.6, 7.0, 6.6))   # ~6x5 footprint + doorway apron
+	# Bathhouse hero footprint (14x12 at 0,-28) + doorway apron.
+	e.append(_rect(0.0, -27.4, 15.2, 13.6))
+	# Freestanding door frame at (5,5).
+	e.append(_rect(5.0, 5.0, 2.4, 2.0))
+	return e
 
 func _build_vegetation() -> void:
+	_veg_excl = _vegetation_exclusions()
 	# 1. Forest understory east of the river — the village<->forest transition.
 	_veg(&"grass", &"grass_blade", Vector3(39.0, 0.0, -3.0), 5.0, 28.0, 260, 1001, 0.22, 0.8, 1.4, 45.0)
 	_veg(&"fern", &"fern", Vector3(39.0, 0.0, -3.0), 5.0, 28.0, 44, 1002, 0.24, 0.8, 1.3, 55.0)

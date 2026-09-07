@@ -382,25 +382,45 @@ func _test_vegetation() -> void:
 	# Shared species mesh (one Mesh reused across fields).
 	_check(VegetationKit.mesh(&"grass") == VegetationKit.mesh(&"grass"), "veg mesh shared per species")
 
-	# Deterministic placement: same params -> identical count and transforms.
+	# B.1 — grass is a low-poly tuft (custom ArrayMesh), not a primitive spike.
+	var gmesh := VegetationKit.mesh(&"grass")
+	_check(gmesh is ArrayMesh, "grass mesh is a custom tuft (ArrayMesh)")
+	_check(gmesh.get_surface_count() >= 1 and gmesh.surface_get_array_len(0) >= 30,
+		"grass tuft has multiple blades")
+
+	# Placement is verified via compute_transforms (a MultiMesh's transforms do
+	# not read back reliably headless). Deterministic: same params -> identical.
+	var no_excl: Array[Rect2] = []
+	var p1 := VegetationField.compute_transforms(Vector3.ZERO, 5.0, 5.0, 80, 4242, 0.2, 0.8, 1.2, no_excl)
+	var p2 := VegetationField.compute_transforms(Vector3.ZERO, 5.0, 5.0, 80, 4242, 0.2, 0.8, 1.2, no_excl)
+	_check(p1.size() == 80, "veg fills all candidates when unmasked")
+	_check(p1.size() == p2.size(), "veg placement deterministic (count)")
+	_check(p1.size() > 0 and p1[0].origin.is_equal_approx(p2[0].origin), "veg placement deterministic (transform)")
+
+	# B.1 — exclusion masking: nothing is PLACED inside an exclusion zone.
+	var excl: Array[Rect2] = [Rect2(-3.0, -3.0, 6.0, 6.0)]   # 6x6 no-plant zone at origin
+	var masked := VegetationField.compute_transforms(Vector3.ZERO, 6.0, 6.0, 220, 7777, 0.2, 0.8, 1.2, excl)
+	var inside := 0
+	for t in masked:
+		if excl[0].has_point(Vector2(t.origin.x, t.origin.z)):
+			inside += 1
+	_check(inside == 0, "no vegetation placed inside an exclusion zone")
+	_check(masked.size() > 0, "vegetation still placed outside the exclusion zone")
+	var full := VegetationField.compute_transforms(Vector3.ZERO, 6.0, 6.0, 220, 7777, 0.2, 0.8, 1.2, no_excl)
+	_check(masked.size() < full.size(), "exclusion removes some placements")
+	var masked2 := VegetationField.compute_transforms(Vector3.ZERO, 6.0, 6.0, 220, 7777, 0.2, 0.8, 1.2, excl)
+	_check(masked.size() == masked2.size(), "excluded placement remains deterministic")
+
+	# Field node: density responds to preset; LOD range + shared material set.
 	Settings.graphics_preset = "HIGH"
-	var a := VegetationField.scatter(&"grass", &"grass_blade", Vector3(0, 0, 0), 5.0, 5.0, 80, 4242, 0.2, 0.8, 1.2, 45.0)
-	var b := VegetationField.scatter(&"grass", &"grass_blade", Vector3(0, 0, 0), 5.0, 5.0, 80, 4242, 0.2, 0.8, 1.2, 45.0)
-	_check(a.multimesh.instance_count == b.multimesh.instance_count, "veg placement deterministic (count)")
-	_check(a.multimesh.instance_count > 0, "veg field populated at HIGH")
-	_check(a.multimesh.get_instance_transform(0).origin.is_equal_approx(
-		b.multimesh.get_instance_transform(0).origin), "veg placement deterministic (transform)")
-
-	# LOD range set; material is the shared library instance.
-	_check(a.visibility_range_end > 0.0, "veg field has an LOD cull range")
-	_check(a.material_override == MaterialLibrary.get_mat(&"grass_blade"), "veg field uses the shared material")
-
-	# Density responds to preset: LOW yields fewer instances than HIGH.
+	var high_field := VegetationField.scatter(&"grass", &"grass_blade", Vector3.ZERO, 5.0, 5.0, 80, 4242, 0.2, 0.8, 1.2, 45.0)
+	_check(high_field.multimesh.instance_count > 0, "veg field populated at HIGH")
+	_check(high_field.visibility_range_end > 0.0, "veg field has an LOD cull range")
+	_check(high_field.material_override == MaterialLibrary.get_mat(&"grass_blade"), "veg field uses the shared material")
 	Settings.graphics_preset = "LOW"
-	var low := VegetationField.scatter(&"grass", &"grass_blade", Vector3(0, 0, 0), 5.0, 5.0, 80, 4242, 0.2, 0.8, 1.2, 45.0)
-	_check(low.multimesh.instance_count < a.multimesh.instance_count, "LOW preset thins vegetation")
+	var low_field := VegetationField.scatter(&"grass", &"grass_blade", Vector3.ZERO, 5.0, 5.0, 80, 4242, 0.2, 0.8, 1.2, 45.0)
+	_check(low_field.multimesh.instance_count < high_field.multimesh.instance_count, "LOW preset thins vegetation")
 
-	a.free()
-	b.free()
-	low.free()
+	high_field.free()
+	low_field.free()
 	Settings.graphics_preset = "MEDIUM"

@@ -13,6 +13,37 @@ Status labels follow AI_RULES.md Rule 11:
 
 ## [Unreleased]
 
+### Phase 2 M2.4-B.1 — Vegetation device fixes (grass silhouette + water exclusion)
+
+Two device-visible fixes from the M2.4-B Android test. Not yet re-accepted on
+device. Architecture (MultiMesh, determinism, density/LOD, MaterialLibrary)
+unchanged; M2.2 lighting / M2.3 weather / movement / save / entry-exit /
+interaction untouched.
+
+- **Grass silhouette:** `VegetationKit` grass mesh replaced from a single
+  triangular spike to a **low-poly tuft** of 5 angled tapered blades built with
+  `SurfaceTool` (double-sided, ~20 tris) so it reads as a grass clump, not a
+  marker. Still texture-free, still one shared instanced mesh, no shader/wind.
+- **Water/road/building exclusion:** vegetation placement is now **deterministic
+  exclusion-masked** — `VegetationField.compute_transforms()` (extracted, pure)
+  drops any candidate whose XZ falls in an exclusion `Rect2`; `scatter()` builds
+  the MultiMesh from it. `blockout_town._vegetation_exclusions()` supplies the
+  zones: river + pond surfaces, the paved street corridor, all building
+  footprints (+ doorway aprons), the bathhouse footprint, and the freestanding
+  door. Vegetation still grows on natural banks beside water — the placement
+  itself is excluded, nothing is merely hidden.
+- **`godot/tests/headless_test.gd`** — exclusion + placement now verified via
+  `compute_transforms` (a MultiMesh's transforms do not read back reliably
+  headless); added checks: no instance inside an exclusion zone, exclusion
+  removes some placements, determinism holds with exclusions, grass is a custom
+  tuft ArrayMesh with multiple blades. Density/LOD/material checks retained via
+  reliable node/resource properties.
+
+Validated: `tools/run_validation.sh` → static 82/82, headless import clean,
+headless boot clean, headless suite **122/122**, Android export config valid.
+NOT ANDROID VERIFIED — grass silhouette and water exclusion need the next
+on-device visual test.
+
 ### Phase 2 M2.4-B — Vegetation (instanced, composition-driven)
 
 Second step of the M2.4 art pass (`godot/M2.4_ART_DESIGN.md`). Adds composed
