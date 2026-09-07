@@ -13,6 +13,43 @@ Status labels follow AI_RULES.md Rule 11:
 
 ## [Unreleased]
 
+### Phase 2 M2.4-B — Three real GLB village houses replace the primitive kit
+
+The reachable village is now **real imported architecture**, not greybox. Three
+owner-provided high-quality Japanese rural house GLBs (**House 3** two-storey
+gabled farmhouse, **House 4** large low manor/hall, **House 7** two-storey minka
++ side wing) replace the procedural C–F kit houses in the reachable village.
+House A/B and M2.1–M2.3 are untouched. **NOT** ANDROID VERIFIED.
+
+- **NEW assets** `village_house3.glb`, `village_house4.glb`, `village_house7.glb`
+  (glTF 2.0; 2048² base_color + metallic_roughness + normal, extracted on
+  import; ~266k / ~230k / ~281k tris) + `.import` files. Recorded in
+  `ASSET_LICENSES.md`. GLBs used unmodified.
+- **Normalised, grounded, collidable.** Each model is measured and **uniformly**
+  scaled to a believable width (House 3 ≈ 9.0 m, House 4 ≈ 10.0 m, House 7 ≈
+  8.5 m), base grounded at y=0, 2K PBR preserved (VRAM compression + mipmaps +
+  import LODs). No non-uniform stretch.
+- **One builder for all real houses.** `hero_village._hero_house` generalised to
+  `_glb_house`, driven by `GLB_PROFILES` (now 5 entries: A, B, 3, 4, 7). Per
+  house the real doorway + wall lines were **measured off offscreen orthographic
+  renders** and mapped into node space via `HeroAsset.aabb_and_scale`, giving an
+  **invisible entry trigger at the real doorway** (House 3 stepped central door;
+  House 4 genkan on −x; House 7 main-block veranda door) + a **simple compound of
+  invisible box colliders** (back + 2 sides + 2 front pieces around a clear
+  doorway gap). Render mesh never used as collision. Verified with a debug
+  overlay render (entry trigger green, collider red) against each facade.
+- **Staging.** 2 hero + 7 village GLB instances (House 4 as a set-back northern
+  landmark; House 3 ×3 and House 7 ×3 around the hero pair) at varied rotation /
+  spacing / setback; **5 enterable** (A, B, House 4, one House 3, one House 7),
+  the rest solid but collidable. Verified with a top-down + eye-level +
+  isometric render (no overlaps; grounded).
+- **Background** stays the cheap `JapaneseHouseKit` primitive silhouettes on the
+  far mounds (unreachable, LOD, no collision) — kept intentionally cheap for the
+  Mobile renderer rather than instancing high-poly GLBs into the distance.
+- **Tests** `_test_hero_houses` → `_test_glb_houses`: asserts 9 real GLB houses,
+  each with a compound box collider + render-mesh-never-collided, exactly 5
+  enterable with one invisible entry each. Suite 157 → **197/197**.
+
 ### Phase 2 M2.4-B — Playable hero houses + modular village architecture system
 
 Upgrades the two-hero-house staging into a **fully playable, varied village**:

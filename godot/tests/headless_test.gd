@@ -52,7 +52,7 @@ func _run() -> void:
 	_test_materials()
 	_test_vegetation()
 	_test_house_kit()
-	_test_hero_houses()
+	_test_glb_houses()
 
 func _test_item_registry() -> void:
 	_check(ItemRegistry.has_definition(&"fish"), "ItemRegistry has fish")
@@ -516,29 +516,34 @@ func _test_house_kit() -> void:
 	_check(_nodes_of(interior, "LocationExitPoint").size() == 1, "interior has one LocationExitPoint")
 	interior.free()
 
-## M2.4-B — hero houses A/B: each must be enterable through the existing entry
-## system, with the entry point INVISIBLE (no door-slab mesh) and a COMPOUND box
-## collider that leaves a doorway gap (not one sealing box, never the render
-## mesh). This guards the device-reported "floating door slab" regression.
-## Visual door-vs-mesh alignment is confirmed separately by the offscreen render.
-func _test_hero_houses() -> void:
+## M2.4-B — the real GLB houses (2 hero + 3 imported village models, staged as 9
+## instances): each must use mesh-derived COMPOUND box collision (never one
+## sealing box, never the render mesh), and every enterable one wires exactly one
+## INVISIBLE entry point (no door-slab mesh) through the existing entry system.
+## Guards the device-reported "floating door slab" regression. Visual door-vs-
+## mesh alignment is confirmed separately by the offscreen debug-overlay render.
+func _test_glb_houses() -> void:
 	var region := (load("res://src/world/regions/hero_village.tscn") as PackedScene).instantiate()
 	add_child(region)
-	# Hero houses are the region children carrying a complex (imported GLB) mesh;
-	# every other building is built from primitive meshes.
+	# Real houses are the region children carrying a complex (imported GLB) mesh;
+	# every other building (background) is built from primitive meshes.
 	var houses: Array = []
 	for child in region.get_children():
 		if child is Node3D and _has_complex_mesh(child):
 			houses.append(child)
-	_check(houses.size() == 2, "region stages the two hero houses")
+	_check(houses.size() == 9, "region stages 9 real GLB houses (2 hero + 7 village)")
+	var enterable := 0
 	for house in houses:
 		var entries := _find_entries(house)
-		_check(entries.size() == 1, "hero house has exactly one entry point")
+		_check(entries.size() <= 1, "GLB house has at most one entry point")
 		if entries.size() == 1:
-			var trigger := (entries[0] as Node).get_parent()
-			_check(trigger is StaticBody3D, "hero entry sits on a collidable (raycast-reachable) body")
+			enterable += 1
+			var ep := entries[0] as LocationEntryPoint
+			var trigger := (ep as Node).get_parent()
+			_check(trigger is StaticBody3D, "GLB entry sits on a collidable (raycast-reachable) body")
 			_check(_nodes_of(trigger, "MeshInstance3D").is_empty(),
-				"hero entry trigger is INVISIBLE (no door-slab mesh)")
+				"GLB entry trigger is INVISIBLE (no door-slab mesh)")
+			_check(ep.location_scene.ends_with("house_interior_wood.tscn"), "entry points at the shared interior")
 		# Compound collision: several simple box bodies, never a single sealing box.
 		var bodies := _nodes_of(house, "StaticBody3D")
 		var box_bodies := 0
@@ -546,10 +551,11 @@ func _test_hero_houses() -> void:
 			for cs in _nodes_of(b, "CollisionShape3D"):
 				if (cs as CollisionShape3D).shape is BoxShape3D:
 					box_bodies += 1
-		_check(box_bodies >= 4, "hero house has a compound box collider (>=4 simple boxes)")
-		# The mesh itself carries no collision (render mesh is never a collider).
+		_check(box_bodies >= 4, "GLB house has a compound box collider (>=4 simple boxes)")
+		# The render mesh itself carries no collision.
 		for mi in _nodes_of(house, "MeshInstance3D"):
-			_check(_nodes_of(mi, "StaticBody3D").is_empty(), "hero render mesh is not used as collision")
+			_check(_nodes_of(mi, "StaticBody3D").is_empty(), "GLB render mesh is not used as collision")
+	_check(enterable == 5, "5 of the GLB houses are enterable (A, B + 3 village)")
 	region.free()
 
 ## True if the subtree holds a MeshInstance3D with a non-primitive (imported)

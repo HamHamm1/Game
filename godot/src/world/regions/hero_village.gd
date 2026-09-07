@@ -3,25 +3,35 @@ extends Node3D
 ## village staged for on-device visual review. Three fidelity tiers, one art
 ## direction (ARCHITECTURE.md fidelity hierarchy):
 ##
-##   HERO       — the two ORIGINAL Meshy houses (House A / House B). Highest
-##                fidelity (2K PBR, import LODs, box collision). BOTH are now
-##                fully PLAYABLE: a front-door LocationEntryPoint loads the
-##                shared wood interior via the EXISTING building entry system
-##                (world_root handles the teleport + return).
-##   VILLAGE    — modular JapaneseHouseKit houses (C/D/E/F archetypes) built
-##                from primitives + the shared MaterialLibrary. Same palette,
-##                different architecture. Some are enterable (optional
-##                interior), some solid — all collidable, one box collider each.
-##   BACKGROUND — cheapest kit tier: clad volume + roof, no collision,
-##                visibility-range LOD, on raised mounds behind the village.
+##   HERO       — the two original Meshy houses (House A / House B). Highest
+##                fidelity, fully PLAYABLE.
+##   VILLAGE    — the three imported GLB village houses (House 3 / 4 / 7):
+##                real high-quality Japanese rural models, normalised to
+##                believable size, staged around the hero pair. Some enterable,
+##                some solid — all with mesh-derived compound box collision.
+##   BACKGROUND — cheapest tier: JapaneseHouseKit primitive silhouettes (no
+##                collision, visibility-range LOD) on raised mounds far behind
+##                the village, kept as cheap distant geometry for mobile perf.
+##
+## EVERY hero + village house is a real GLB placed through one code path
+## (`_glb_house`): grounded, uniformly scaled to a target width, with the
+## entrance + collision DERIVED FROM THE ACTUAL MESH (GLB_PROFILES — real
+## door/wall lines measured off offscreen orthographic renders), never guessed
+## from the bounding box. The entry point is an INVISIBLE trigger at the real
+## doorway (the EXISTING LocationEntryPoint → world_root → house_interior_wood
+## system); collision is a simple compound of invisible boxes leaving the
+## doorway clear; the render mesh is never used as collision.
 ##
 ## Composition: curved stone lanes, clustered houses at varied setbacks/facing,
-## foreground gardens, elevation (mounds), and SELECTIVE dressing (fences,
+## foreground gardens, mounds for depth, and SELECTIVE dressing (fences,
 ## firewood, lanterns, pots — not prop spam). Uses M2.2 lighting + M2.3 weather
 ## unchanged (they attach at world_root); this region supplies geometry + a tag.
 
 const HOUSE_A := "res://assets/meshes/houses/house_a.glb"
 const HOUSE_B := "res://assets/meshes/houses/house_b.glb"
+const HOUSE_3 := "res://assets/meshes/houses/village_house3.glb"
+const HOUSE_4 := "res://assets/meshes/houses/village_house4.glb"
+const HOUSE_7 := "res://assets/meshes/houses/village_house7.glb"
 const INTERIOR := "res://src/world/locations/house_interior_wood.tscn"
 
 ## Lighting-profile tag read by RegionLightingController (M2.2). Residential.
@@ -33,8 +43,7 @@ func _ready() -> void:
 	_build_ground()
 	# Player starts to the south, looking north up the lane toward the village.
 	BlockoutUtil.add_spawn(self, "PlayerSpawn", Vector3(0.0, 0.05, 17.0))
-	_place_hero_houses()
-	_place_village_houses()
+	_place_glb_houses()
 	_build_background()
 	_build_lanes()
 	_build_dressing()
@@ -53,43 +62,56 @@ func _build_ground() -> void:
 	add_child(BlockoutUtil.visual_box_mat(
 		Vector3(18.0, 4.5, 44.0), Vector3(40.0, 1.0, -18.0), MaterialLibrary.get_mat(&"grass_bright")))
 
-# --- HERO tier (Meshy houses A/B) ------------------------------------------
+# --- HERO + VILLAGE tier (real GLB houses) ---------------------------------
 #
-# The entrance + collision for each hero house are DERIVED FROM THE ACTUAL MESH,
-# not the bounding box. The real doorway of these Meshy houses sits behind a deep
-# eave + veranda, so the AABB front face is ~1.5 m proud of the true door — which
-# is why the earlier guessed door slab floated in front of the facade. Each house
-# has a measured "profile" of real wall/door lines in RAW mesh space (read off
-# rendered orthographic elevations), mapped into the built node space via
-# HeroAsset.aabb_and_scale (node = (raw - aabb.position) * scale). From that we
-# build: an INVISIBLE entry trigger AT the real doorway (no visible slab), and a
+# Every hero + village house is a real imported GLB, placed through ONE builder.
+# The entrance + collision are DERIVED FROM THE ACTUAL MESH, not the bounding
+# box: these houses have deep eaves + a recessed veranda, so the AABB front face
+# is up to ~1.5 m proud of the true door (a slab there floats). Each house has a
+# measured profile of real wall/door lines in RAW mesh space (read off rendered
+# orthographic elevations), mapped into built node space via
+# HeroAsset.aabb_and_scale (node = (raw - aabb.position) * scale). From it we
+# build an INVISIBLE entry trigger AT the real doorway (no visible slab) + a
 # simple compound of INVISIBLE box colliders (back + 2 sides + 2 front pieces)
-# that leaves the doorway gap and the veranda clear so the player walks up to the
-# actual door. The render mesh is never used as collision. Front is local +z for
-# both houses (confirmed: back/sides are solid walls; the veranda+door is on +z).
+# leaving the doorway gap + veranda clear so the player reaches the actual door.
+# The render mesh is never used as collision. Front is local +z for all of them.
 
-## Measured real-geometry profile per hero house, in RAW GLB-local coordinates
-## (metres, before scaling). x_min/x_max = enclosed wall span; z_back = rear wall;
-## z_front = the true front wall / sliding-door line (well inside the eave);
-## y_top = top of the walls (roof above is not collided); door_x = doorway centre
-## in x; door_gap = clear doorway width (raw). All read off the orthographic
-## elevations rendered from the actual GLBs.
-const HERO_PROFILES := {
-	HOUSE_A: {   # open engawa house: wide central veranda opening
-		"x_min": -0.68, "x_max": 0.68, "z_back": -0.34, "z_front": 0.47,
+## Measured real-geometry profile per GLB house, in RAW mesh coordinates (metres,
+## before scaling). width = target real-world width (uniform scale to it).
+## x_min/x_max = enclosed wall span; z_back = rear wall; z_front = the true front
+## wall / doorway line (well inside the eave); y_top = top of the collided walls
+## (roof above is not collided); door_x = doorway centre in x; door_gap = clear
+## doorway width. All read off orthographic elevations rendered from the GLBs.
+const GLB_PROFILES := {
+	HOUSE_A: {   # hero: open engawa house, wide central veranda opening
+		"width": 7.6, "x_min": -0.68, "x_max": 0.68, "z_back": -0.34, "z_front": 0.47,
 		"y_top": 0.11, "door_x": 0.0, "door_gap": 0.5,
 	},
-	HOUSE_B: {   # gabled entry, door on the main block (left of the +x side wing)
-		"x_min": -0.85, "x_max": 0.90, "z_back": -0.45, "z_front": 0.45,
+	HOUSE_B: {   # hero: gabled entry, door on the main block (left of +x wing)
+		"width": 6.8, "x_min": -0.85, "x_max": 0.90, "z_back": -0.45, "z_front": 0.45,
 		"y_top": 0.055, "door_x": -0.25, "door_gap": 0.42,
+	},
+	HOUSE_3: {   # village: two-storey gabled farmhouse, stepped central door
+		"width": 9.0, "x_min": -0.72, "x_max": 0.75, "z_back": -0.63, "z_front": 0.49,
+		"y_top": 0.45, "door_x": 0.18, "door_gap": 0.34,
+	},
+	HOUSE_4: {   # village: large low manor/hall, wrap-around engawa, genkan on -x
+		"width": 10.0, "x_min": -0.72, "x_max": 0.72, "z_back": -0.60, "z_front": 0.45,
+		"y_top": -0.04, "door_x": -0.17, "door_gap": 0.30,
+	},
+	HOUSE_7: {   # village: two-storey minka, -x side wing, veranda doors centre
+		"width": 8.5, "x_min": -0.78, "x_max": 0.80, "z_back": -0.60, "z_front": 0.40,
+		"y_top": -0.05, "door_x": 0.10, "door_gap": 0.34,
 	},
 }
 
-## Place one hero house: grounded, rotated, on a stone plinth under the walls,
+## Place one real GLB house: grounded, rotated, on a stone plinth under the walls,
 ## with mesh-derived compound collision + an invisible entry trigger at the real
 ## doorway (the EXISTING entry system) when `interior` is given.
-func _hero_house(path: String, pos: Vector3, yaw_deg: float, width: float,
-		interior: String, prompt: String) -> void:
+func _glb_house(path: String, pos: Vector3, yaw_deg: float,
+		interior: String, prompt: String = "Enter house") -> void:
+	var p: Dictionary = GLB_PROFILES[path]
+	var width: float = p["width"]
 	# collide=false: we build our own mesh-derived collider, never the AABB box.
 	var h := HeroAsset.make_house(path, width, false)
 	h.position = pos
@@ -99,7 +121,6 @@ func _hero_house(path: String, pos: Vector3, yaw_deg: float, width: float,
 	var m := HeroAsset.aabb_and_scale(path, width)
 	var aabb: AABB = m["aabb"]
 	var s: float = m["scale"]
-	var p: Dictionary = HERO_PROFILES[path]
 
 	# Map the raw wall/door lines into the built house's local node space.
 	var lo := (Vector3(p["x_min"], aabb.position.y, p["z_back"]) - aabb.position) * s
@@ -156,40 +177,22 @@ func _col(size: Vector3, pos: Vector3) -> StaticBody3D:
 	body.add_child(cs)
 	return body
 
-func _place_hero_houses() -> void:
-	# Irregular placement + rotation — never side-by-side. BOTH enterable.
-	_hero_house(HOUSE_A, Vector3(-7.5, 0.0, -3.0), 22.0, 7.6, INTERIOR, "Enter house")
-	_hero_house(HOUSE_B, Vector3(8.0, 0.0, -13.0), -38.0, 6.8, INTERIOR, "Enter house")
+func _place_glb_houses() -> void:
+	# HERO pair (unchanged placement + scale). Irregular, never side-by-side.
+	_glb_house(HOUSE_A, Vector3(-7.5, 0.0, -3.0), 22.0, INTERIOR)
+	_glb_house(HOUSE_B, Vector3(8.0, 0.0, -13.0), -38.0, INTERIOR)
 
-# --- VILLAGE tier (modular kit, reachable) ---------------------------------
-
-## Build + place one kit house from a Spec. Enterable when `interior` is given.
-func _kit_house(spec: JapaneseHouseKit.Spec, pos: Vector3, yaw_deg: float,
-		interior: String = "", prompt: String = "Enter house") -> void:
-	var node := JapaneseHouseKit.build(spec, interior, prompt)
-	node.position = pos
-	node.rotation_degrees = Vector3(0.0, yaw_deg, 0.0)
-	add_child(node)
-	var fp := JapaneseHouseKit.footprint_of(spec)
-	var pad := maxf(fp.x, fp.y) + 2.0
-	_excl.append(Rect2(pos.x - pad * 0.5, pos.z - pad * 0.5, pad, pad))
-
-func _place_village_houses() -> void:
-	# Lower village (near the spawn) — a small welcoming cluster.
-	_kit_house(JapaneseHouseKit.house_c(), Vector3(-14.0, 0.0, 7.0), 34.0, INTERIOR)
-	_kit_house(JapaneseHouseKit.house_c(), Vector3(13.0, 0.0, 9.0), -26.0)
-	_kit_house(JapaneseHouseKit.house_f(), Vector3(17.0, 0.0, -1.0), -58.0, INTERIOR)
-
-	# Mid village — around the two hero houses, varied setbacks + facing.
-	_kit_house(JapaneseHouseKit.house_d(), Vector3(-17.0, 0.0, -11.0), 14.0, INTERIOR)
-	_kit_house(JapaneseHouseKit.house_e(), Vector3(0.5, 0.0, -21.0), 4.0)
-	_kit_house(JapaneseHouseKit.house_c(), Vector3(19.0, 0.0, -18.0), -32.0)
-	_kit_house(JapaneseHouseKit.house_f(), Vector3(-15.0, 0.0, -23.0), 42.0)
-
-	# Upper village — thinning out toward the hills.
-	_kit_house(JapaneseHouseKit.house_e(), Vector3(9.0, 0.0, -27.0), -18.0, INTERIOR)
-	_kit_house(JapaneseHouseKit.house_c(), Vector3(-6.0, 0.0, -29.0), 16.0)
-	_kit_house(JapaneseHouseKit.house_d(), Vector3(17.0, 0.0, -29.0), -36.0)
+	# VILLAGE — the three real GLB models, staged around the hero pair at varied
+	# rotations, spacing + setbacks. House 4 (large manor/hall) is the set-back
+	# northern landmark; House 3 + House 7 are the surrounding homes. A subset is
+	# enterable; the rest are solid (still collidable) "optional interior" houses.
+	_glb_house(HOUSE_4, Vector3(-5.0, 0.0, -34.0), 6.0, INTERIOR, "Enter hall")   # landmark, enterable
+	_glb_house(HOUSE_3, Vector3(-24.0, 0.0, -16.0), 34.0, INTERIOR)              # enterable
+	_glb_house(HOUSE_3, Vector3(15.0, 0.0, -5.0), -42.0, "")                     # optional
+	_glb_house(HOUSE_3, Vector3(-23.0, 0.0, 4.0), 12.0, "")                      # optional
+	_glb_house(HOUSE_7, Vector3(13.0, 0.0, -24.0), -26.0, INTERIOR)             # enterable
+	_glb_house(HOUSE_7, Vector3(-17.0, 0.0, -26.0), 46.0, "")                    # optional
+	_glb_house(HOUSE_7, Vector3(12.0, 0.0, 6.0), -20.0, "")                      # optional
 
 # --- BACKGROUND tier (cheap, unreachable, on the mounds) --------------------
 
