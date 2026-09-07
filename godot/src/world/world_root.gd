@@ -5,7 +5,10 @@ extends Node3D
 ## interactables emit on WorldEvents (keeping interactables decoupled from
 ## the loading machinery). This is the script attached to main.tscn.
 
-const START_REGION := "res://src/world/regions/blockout_town.tscn"
+# M2.4 hero test area — the staged Japanese-house scene for on-device visual
+# review. The full grey-box town (blockout_town.tscn) is preserved and can be
+# restored by switching this constant back.
+const START_REGION := "res://src/world/regions/hero_village.tscn"
 
 var player: Player
 var region_loader: RegionLoader

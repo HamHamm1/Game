@@ -13,6 +13,45 @@ Status labels follow AI_RULES.md Rule 11:
 
 ## [Unreleased]
 
+### Phase 2 M2.4 — Hero architecture: original Meshy Japanese houses + staged hero village
+
+First real high-fidelity asset integration. Two **original GLB houses** (owner-
+created with Meshy AI, 2K PBR) imported and staged in a small composed hero
+area for on-device visual review. M2.1 layout, M2.2 lighting, M2.3 weather, and
+all gameplay systems are untouched. **NOT** ANDROID VERIFIED — visual success
+is judged only by the owner's device test.
+
+- **NEW assets** `godot/assets/meshes/houses/house_a.glb`, `house_b.glb`
+  (glTF 2.0; 2048² base_color + metallic_roughness + normal; tangents + UV0;
+  ~407k / ~443k tris) + Godot `.import` files + extracted sibling textures.
+  Original owner-created (Meshy AI); recorded in `ASSET_LICENSES.md`.
+- **NEW `godot/src/world/hero_asset.gd`** (`HeroAsset`) — loads an imported
+  house GLB and returns a reusable node: measures the mesh AABB, **scales to a
+  target real-world width**, **lifts the base to y=0** (Meshy meshes are
+  centre-origin, so they'd otherwise sink), and adds a **simple box
+  StaticBody** collider (never the ~0.4M-tri mesh). Preserves the 2K PBR
+  materials; import generates LODs. Writes no environment/lights.
+- **NEW `godot/src/world/regions/hero_village.{gd,tscn}`** — a staged hero
+  scene: both houses at **irregular positions/rotations** (not side-by-side)
+  on stone foundations, a **curving stone path** leading between them, framing
+  trees, foreground ferns/flowers/rocks/shrub, a broad grass lawn carved by
+  exclusions (houses + path kept clear), and a low background mound for depth.
+  Carries `lighting_category = residential` so M2.2 lighting applies.
+- **`godot/src/world/world_root.gd`** — `START_REGION` points at
+  `hero_village.tscn` for this visual test; **`blockout_town.tscn` is preserved**
+  and restored by switching the constant back.
+- **NEW `ASSET_LICENSES.md`** — provenance/license manifest (policy expanded per
+  owner: original/owner-created/AI/CC0/licensed allowed; ripped/unclear not).
+
+Untouched: player movement, camera, interaction, save/load, entry/exit,
+TimeManager, WeatherManager, WeatherFX, RegionLightingController, GraphicsManager,
+Android export config, CI workflow.
+
+Validated: `tools/run_validation.sh` → static 86/86, headless import clean,
+headless boot clean (both houses instantiate + ground + collide in the real
+scene), headless suite 128/128, Android export config valid. NOT ANDROID
+VERIFIED — the high-fidelity look requires the on-device test.
+
 ### Phase 2 M2.4 — RESTART: Japanese Rural Village Visual Foundation (vegetation rebuilt)
 
 The M2.4-B/B.1 vegetation was **rejected on device** (floating triangular
