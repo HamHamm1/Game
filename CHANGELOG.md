@@ -13,6 +13,42 @@ Status labels follow AI_RULES.md Rule 11:
 
 ## [Unreleased]
 
+### Phase 2 M2.4-C.1 — Device fixes: white ground, stream, terrain edges, background
+
+Iteration on M2.4-C after the Android test. Gameplay systems + houses untouched.
+**NOT** ANDROID VERIFIED.
+
+- **ROOT CAUSE of the "white / light-cyan ground": the terrain mesh triangles
+  were wound backwards**, so the ground was **back-face culled** — the player was
+  seeing the sky *through* the invisible terrain, not a white material. Fixed the
+  triangle winding in `TerrainBuilder` (front face now points up). Added a
+  headless guard (`_test_terrain`) that computes the triangle's geometric normal
+  and fails if it isn't front-face-up — this would have caught the bug.
+- **Textured ground** (owner-provided grass/soil PNG + normal map) via a
+  world-planar-UV `StandardMaterial3D` (UVs baked into the mesh — **not**
+  triplanar, which failed to sample on the renderer). Vertex colours demoted to a
+  near-white multiplier (wet/dry/slope tint) so they can never wash the ground to
+  white. Mipmaps enabled to avoid distance shimmer.
+- **Stream reads as a real channel**: channel depth 0.85→**1.35 m**, water
+  surface −0.30→**−0.55 m**, steeper banks, and an **irregular (asymmetric)
+  water boundary** — water now sits in a carved depression contrasting the green
+  banks instead of a flat sheet on flat ground. Stepping stones deepened to reach
+  the new bed.
+- **No hard terrain edges / no white background void**: terrain enlarged
+  (150×122 → **260×220 m**) and the forest-edge rise extended into higher distant
+  hills, plus a **distant forest-silhouette ring** (~40 big conifers on the
+  surrounding hills). The horizon now reads as forested hills, hiding the mesh
+  boundary and filling the background.
+- **NEW textures** `assets/textures/terrain/ground_grass.png` (+ `_normal`),
+  `assets/textures/fx/dust_motes.png` (owner-provided; dust saved for a later
+  ambience pass, not yet used). Recorded in `ASSET_LICENSES.md`. Uploaded Unity
+  `.terrainlayer`/`.asset` files are reference-only (no pixels) — not usable.
+- **Tests** 214 → **219/219** (terrain now also guards: front-face-up winding,
+  textured ground, heightmap collider, shading normals up).
+- **Unchanged**: House A–H (still only re-grounded), entry/exit + interiors,
+  compound wall collisions, player/camera/interaction/save, M2.1–M2.3,
+  weather/lighting, chunked vegetation, Android export + CI.
+
 ### Phase 2 M2.4-C — Hero village terrain, stream & paths
 
 Turns the flat-field hero village into a believable rural mountain-village

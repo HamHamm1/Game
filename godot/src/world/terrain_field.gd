@@ -16,13 +16,13 @@ extends RefCounted
 ## Pure + deterministic (no RNG, no nodes) so it is headless-testable and both
 ## the terrain mesh and its heightmap collider are built from the same function.
 
-const WATER_Y := -0.30            # stream surface height (below banks, above bed)
+const WATER_Y := -0.55            # stream surface height (below banks, above bed)
 
 var _pads: Array = []             # [{c:Vector2, r:float, blend:float, h:float}]
 var _stream: PackedVector2Array = PackedVector2Array()
 var _stream_half := 2.6           # stream half-width (bank to centre) baseline
-var _stream_bank := 3.0           # extra distance the channel eases up over
-var _stream_depth := 0.85         # channel depth below the local bank
+var _stream_bank := 2.2           # extra distance the channel eases up over (steeper, defined banks)
+var _stream_depth := 1.35         # channel depth below the local bank (a real carved channel)
 var _village_center := Vector2(0.0, -14.0)
 
 ## Configure the field. `pads` is an array of {center:Vector2, radius:float};
@@ -73,8 +73,10 @@ func _base(x: float, z: float) -> float:
 		+ sin((x - z) * 0.032) * 0.34 \
 		+ sin(x * 0.09 + z * 0.061) * 0.18
 	var amp := lerpf(0.55, 1.7, smoothstep(16.0, 56.0, d))
-	# Forest-edge rise beyond the village, capped so it never walls off the scene.
-	var edge := smoothstep(34.0, 95.0, d) * minf((d - 34.0) * 0.16, 10.0)
+	# Forest-edge + distant hills beyond the village: a longer, higher rise so the
+	# horizon reads as rolling hills/mountains (fills the background, hides the
+	# terrain boundary) — still eased so it never walls off the playable core.
+	var edge := smoothstep(34.0, 130.0, d) * minf((d - 34.0) * 0.14, 20.0)
 	return roll * amp + edge
 
 func _carve_stream(x: float, z: float, h: float) -> float:

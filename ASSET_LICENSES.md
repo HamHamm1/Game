@@ -41,6 +41,23 @@ real-world width, base grounded at y=0, 2K PBR preserved (VRAM compression +
 mipmaps + import-generated LODs), and **simple compound box collision** derived
 from the mesh (never the full render mesh). GLBs are used unmodified.
 
+## Textures — Terrain (M2.4-C)
+
+Owner-provided ground textures for the hero-village terrain. Applied via a
+world-planar-UV StandardMaterial3D on the terrain mesh (VRAM compression +
+mipmaps on import).
+
+| Asset | Path | Kind | Source | License / rights | Notes |
+|---|---|---|---|---|---|
+| Ground grass/soil (albedo) | `godot/assets/textures/terrain/ground_grass.png` | Terrain albedo | **Owner-provided** | Owner holds rights to use in this game | 1024² seamless grass + dirt; ~5 m world tile |
+| Ground grass/soil (normal) | `godot/assets/textures/terrain/ground_grass_normal.png` | Terrain normal map | **Owner-provided** | Owner holds rights to use in this game | tangent-space normal for the above |
+| Dust motes (sprite) | `godot/assets/textures/fx/dust_motes.png` | Atmosphere sprite | **Owner-provided** | Owner holds rights to use in this game | saved for a future ambience pass; **not yet used** |
+
+Not usable (Unity-only, reference-only): the uploaded `.terrainlayer` files
+(Bark/Forest_Ground/Grass/Mud) and `Forest.asset` are Unity YAML metadata that
+reference textures by GUID and contain no pixel data — the actual image files
+would be needed to use those layers. Not added to the project.
+
 ## Meshes — Village architecture (modular kit)
 
 The M2.4-B village houses (archetypes **C / D / E / F** and the background

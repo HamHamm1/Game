@@ -618,6 +618,40 @@ func _test_terrain() -> void:
 	GroundSampler.clear_height_provider()
 	_check(GroundSampler.height_at(5.0, 5.0) == GroundSampler.GROUND_Y, "GroundSampler reverts to flat when cleared")
 
+	# TerrainBuilder output guards (would have caught the device bugs):
+	var body := TerrainBuilder.build(t, -10.0, -10.0, 10.0, 10.0, 2.0)
+	var mesh: MeshInstance3D = null
+	var heightmap := false
+	for c in body.get_children():
+		if c is MeshInstance3D:
+			mesh = c
+		if c is CollisionShape3D and (c as CollisionShape3D).shape is HeightMapShape3D:
+			heightmap = true
+	_check(mesh != null, "terrain builder produces a visual mesh")
+	_check(heightmap, "terrain has a HeightMapShape3D collider")
+	if mesh != null:
+		var sm := mesh.material_override as StandardMaterial3D
+		# The ground must be TEXTURED, never a bare white/near-white albedo (the
+		# device "white ground" regression).
+		_check(sm != null and sm.albedo_texture != null, "terrain ground is textured (not a flat white material)")
+		# Triangles must present their front face UPWARD, or the terrain is
+		# back-face culled and the player sees the sky through it (the real cause of
+		# the device "white ground"). Godot front faces are CLOCKWISE, so a
+		# front-face-up triangle's CCW-order cross product points DOWN (-Y).
+		var arr := (mesh.mesh as ArrayMesh).surface_get_arrays(0)
+		var vs := arr[Mesh.ARRAY_VERTEX] as PackedVector3Array
+		var idx := arr[Mesh.ARRAY_INDEX] as PackedInt32Array
+		var geo_n := (vs[idx[1]] - vs[idx[0]]).cross(vs[idx[2]] - vs[idx[0]])
+		_check(geo_n.y < 0.0, "terrain front face points up (not back-face culled)")
+		# Shading normals also point up (correct lighting).
+		var ns := arr[Mesh.ARRAY_NORMAL] as PackedVector3Array
+		var up := ns.size() > 0
+		for n in ns:
+			if n.y <= 0.0:
+				up = false
+		_check(up, "terrain shading normals point up")
+	body.free()
+
 ## True if the subtree holds a MeshInstance3D with a non-primitive (imported)
 ## mesh — i.e. a hero GLB, as opposed to the kit's BoxMesh/PrismMesh primitives.
 func _has_complex_mesh(n: Node) -> bool:

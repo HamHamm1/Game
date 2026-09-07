@@ -40,9 +40,9 @@ const INTERIOR := "res://src/world/locations/house_interior_wood.tscn"
 # M2.4-C — terrain area (metres) + the stream centreline (curved, threaded
 # through the open foreground between the spawn and the houses so it never
 # crosses a building pad). Water surface sits at TerrainField.WATER_Y.
-const TERR_MIN := Vector2(-75.0, -80.0)
-const TERR_MAX := Vector2(75.0, 42.0)
-const TERR_RES := 2.0
+const TERR_MIN := Vector2(-130.0, -150.0)
+const TERR_MAX := Vector2(130.0, 70.0)
+const TERR_RES := 3.0
 static var STREAM := PackedVector2Array([
 	Vector2(40.0, -12.0), Vector2(34.0, -6.0), Vector2(28.0, 1.0), Vector2(21.0, 7.0),
 	Vector2(12.0, 11.0), Vector2(1.0, 13.5), Vector2(-11.0, 14.5), Vector2(-18.0, 15.5),
@@ -277,9 +277,11 @@ func _build_water_ribbon() -> void:
 	for i in STREAM.size():
 		var c := STREAM[i]
 		var nrm := Vector2(-_stream_tangent(i).y, _stream_tangent(i).x)
-		var w := half * (0.9 + 0.35 * sin(float(i) * 1.3))   # varying width
-		var lp := c + nrm * w
-		var rp := c - nrm * w
+		# Independent, varying left/right widths -> irregular natural shoreline.
+		var wl := half * (0.95 + 0.35 * sin(float(i) * 1.3) + 0.18 * sin(float(i) * 2.7))
+		var wr := half * (0.95 + 0.32 * cos(float(i) * 1.1) + 0.18 * sin(float(i) * 3.1))
+		var lp := c + nrm * wl
+		var rp := c - nrm * wr
 		verts.append(Vector3(lp.x, TerrainField.WATER_Y, lp.y))
 		verts.append(Vector3(rp.x, TerrainField.WATER_Y, rp.y))
 		normals.append(Vector3.UP)
@@ -365,10 +367,11 @@ func _build_stepping_stones() -> void:
 		Vector2(-0.3, 11.9), Vector2(0.2, 10.4),
 	]
 	for p in pts:
-		# Top a touch above the bank so the crossing stays dry; sunk into the bed.
-		var top := 0.12
+		# Top a touch above the bank so the crossing stays dry; tall enough to reach
+		# down into the (now deeper) channel bed rather than float over the water.
+		var top := 0.14
 		var stone := BlockoutUtil.static_box_mat(
-			Vector3(1.35, 0.7, 1.35), Vector3(p.x, top - 0.35, p.y),
+			Vector3(1.35, 1.8, 1.35), Vector3(p.x, top - 0.9, p.y),
 			MaterialLibrary.get_mat(&"wet_stone"))
 		add_child(stone)
 		_excl.append(Rect2(p.x - 0.9, p.y - 0.9, 1.8, 1.8))
@@ -518,6 +521,19 @@ func _build_vegetation() -> void:
 		var z := lerpf(-44.0, 4.0, float(i) / 5.0)
 		BlockoutUtil.add_tree(self, _ground_pos(-50.0, z), 2.4, 1)
 		BlockoutUtil.add_tree(self, _ground_pos(50.0, z), 2.4, 1)
+	# Distant forest silhouettes on the surrounding hills — big conifers ringing
+	# the valley so the horizon reads as forest/hills, not a bright empty void.
+	var vc := Vector2(0.0, -14.0)
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 9137
+	for i in 40:
+		var ang := TAU * float(i) / 40.0
+		var rad := rng.randf_range(82.0, 116.0)
+		var x := vc.x + cos(ang) * rad
+		var z := vc.y + sin(ang) * rad
+		if x < TERR_MIN.x + 6.0 or x > TERR_MAX.x - 6.0 or z < TERR_MIN.y + 6.0 or z > TERR_MAX.y - 6.0:
+			continue
+		BlockoutUtil.add_tree(self, _ground_pos(x, z), rng.randf_range(3.0, 4.6), 1, 600.0)
 	# Foreground garden detail near the lanes: ferns, blooms, rocks, shrubs.
 	_veg(&"fern", &"fern", Vector3(4.5, 0.0, 6.0), 3.5, 4.0, 30, 3002, 0.8, 1.2, 55.0)
 	_veg(&"flower", &"flower_vcol", Vector3(-5.5, 0.0, 4.0), 3.5, 3.0, 34, 3003, 0.8, 1.2, 40.0)

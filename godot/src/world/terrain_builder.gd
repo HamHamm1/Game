@@ -34,19 +34,24 @@ static func _build_mesh(field: TerrainField, heights: PackedFloat32Array,
 	var verts := PackedVector3Array()
 	var normals := PackedVector3Array()
 	var colors := PackedColorArray()
+	var uvs := PackedVector2Array()
 	var indices := PackedInt32Array()
-	# Palette (kept in the approved village key: matte, restrained, not saturated).
-	var grass := Color(0.34, 0.44, 0.27)
-	var grass_dry := Color(0.44, 0.46, 0.31)
-	var soil := Color(0.40, 0.33, 0.24)
-	var wet := Color(0.30, 0.30, 0.26)
-	var bank := Color(0.46, 0.44, 0.38)
+	const UV_TILE := 0.2   # texture tiles every ~5 m of world space
+	# Vertex colours MULTIPLY the ground texture (near-white = show the texture as
+	# authored; darker only where wet/steep). This is why the ground reads as the
+	# real grass/soil texture, not a flat colour — and never white.
+	var grass := Color(0.98, 1.0, 0.94)
+	var grass_dry := Color(1.0, 0.98, 0.86)
+	var soil := Color(0.86, 0.74, 0.60)
+	var wet := Color(0.58, 0.60, 0.56)
+	var bank := Color(0.80, 0.78, 0.72)
 	for j in d:
 		for i in w:
 			var x := min_x + i * res
 			var z := min_z + j * res
 			var y := heights[j * w + i]
 			verts.append(Vector3(x, y, z))
+			uvs.append(Vector2(x * UV_TILE, z * UV_TILE))   # world-planar UV (no triplanar)
 			# Normal from central differences on the sampled grid.
 			var hl := _h(heights, w, d, i - 1, j)
 			var hr := _h(heights, w, d, i + 1, j)
@@ -73,20 +78,46 @@ static func _build_mesh(field: TerrainField, heights: PackedFloat32Array,
 			var b := a + 1
 			var c := a + w
 			var e := c + 1
-			indices.append_array([a, c, b, b, c, e])
+			# Wind so the front face points UP (CCW from above) — otherwise the
+			# terrain is back-face culled and the player sees the sky through it.
+			indices.append_array([a, b, c, b, e, c])
 	var arr := []
 	arr.resize(Mesh.ARRAY_MAX)
 	arr[Mesh.ARRAY_VERTEX] = verts
 	arr[Mesh.ARRAY_NORMAL] = normals
 	arr[Mesh.ARRAY_COLOR] = colors
+	arr[Mesh.ARRAY_TEX_UV] = uvs
 	arr[Mesh.ARRAY_INDEX] = indices
 	var mesh := ArrayMesh.new()
 	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arr)
 	var mi := MeshInstance3D.new()
 	mi.name = "TerrainMesh"
 	mi.mesh = mesh
-	mi.material_override = MaterialLibrary.get_mat(&"terrain")
+	mi.material_override = _terrain_material()
 	return mi
+
+## Textured ground material: a real grass/soil PBR albedo, TRIPLANAR-mapped in
+## world space (so it tiles naturally across the terrain and doesn't stretch on
+## slopes, with no per-vertex UVs). Vertex colours multiply it for wet/dry/slope
+## variation. Never white. Cached so the whole terrain shares one material.
+static var _terrain_mat: StandardMaterial3D
+static func _terrain_material() -> StandardMaterial3D:
+	if _terrain_mat != null:
+		return _terrain_mat
+	var m := StandardMaterial3D.new()
+	m.albedo_texture = load("res://assets/textures/terrain/ground_grass.png") as Texture2D
+	# World-planar UVs are baked into the mesh (universally supported on Mobile),
+	# so no triplanar (which failed to sample and left the ground white).
+	var nrm := load("res://assets/textures/terrain/ground_grass_normal.png") as Texture2D
+	if nrm != null:
+		m.normal_enabled = true
+		m.normal_texture = nrm
+		m.normal_scale = 0.8
+	m.vertex_color_use_as_albedo = true         # multiplies the texture (wet/dry)
+	m.roughness = 1.0
+	m.metallic = 0.0
+	_terrain_mat = m
+	return m
 
 static func _build_collider(heights: PackedFloat32Array, w: int, d: int,
 		min_x: float, min_z: float, max_x: float, max_z: float, res: float) -> CollisionShape3D:
