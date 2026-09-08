@@ -55,6 +55,7 @@ func _run() -> void:
 	_test_glb_houses()
 	_test_grass_chunked()
 	_test_terrain()
+	_test_props()
 
 func _test_item_registry() -> void:
 	_check(ItemRegistry.has_definition(&"fish"), "ItemRegistry has fish")
@@ -651,6 +652,27 @@ func _test_terrain() -> void:
 				up = false
 		_check(up, "terrain shading normals point up")
 	body.free()
+
+## M2.4-C dressing — PropKit grounds a prop's base to local y=0 (so the caller
+## drops it onto the terrain, no floating/sinking), shares mesh data via the
+## resource cache, and adds simple collision only when asked.
+func _test_props() -> void:
+	var n := PropKit.make(PropKit.BENCH, 0.85, "box")
+	add_child(n)
+	var min_y := 1.0e9
+	for m in _nodes_of(n, "MeshInstance3D"):
+		var a: AABB = (m as MeshInstance3D).global_transform * (m as MeshInstance3D).get_aabb()
+		min_y = minf(min_y, a.position.y)
+	_check(absf(min_y) < 0.05, "prop base sits at local y=0 (ready to ground)")
+	_check(_nodes_of(n, "StaticBody3D").size() >= 1, "prop 'box' collision adds a static body")
+	n.free()
+	var deco := PropKit.make(PropKit.FLOWER_SHRUB, 0.6, "")
+	add_child(deco)
+	_check(_nodes_of(deco, "StaticBody3D").is_empty(), "decorative prop has no collision")
+	deco.free()
+	# Shared source: two instances of the same prop reference the same PackedScene.
+	_check(load(PropKit.BENCH) == load(PropKit.BENCH), "prop GLB is shared via the resource cache")
+	_check(PropKit.footprint(PropKit.BRIDGE, 2.6).x > 3.0, "prop footprint scales with the size")
 
 ## True if the subtree holds a MeshInstance3D with a non-primitive (imported)
 ## mesh — i.e. a hero GLB, as opposed to the kit's BoxMesh/PrismMesh primitives.

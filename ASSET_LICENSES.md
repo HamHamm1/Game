@@ -41,6 +41,31 @@ real-world width, base grounded at y=0, 2K PBR preserved (VRAM compression +
 mipmaps + import-generated LODs), and **simple compound box collision** derived
 from the mesh (never the full render mesh). GLBs are used unmodified.
 
+## Meshes — Dressing props (M2.4-C)
+
+Sixteen owner-provided Japanese-village dressing GLBs, imported to
+`godot/assets/meshes/props/prop01..16.glb` (2K PBR, single material each, import
+LODs). Instanced via `PropKit` (shared through the resource cache — no mesh/
+material duplication); original materials preserved. Named mapping:
+
+| File | Prop | File | Prop |
+|---|---|---|---|
+| prop01 | arched bridge | prop09 | hanging lantern |
+| prop02 | tall fence panel | prop10 | low picket fence |
+| prop03 | firewood rack | prop11 | signpost |
+| prop04 | woven baskets | prop12 | stone paving |
+| prop05 | planter pot | prop13 | bench |
+| prop06 | farming tools | prop14 | pine tree |
+| prop07 | drying rack | prop15 | rock cluster |
+| prop08 | storage shed | prop16 | flower shrub |
+
+Source: **owner-provided** originals; owner holds rights to use in this game.
+Runtime: uniformly scaled to believable size, base grounded to the terrain,
+simple box/post collision only where it matters (bridge deck, sheds, racks,
+benches, fences, rocks, tree trunks); decorative props (tools, baskets, flowers,
+paving) have none. No dedicated sakura-tree asset was in this set — the pink
+flower shrub is used for blossom accents and the pine for trees.
+
 ## Textures — Terrain (M2.4-C)
 
 Owner-provided ground textures for the hero-village terrain. Applied via a

@@ -79,7 +79,7 @@ func _ready() -> void:
 	_build_stream()
 	_build_background()
 	_build_lanes()
-	_build_dressing()
+	_place_props()      # M2.4-C dressing: real GLB props staged by area
 	_build_vegetation()
 
 ## Clear the global ground provider when this region leaves the tree, so nothing
@@ -253,7 +253,8 @@ func _build_stream() -> void:
 	_build_water_ribbon()
 	_add_stream_exclusions()
 	_build_shoreline()
-	_build_stepping_stones()
+	# The crossing is now the real bridge (placed in _place_props), not stepping
+	# stones — see _place_props()/ZONE 2.
 
 func _water_material() -> ShaderMaterial:
 	var m := ShaderMaterial.new()
@@ -360,22 +361,6 @@ func _bank_rock(p: Vector2, scale: float, wet: bool) -> void:
 		add_child(body)
 	_excl.append(Rect2(p.x - scale, p.y - scale, scale * 2.0, scale * 2.0))
 
-## Stepping stones across the crossing near x≈0 (level, walkable, simple boxes).
-func _build_stepping_stones() -> void:
-	var pts := [
-		Vector2(0.0, 16.4), Vector2(-0.5, 14.9), Vector2(0.5, 13.4),
-		Vector2(-0.3, 11.9), Vector2(0.2, 10.4),
-	]
-	for p in pts:
-		# Top a touch above the bank so the crossing stays dry; tall enough to reach
-		# down into the (now deeper) channel bed rather than float over the water.
-		var top := 0.14
-		var stone := BlockoutUtil.static_box_mat(
-			Vector3(1.35, 1.8, 1.35), Vector3(p.x, top - 0.9, p.y),
-			MaterialLibrary.get_mat(&"wet_stone"))
-		add_child(stone)
-		_excl.append(Rect2(p.x - 0.9, p.y - 0.9, 1.8, 1.8))
-
 # --- BACKGROUND tier (cheap, unreachable, on the mounds) --------------------
 
 func _build_background() -> void:
@@ -431,63 +416,136 @@ func _lane(pts: Array, w: float) -> void:
 			MaterialLibrary.get_mat(&"path")))
 		_excl.append(Rect2(xz.x - w * 0.5, xz.y - w * 0.5, w, w))
 
-# --- Selective dressing -----------------------------------------------------
+# --- M2.4-C dressing props (real GLB assets, staged by area) ----------------
+#
+# Every prop is a reusable PropKit instance (shared mesh/material via the
+# resource cache), grounded onto the terrain (base at the terrain height) with
+# simple collision only where it matters. Placed in intentional AREAS, not
+# scattered uniformly; larger props register a vegetation exclusion so grass
+# doesn't grow through them.
 
-func _build_dressing() -> void:
-	# A firewood stack + a stone lantern by the lower cluster; a low fence run
-	# edging the lane; a couple of flower pots + a water bucket at doorsteps.
-	_firewood(_ground_pos(-10.5, 6.0))
-	_firewood(_ground_pos(12.5, -1.5))
-	_lantern(_ground_pos(2.6, 3.0))
-	_lantern(_ground_pos(-2.4, -9.0))
-	_lantern(_ground_pos(5.0, -17.0))
-	_fence_run(_ground_pos(-6.0, -20.0), Vector3(1.0, 0.0, 0.0), 6, 1.1)
-	_fence_run(_ground_pos(6.0, -24.0), Vector3(0.0, 0.0, -1.0), 5, 1.1)
-	_pot(_ground_pos(-12.6, 8.4))
-	_pot(_ground_pos(15.6, 0.6))
-	_pot(_ground_pos(7.4, -25.6))
-	_bucket(_ground_pos(-15.4, -9.6))
+## Place one grounded prop. `s` uniform scale; `collide`/`cap` per PropKit;
+## `y_off` raises it (e.g. a hung lantern); `lod` fades big vegetation; `excl`
+## carves a grass-exclusion square of that size.
+func _prop(path: String, x: float, z: float, yaw: float, s: float,
+		collide: String = "", cap: float = 0.0, y_off: float = 0.0,
+		lod: float = 0.0, excl: float = 0.0) -> void:
+	var n := PropKit.make(path, s, collide, cap, lod)
+	n.position = Vector3(x, _g(x, z) + y_off, z)
+	n.rotation_degrees = Vector3(0.0, yaw, 0.0)
+	add_child(n)
+	if excl > 0.0:
+		_excl.append(Rect2(x - excl * 0.5, z - excl * 0.5, excl, excl))
 
-func _firewood(pos: Vector3) -> void:
-	var wood := MaterialLibrary.get_mat(&"wood_door")
-	for row in 3:
-		for col in 4:
-			add_child(BlockoutUtil.visual_box_mat(
-				Vector3(0.9, 0.16, 0.16),
-				pos + Vector3(0.0, 0.12 + row * 0.17, -0.5 + col * 0.18), wood))
+## A CONTIGUOUS fence run from (x0,z0) to (x1,z1): panels are stepped by their
+## own width so they join edge-to-edge (no gaps) and face along the run.
+func _fence(path: String, x0: float, z0: float, x1: float, z1: float, s: float) -> void:
+	var pw := maxf(PropKit.footprint(path, s).x, 0.2)
+	var run := Vector2(x1 - x0, z1 - z0)
+	var total := run.length()
+	var dir := run / maxf(total, 0.001)
+	var yaw := rad_to_deg(atan2(-dir.y, dir.x))
+	var n := maxi(int(round(total / pw)), 1)
+	for i in n:
+		var c := Vector2(x0, z0) + dir * (pw * (float(i) + 0.5))
+		_prop(path, c.x, c.y, yaw, s, "box", 0.0, 0.0, 0.0, 1.0)
 
-func _lantern(pos: Vector3) -> void:
-	var stone := MaterialLibrary.get_mat(&"stone")
-	add_child(BlockoutUtil.static_box_mat(Vector3(0.32, 0.4, 0.32), pos + Vector3(0.0, 0.2, 0.0), stone))
-	add_child(BlockoutUtil.visual_box_mat(Vector3(0.16, 0.5, 0.16), pos + Vector3(0.0, 0.65, 0.0), stone))
-	add_child(BlockoutUtil.visual_box_mat(Vector3(0.44, 0.34, 0.44), pos + Vector3(0.0, 1.05, 0.0), stone))
-	add_child(BlockoutUtil.visual_box_mat(Vector3(0.5, 0.14, 0.5), pos + Vector3(0.0, 1.28, 0.0),
-		MaterialLibrary.get_mat(&"roof_dark")))
+## A hung lantern on a simple wooden lamp-post (so it never floats).
+func _lamp(x: float, z: float) -> void:
+	var y := _g(x, z)
+	add_child(BlockoutUtil.static_box_mat(
+		Vector3(0.12, 2.4, 0.12), Vector3(x, y + 1.2, z), MaterialLibrary.get_mat(&"wood_dark")))
+	add_child(BlockoutUtil.visual_box_mat(
+		Vector3(0.5, 0.1, 0.12), Vector3(x + 0.18, y + 2.3, z), MaterialLibrary.get_mat(&"wood_dark")))
+	_prop(PropKit.LANTERN, x + 0.3, z, 0.0, 0.5, "", 0.0, 1.95)
 
-func _fence_run(start: Vector3, dir: Vector3, count: int, gap: float) -> void:
-	var trim := MaterialLibrary.get_mat(&"wood_dark")
-	var d := dir.normalized()
-	for i in count:
-		var p := start + d * (i * gap)
-		add_child(BlockoutUtil.visual_box_mat(Vector3(0.1, 1.0, 0.1), p + Vector3(0.0, 0.5, 0.0), trim))
-	# Two horizontal rails between the posts.
-	var mid := start + d * ((count - 1) * gap * 0.5)
-	var length := (count - 1) * gap
-	var horiz := Vector3(absf(d.x) * length + 0.1, 0.08, absf(d.z) * length + 0.1)
-	add_child(BlockoutUtil.visual_box_mat(horiz, mid + Vector3(0.0, 0.75, 0.0), trim))
-	add_child(BlockoutUtil.visual_box_mat(horiz, mid + Vector3(0.0, 0.4, 0.0), trim))
+func _place_props() -> void:
+	# ZONE 1 — VILLAGE ENTRANCE (south bank, by the spawn) ------------------
+	_prop(PropKit.SIGNPOST, 2.6, 18.2, -20.0, 0.85, "post", 0.0, 0.0, 0.0, 1.0)
+	_lamp(-2.2, 17.4)
+	_lamp(3.0, 16.2)
+	_prop(PropKit.PINE_TREE, -7.0, 20.0, 15.0, 3.4, "post", 0.0, 0.0, 150.0, 2.5)
+	_prop(PropKit.PINE_TREE, 7.5, 19.5, -30.0, 3.8, "post", 0.0, 0.0, 150.0, 2.5)
+	_prop(PropKit.FLOWER_SHRUB, -4.5, 17.8, 0.0, 0.6, "", 0.0, 0.0, 0.0, 1.0)
+	_prop(PropKit.FLOWER_SHRUB, 5.2, 18.6, 40.0, 0.55, "", 0.0, 0.0, 0.0, 1.0)
 
-func _pot(pos: Vector3) -> void:
-	add_child(BlockoutUtil.visual_box_mat(Vector3(0.34, 0.34, 0.34), pos + Vector3(0.0, 0.17, 0.0),
-		MaterialLibrary.get_mat(&"roof_warm")))
-	add_child(BlockoutUtil.visual_box_mat(Vector3(0.4, 0.16, 0.4), pos + Vector3(0.0, 0.42, 0.0),
-		MaterialLibrary.get_mat(&"foliage")))
+	# ZONE 2 — STREAM / BRIDGE ---------------------------------------------
+	# Bridge across the crossing (span along Z, the path direction).
+	_prop(PropKit.BRIDGE, 0.0, 13.5, 90.0, 2.6, "deck", 0.15, 0.0, 0.0, 3.0)
+	_prop(PropKit.BENCH, 6.0, 15.4, 200.0, 0.85, "box", 0.5, 0.0, 0.0, 1.6)
+	_prop(PropKit.BENCH, -6.2, 15.8, 150.0, 0.85, "box", 0.5, 0.0, 0.0, 1.6)
+	_lamp(2.0, 15.6)
+	# River rocks + blossoms along the banks.
+	_prop(PropKit.ROCK_CLUSTER, 9.0, 12.0, 20.0, 1.2, "box", 0.5, 0.0, 0.0, 2.2)
+	_prop(PropKit.ROCK_CLUSTER, -9.5, 15.5, -40.0, 1.3, "box", 0.5, 0.0, 0.0, 2.4)
+	_prop(PropKit.ROCK_CLUSTER, 15.0, 9.5, 60.0, 0.85, "", 0.0, 0.0, 0.0, 1.5)
+	_prop(PropKit.ROCK_CLUSTER, -16.0, 15.2, 10.0, 0.9, "", 0.0, 0.0, 0.0, 1.5)
+	_prop(PropKit.ROCK_CLUSTER, 22.0, 6.5, -20.0, 1.1, "box", 0.4, 0.0, 0.0, 2.0)
+	_prop(PropKit.FLOWER_SHRUB, 7.5, 12.6, 0.0, 0.55, "", 0.0, 0.0, 0.0, 1.0)
+	_prop(PropKit.FLOWER_SHRUB, -8.0, 16.2, 80.0, 0.6, "", 0.0, 0.0, 0.0, 1.0)
 
-func _bucket(pos: Vector3) -> void:
-	add_child(BlockoutUtil.visual_box_mat(Vector3(0.3, 0.3, 0.3), pos + Vector3(0.0, 0.15, 0.0),
-		MaterialLibrary.get_mat(&"wood_dark")))
-	add_child(BlockoutUtil.visual_box_mat(Vector3(0.26, 0.04, 0.26), pos + Vector3(0.0, 0.3, 0.0),
-		MaterialLibrary.get_mat(&"water")))
+	# ZONE 3 — RESIDENTIAL LANE + GARDENS (around the houses) --------------
+	# House E (east, ~ x23,z-1): garden with fence, planters, tools.
+	_fence(PropKit.FENCE_LOW, 18.0, 4.0, 26.0, 4.0, 0.85)
+	_prop(PropKit.PLANTER, 19.0, 3.0, 0.0, 0.35)
+	_prop(PropKit.PLANTER, 20.2, 3.0, 0.0, 0.35)
+	_prop(PropKit.FLOWER_SHRUB, 24.0, 3.4, 0.0, 0.6, "", 0.0, 0.0, 0.0, 1.0)
+	_prop(PropKit.FARM_TOOLS, 21.5, 3.2, 30.0, 0.30)
+	_prop(PropKit.DRYING_RACK, 26.5, -1.0, -80.0, 1.0, "box", 0.0, 0.0, 0.0, 2.4)
+
+	# House B area (~ x11,z-8): storage shed + baskets + firewood.
+	_prop(PropKit.STORAGE_SHED, 15.5, -2.0, -110.0, 1.5, "box", 0.0, 0.0, 0.0, 3.4)
+	_prop(PropKit.BASKETS, 13.0, -3.5, 0.0, 0.55, "", 0.0, 0.0, 0.0, 1.2)
+	_prop(PropKit.FIREWOOD_RACK, 14.0, -12.5, 20.0, 1.0, "box", 0.0, 0.0, 0.0, 2.4)
+
+	# House A area (~ x-3,z-1) central: a lived-in yard.
+	_prop(PropKit.BASKETS, -4.5, 2.2, 40.0, 0.5)
+	_prop(PropKit.PLANTER, -1.6, 2.6, 0.0, 0.35)
+	_lamp(2.4, 3.2)
+
+	# Houses D/F (west, ~ x-22..-26): fenced gardens, firewood, drying, tools.
+	_fence(PropKit.FENCE_TALL, -18.0, 8.0, -25.0, 8.0, 0.8)
+	_prop(PropKit.FIREWOOD_RACK, -18.5, -12.0, -30.0, 1.0, "box", 0.0, 0.0, 0.0, 2.4)
+	_prop(PropKit.DRYING_RACK, -21.0, 3.5, 15.0, 1.0, "box", 0.0, 0.0, 0.0, 2.4)
+	_prop(PropKit.PLANTER, -24.0, 8.8, 0.0, 0.35)
+	_prop(PropKit.FLOWER_SHRUB, -20.0, 9.2, 0.0, 0.6, "", 0.0, 0.0, 0.0, 1.0)
+	_prop(PropKit.FARM_TOOLS, -19.5, 5.0, -20.0, 0.30)
+
+	# Houses G/H (north-west, ~ x21/-23, z-23..-28): farm props.
+	_prop(PropKit.STORAGE_SHED, 22.0, -22.0, 120.0, 1.5, "box", 0.0, 0.0, 0.0, 3.4)
+	_prop(PropKit.DRYING_RACK, -24.0, -22.0, 40.0, 1.0, "box", 0.0, 0.0, 0.0, 2.4)
+	_prop(PropKit.FIREWOOD_RACK, -26.0, -30.0, 50.0, 1.0, "box", 0.0, 0.0, 0.0, 2.4)
+	_prop(PropKit.BASKETS, 20.0, -25.0, 10.0, 0.55)
+
+	# Lane lanterns + stone paving at intersections + a fork signpost.
+	_lamp(-1.0, -6.0)
+	_lamp(1.0, -18.0)
+	_prop(PropKit.STONE_PAVING, 1.0, -1.0, 0.0, 1.15)
+	_prop(PropKit.STONE_PAVING, -1.2, -7.0, 20.0, 1.15)
+	_prop(PropKit.STONE_PAVING, 0.8, -13.0, -15.0, 1.15)
+	_prop(PropKit.SIGNPOST, 2.4, -1.6, 30.0, 0.85, "post", 0.0, 0.0, 0.0, 1.0)
+
+	# ZONE 4 — MANOR FORECOURT (~ x0,z-35): a small civic space.
+	_prop(PropKit.STONE_PAVING, -3.0, -30.0, 0.0, 1.2)
+	_lamp(-5.5, -29.0)
+	_lamp(5.5, -29.0)
+	_prop(PropKit.FLOWER_SHRUB, -7.0, -28.0, 0.0, 0.6, "", 0.0, 0.0, 0.0, 1.0)
+	_prop(PropKit.FLOWER_SHRUB, 7.0, -28.0, 0.0, 0.6, "", 0.0, 0.0, 0.0, 1.0)
+
+	# ZONE 6 — FOREST EDGE: real pines ringing the near/mid forest edge
+	# (LOD-faded), blending into the cheap distant blockout conifers.
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 4471
+	var vc := Vector2(0.0, -14.0)
+	for i in 14:
+		var ang := TAU * float(i) / 14.0 + rng.randf_range(-0.06, 0.06)
+		var rad := rng.randf_range(40.0, 62.0)
+		var x := vc.x + cos(ang) * rad
+		var z := vc.y + sin(ang) * rad
+		if z > 12.0 and absf(x) < 12.0:
+			continue   # keep the entrance/foreground open
+		_prop(PropKit.PINE_TREE, x, z, rng.randf_range(0.0, 360.0),
+			rng.randf_range(3.2, 4.4), "post", 0.0, 0.0, 150.0, 2.5)
 
 # --- Vegetation -------------------------------------------------------------
 

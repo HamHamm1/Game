@@ -13,6 +13,47 @@ Status labels follow AI_RULES.md Rule 11:
 
 ## [Unreleased]
 
+### Phase 2 M2.4-C.2 — Village dressing pass (16 GLB props)
+
+Turns the terrain/stream scene into a lived-in village with 16 owner-provided
+dressing GLBs, staged by area. Houses A–H + all gameplay/terrain/stream/
+vegetation systems untouched. **NOT** ANDROID VERIFIED.
+
+- **NEW assets** `assets/meshes/props/prop01..16.glb` (2K PBR + import LODs):
+  bridge, tall fence, firewood rack, baskets, planter, farm tools, drying rack,
+  storage shed, lantern, low fence, signpost, stone paving, bench, pine tree,
+  rock cluster, flower shrub. Each identified by inspection/render (dimensions,
+  orientation, pivot, material). Recorded in `ASSET_LICENSES.md`.
+- **NEW `godot/src/world/prop_kit.gd`** (`PropKit`) — instances a prop from the
+  shared resource cache (no mesh/material duplication), centres it on XZ and
+  lifts its base to local y=0 (so it drops straight onto the terrain), preserves
+  the imported PBR material, and adds SIMPLE collision only on request
+  (box/deck/post) + optional visibility-range LOD (trees).
+- **`hero_village.gd` — `_place_props()`** stages every prop into intentional
+  AREAS (not uniform scatter), each grounded via `GroundSampler`/terrain:
+  entrance (signpost, lamp posts, framing pines, blossoms); stream/bridge (the
+  arched **bridge** replaces the stepping stones at the crossing, benches, rock
+  clusters, lanterns, shore blossoms); residential lanes + gardens (contiguous
+  fences, planters, flower shrubs, firewood racks, drying racks, storage sheds,
+  baskets, farm tools, lamp posts, signposts, stone paving); manor forecourt;
+  and a near forest-edge ring of real **pine trees** (LOD-faded) blending into
+  the cheap distant blockout conifers. Lanterns hang from wooden **lamp posts**
+  (never floating); fence runs are contiguous (panels stepped by their width).
+  The old primitive dressing (box firewood/lantern/pots) + stepping stones are
+  removed.
+- **Collision**: simple boxes only where needed (walkable bridge deck; solid
+  sheds/racks/benches/fences/rocks/tree trunks); decorative props (tools,
+  baskets, flowers, paving) have none — no annoying invisible walls. Larger
+  props register a vegetation exclusion so grass doesn't grow through them.
+- **Performance**: props are shared instances (one PackedScene per asset); pine
+  trees limited (~16) with distance LOD; distant mass stays cheap blockout.
+- **Tests** 219 → **224/224** (`_test_props`: base grounded to y=0, box
+  collision present, decorative props collision-free, shared source, footprint
+  scaling).
+- No dedicated sakura-tree asset was in the set — the pink flower shrub is used
+  for blossom accents. Uploaded Unity `.terrainlayer`/`.asset` files remain
+  reference-only (no pixels); the dust sprite is still unused.
+
 ### Phase 2 M2.4-C.1 — Device fixes: white ground, stream, terrain edges, background
 
 Iteration on M2.4-C after the Android test. Gameplay systems + houses untouched.
