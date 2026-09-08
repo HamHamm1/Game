@@ -92,6 +92,11 @@ Runtime: uniformly scaled to believable size, base grounded to the terrain via
 larger river-rock spreads only; grass, flowers, and flagstones are decorative
 (no collision). Large vegetation fades with a `visibility_range` LOD.
 
+M2.4-D.2: the same GLB meshes also fill the big floating-island top as a forest
++ meadow via **`GlbScatter`** — chunked MultiMesh GPU-instancing that shares the
+one imported mesh + material per species (no duplication) and culls distant
+chunks for mobile. Still the owner-supplied GLBs only; no primitive placeholders.
+
 ## Textures — Terrain (M2.4-C)
 
 Owner-provided ground textures for the hero-village terrain. Applied via a

@@ -695,14 +695,23 @@ func _test_only_glb_vegetation() -> void:
 	var region := (load("res://src/world/regions/hero_village.tscn") as PackedScene).instantiate()
 	add_child(region)
 	var spheres := 0
-	var multimeshes := 0
+	var primitive_mm := 0
+	var glb_mm := 0
 	for d in _descendants(region):
 		if d is MeshInstance3D and (d as MeshInstance3D).mesh is SphereMesh:
 			spheres += 1
 		if d is MultiMeshInstance3D:
-			multimeshes += 1
+			# MultiMesh is fine for the mobile forest AS LONG AS it instances an
+			# imported GLB mesh, never a primitive (the old procedural veg field
+			# used PrimitiveMesh — that is the regression this guards).
+			var mm := (d as MultiMeshInstance3D).multimesh
+			if mm != null and mm.mesh != null and mm.mesh is PrimitiveMesh:
+				primitive_mm += 1
+			else:
+				glb_mm += 1
 	_check(spheres == 0, "no SphereMesh primitives (old blob trees / bank rocks) in the region")
-	_check(multimeshes == 0, "no MultiMeshInstance3D (old procedural vegetation field) in the region")
+	_check(primitive_mm == 0, "no MultiMesh instances a PrimitiveMesh (old procedural vegetation field)")
+	_check(glb_mm > 0, "the mobile forest is GPU-instanced from imported GLB meshes (MultiMesh)")
 	# The real vegetation is actually placed: plenty of imported meshes beyond the
 	# eight houses (trees, grass, flowers, rocks are all imported GLB instances).
 	var complex := 0

@@ -1,6 +1,6 @@
 extends Node3D
 ## M2.4-B hero village — a small, deliberately composed Japanese mountain
-## village staged for on-device visual review. Three fidelity tiers, one art
+## village staged for on-device visual review. Two fidelity tiers, one art
 ## direction (ARCHITECTURE.md fidelity hierarchy):
 ##
 ##   HERO       — the two original Meshy houses (House A / House B). Highest
@@ -9,9 +9,13 @@ extends Node3D
 ##                real high-quality Japanese rural models, normalised to
 ##                believable size, staged around the hero pair. Some enterable,
 ##                some solid — all with mesh-derived compound box collision.
-##   BACKGROUND — cheapest tier: JapaneseHouseKit primitive silhouettes (no
-##                collision, visibility-range LOD) on raised mounds far behind
-##                the village, kept as cheap distant geometry for mobile perf.
+##
+## M2.4-D.2 — FLOATING SKY-TOWN: the ground is a finite island (TerrainField
+## drops it into open sky past its core radius), so there is no BACKGROUND
+## silhouette tier any more (a distant backdrop would float in the void) — the
+## horizon is open sky. A ring of invisible collision panels (`_island_barrier`)
+## sits on the cliff shoulder so the player stays on the plateau, and pines edge
+## the rim so the drop-off reads as a forested island edge.
 ##
 ## EVERY hero + village house is a real GLB placed through one code path
 ## (`_glb_house`): grounded, uniformly scaled to a target width, with the
@@ -48,8 +52,12 @@ const INTERIOR := "res://src/world/locations/house_interior_wood.tscn"
 # M2.4-C — terrain area (metres) + the stream centreline (curved, threaded
 # through the open foreground between the spawn and the houses so it never
 # crosses a building pad). Water surface sits at TerrainField.WATER_Y.
-const TERR_MIN := Vector2(-130.0, -150.0)
-const TERR_MAX := Vector2(130.0, 70.0)
+# M2.4-D.2 — FLOATING SKY-TOWN: the terrain is a finite island around the village
+# (TerrainField drops it into open sky past its core radius), so the bounds are
+# pulled in tight to the village — just past the cliff — and the horizon is sky,
+# not distant hills. Centred on the village centre (0,-14).
+const TERR_MIN := Vector2(-134.0, -148.0)
+const TERR_MAX := Vector2(134.0, 120.0)
 const TERR_RES := 3.0
 static var STREAM := PackedVector2Array([
 	Vector2(40.0, -12.0), Vector2(34.0, -6.0), Vector2(28.0, 1.0), Vector2(21.0, 7.0),
@@ -85,10 +93,10 @@ func _ready() -> void:
 	BlockoutUtil.add_spawn(self, "PlayerSpawn", Vector3(0.0, _g(0.0, 17.0) + 0.2, 17.0))
 	_place_glb_houses()
 	_build_stream()
-	_build_background()
 	_build_lanes()
 	_place_props()      # M2.4-C dressing: real GLB structure props staged by area
 	_place_vegetation() # M2.4-D: ONLY owner-supplied vegetation + rock GLBs
+	_island_barrier()   # M2.4-D.2: invisible rim wall so nobody walks off into the sky
 
 ## Clear the global ground provider when this region leaves the tree, so nothing
 ## keeps sampling this terrain after it is unloaded (and headless tests stay flat).
@@ -320,38 +328,33 @@ func _add_stream_exclusions() -> void:
 	for c in STREAM:
 		_excl.append(Rect2(c.x - r, c.y - r, r * 2.0, r * 2.0))
 
-# --- BACKGROUND tier (cheap, unreachable, on the mounds) --------------------
-
-func _build_background() -> void:
-	# A seeded arc of backdrop houses on the rear + flanking mounds. Cheap
-	# geometry, no collision, visibility-range LOD. Varied archetype + yaw so
-	# the silhouette never repeats obviously.
-	var rng := RandomNumberGenerator.new()
-	rng.seed = 20456
-	var specs := [
-		JapaneseHouseKit.house_c(), JapaneseHouseKit.house_e(),
-		JapaneseHouseKit.house_f(), JapaneseHouseKit.house_d(),
-	]
-	# Rear ridge line — out on the distant rising terrain, grounded to it.
-	for i in 11:
-		var t := float(i) / 10.0
-		var x := lerpf(-40.0, 40.0, t) + rng.randf_range(-3.0, 3.0)
-		var z := -58.0 - rng.randf_range(0.0, 9.0)
-		var spec: JapaneseHouseKit.Spec = specs[rng.randi() % specs.size()]
-		_bg_house(spec, Vector2(x, z), rng.randf_range(-40.0, 40.0))
-	# Left + right flank hills, angled inward.
-	for i in 5:
-		var z := lerpf(-42.0, 2.0, float(i) / 4.0) + rng.randf_range(-2.0, 2.0)
-		var spec_l: JapaneseHouseKit.Spec = specs[rng.randi() % specs.size()]
-		var spec_r: JapaneseHouseKit.Spec = specs[rng.randi() % specs.size()]
-		_bg_house(spec_l, Vector2(-52.0 + rng.randf_range(-3.0, 3.0), z), rng.randf_range(50.0, 90.0))
-		_bg_house(spec_r, Vector2(52.0 + rng.randf_range(-3.0, 3.0), z), rng.randf_range(-90.0, -50.0))
-
-func _bg_house(spec: JapaneseHouseKit.Spec, xz: Vector2, yaw_deg: float) -> void:
-	var node := JapaneseHouseKit.background_house(spec, 340.0)
-	node.position = Vector3(xz.x, _g(xz.x, xz.y), xz.y)
-	node.rotation_degrees = Vector3(0.0, yaw_deg, 0.0)
-	add_child(node)
+# --- FLOATING-ISLAND EDGE BARRIER -------------------------------------------
+#
+# The village now sits on a finite island that falls into open sky (see
+# TerrainField). A ring of INVISIBLE collision panels just inside the cliff rim
+# keeps the player on the plateau — a natural island edge, not an arbitrary
+# mid-field wall. (The old BACKGROUND house-silhouette tier was removed: on a
+# sky-town the horizon is open sky, so distant backdrop houses would float in
+# the void.)
+func _island_barrier() -> void:
+	var c := _terrain.village_center()
+	var r := _terrain.island_core_radius() + 6.0   # just out on the cliff shoulder
+	var body := StaticBody3D.new()
+	body.name = "IslandEdge"
+	var segs := 72
+	for i in segs:
+		var ang := TAU * float(i) / float(segs)
+		var p := c + Vector2(cos(ang), sin(ang)) * r
+		var y := _g(p.x, p.y)
+		var cs := CollisionShape3D.new()
+		var box := BoxShape3D.new()
+		var chord := TAU * r / float(segs) + 0.6   # overlap so there are no gaps
+		box.size = Vector3(chord, 6.0, 1.2)
+		cs.shape = box
+		cs.position = Vector3(p.x, y + 2.5, p.y)
+		cs.rotation = Vector3(0.0, -ang, 0.0)       # face the panel tangent to the ring
+		body.add_child(cs)
+	add_child(body)
 
 # --- Lanes ------------------------------------------------------------------
 
@@ -589,41 +592,47 @@ func _place_vegetation() -> void:
 	# jitter over the reachable valley and automatically skipping houses, lanes,
 	# the stream and placed props (via _in_excl). Everything is a shared GLB
 	# instance with a tight LOD so the density stays cheap on mobile.
-	# Grass — denser in the near foreground the player first sees, then across the
-	# whole village floor + the far residential/manor strip.
-	_scatter_field(PropKit.GRASS_CLUMP, -18.0, 4.0, 20.0, 20.0, 40, 0.24, 0.40, 40.0, 7101, -0.12)
-	_scatter_field(PropKit.GRASS_CLUMP, -30.0, -20.0, 28.0, 5.0, 46, 0.22, 0.38, 40.0, 7102, -0.12)
-	_scatter_field(PropKit.GRASS_CLUMP, -30.0, -42.0, 28.0, -20.0, 34, 0.22, 0.36, 40.0, 7103, -0.12)
-	# Flowers — small colour accents sprinkled through the grass (kept sparse).
-	_scatter_field(PropKit.FLOWERS, -26.0, -38.0, 26.0, 19.0, 16, 0.26, 0.40, 40.0, 7110)
-	# Natural field stones — lots of them, mostly small + decorative, a few larger
-	# with simple box collision, all worked into the countryside floor.
-	_scatter_field(PropKit.RIVER_ROCKS, -28.0, -6.0, 26.0, 19.0, 12, 0.5, 0.9, 70.0, 7120)
-	_scatter_field(PropKit.RIVER_ROCKS, -30.0, -40.0, 28.0, -6.0, 12, 0.5, 1.0, 70.0, 7121)
-	_scatter_field(PropKit.PATH_ROCKS, -30.0, -40.0, 28.0, 19.0, 10, 0.55, 0.9, 60.0, 7122)
+	# Flowers — colour accents sprinkled through the grass.
+	_scatter_field(PropKit.FLOWERS, -40.0, -50.0, 40.0, 22.0, 34, 0.26, 0.42, 40.0, 7110)
+	# Natural field stones — LOTS, mostly small + decorative, worked across the
+	# whole island floor, a few larger with simple box collision.
+	_scatter_field(PropKit.RIVER_ROCKS, -46.0, -60.0, 46.0, 34.0, 34, 0.45, 0.9, 65.0, 7120)
+	_scatter_field(PropKit.PATH_ROCKS, -46.0, -60.0, 46.0, 34.0, 26, 0.5, 0.95, 60.0, 7122)
+	_scatter_field(PropKit.RIVER_ROCKS, -20.0, -4.0, 24.0, 20.0, 14, 0.5, 0.9, 65.0, 7121)
 	# A few larger river-boulder spreads as landmarks in the open ground.
 	_rocks(PropKit.RIVER_ROCKS, -14.0, -2.0, 25.0, 1.2, "box", 0.35, 2.3)
 	_rocks(PropKit.RIVER_ROCKS, 19.0, -16.0, -35.0, 1.15, "box", 0.35, 2.2)
 	_rocks(PropKit.RIVER_ROCKS, -9.0, -30.0, 60.0, 1.1, "box", 0.3, 2.1)
+	_rocks(PropKit.RIVER_ROCKS, 30.0, 4.0, 15.0, 1.15, "box", 0.3, 2.2)
+	_rocks(PropKit.RIVER_ROCKS, -34.0, -10.0, -50.0, 1.1, "box", 0.3, 2.1)
 
-	# ZONE-FOREST — real pines ringing the near/mid forest edge (LOD-faded); the
-	# distant horizon stays the cheap BACKGROUND house silhouettes + rising hills.
-	var flank := [[-20.0, -6.0, 3.4], [22.0, -10.0, 3.6], [-26.0, -24.0, 3.8],
-		[26.0, -26.0, 3.8], [-16.0, 9.0, 3.0], [18.0, 12.0, 3.0]]
-	for f in flank:
+	# ZONE-FOREST — the big island top is FORESTED with the supplied tree + grass
+	# GLBs, GPU-instanced (GlbScatter chunked MultiMesh) so a phone can draw a
+	# large dense-looking woodland: only near chunks render, distant ones cull, and
+	# the grass-textured terrain greens everything in between. The hand-placed
+	# village core (inside VILLAGE_RADIUS) is kept clear of the auto-forest.
+	var vc := _terrain.village_center()
+	var vr := _terrain.village_radius()
+	var core := _terrain.island_core_radius()
+	# Six framing pines (WITH trunk collision) right at the village edge.
+	for f in [[-20.0, -6.0, 3.4], [22.0, -10.0, 3.6], [-26.0, -24.0, 3.8],
+			[26.0, -26.0, 3.8], [-16.0, 9.0, 3.0], [18.0, 12.0, 3.0]]:
 		_prop(PropKit.PINE, f[0], f[1], 0.0, f[2], "post", 0.0, 0.0, 160.0, 2.5)
-	var rng := RandomNumberGenerator.new()
-	rng.seed = 4471
-	var vc := Vector2(0.0, -14.0)
-	for i in 18:
-		var ang := TAU * float(i) / 18.0 + rng.randf_range(-0.05, 0.05)
-		var rad := rng.randf_range(44.0, 66.0)
-		var x := vc.x + cos(ang) * rad
-		var z := vc.y + sin(ang) * rad
-		if z > 12.0 and absf(x) < 14.0:
-			continue   # keep the entrance/foreground open
-		_prop(PropKit.PINE, x, z, rng.randf_range(0.0, 360.0),
-			rng.randf_range(3.2, 4.4), "post", 0.0, 0.0, 175.0, 2.5)
+	var box := Rect2(vc - Vector2(core, core), Vector2(core * 2.0, core * 2.0))
+	# Pine woodland ringing the village out to the rim (decorative MultiMesh, no
+	# per-tree collision — the edge barrier keeps the player in).
+	add_child(GlbScatter.scatter(PropKit.PINE, box.position.x, box.position.y,
+		box.end.x, box.end.y, 30.0, 3, 3.0, 4.8, 78.0, 5201, _excl,
+		vc, vr + 2.0, core - 3.0))
+	# Sakura sprinkled lightly through the woodland for colour.
+	add_child(GlbScatter.scatter(PropKit.SAKURA_SMALL, box.position.x, box.position.y,
+		box.end.x, box.end.y, 46.0, 1, 1.8, 2.8, 95.0, 5202, _excl,
+		vc, vr + 8.0, core - 8.0))
+	# Grass tufts across the WHOLE island top (village included), tight LOD so the
+	# heavy clumps only render near the player; the terrain texture covers the rest.
+	add_child(GlbScatter.scatter(PropKit.GRASS_CLUMP, box.position.x, box.position.y,
+		box.end.x, box.end.y, 15.0, 4, 0.22, 0.42, 26.0, 5203, _excl,
+		vc, 0.0, core - 2.0, 0.12))
 
 ## A river/path rock GLB spread grounded on the terrain (box collision optional).
 func _rocks(path: String, x: float, z: float, yaw: float, s: float,

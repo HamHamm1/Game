@@ -13,6 +13,51 @@ Status labels follow AI_RULES.md Rule 11:
 
 ## [Unreleased]
 
+### Phase 2 M2.4-D.2 — Big forested FLOATING SKY-ISLAND `NEEDS TESTING`
+
+Owner direction: make it a floating sky-town — ground only around the village —
+then bigger and taller, densely filled with trees + grass, pretty and still
+mobile-playable. Only the seven supplied vegetation GLBs; no new primitives.
+**NOT** ANDROID VERIFIED.
+
+- **Floating island terrain** (`terrain_field.gd`): the surrounding rising hills
+  are gone. Past a flat core the ground now falls away in a tall cliff into open
+  sky (`ISLAND_CORE`/`ISLAND_EDGE`/`ISLAND_DROP`), so the village reads as a
+  large, tall plateau floating in the sky (the horizon is sky, not distant
+  terrain). Building pads, the carved stream and the heightmap collider are
+  unchanged inside the core, so houses stay grounded and the stream still reads.
+- **Bigger world** (`hero_village.gd`): terrain bounds widened to the island
+  (~270 m across) with the village hand-placed in the centre and a forested ring
+  out to the rim. The old primitive-silhouette BACKGROUND house tier was removed
+  (a distant backdrop would float in the void).
+- **NEW `glb_scatter.gd` (`GlbScatter`)** — mobile-scale forest/meadow via
+  **chunked MultiMesh GPU-instancing of the real GLB meshes**: one shared
+  imported mesh + material per species, instanced into per-tile
+  MultiMeshInstance3D chunks, each with a `visibility_range` so distant chunks
+  stop drawing. Grounded on `GroundSampler`, skips the exclusion list + an inner
+  village keep-out + an outer radius (so nothing spills onto the cliff/void).
+  This is how a phone draws a large dense-looking woodland with the very
+  high-poly Meshy trees (grass ≈79k / pine ≈117k tris each) — it is NOT a
+  primitive placeholder, it instances the supplied GLB itself.
+- **Forest + meadow** (`_place_vegetation`): a pine woodland rings the village
+  out to the rim (with light sakura for colour), and grass tufts cover the whole
+  island top with a tight LOD (the heavy clumps render only near the player; the
+  grass-textured terrain greens everything between). Six framing pines at the
+  village edge keep trunk collision; the mass forest is decorative.
+- **`_island_barrier()`**: a ring of invisible collision panels on the cliff
+  shoulder keeps the player on the plateau (a natural island edge, not a
+  mid-field wall).
+- **Mobile budget**: because the GLBs are extremely high-poly, the forest/grass
+  are tuned with tight visibility ranges (grass ~26 m, pines ~78 m) so only near
+  chunks draw — a literal 500 m of dense high-poly forest is not phone-feasible,
+  so distance culling + the terrain texture carry the far look.
+- **Regression test updated**: `_test_only_glb_vegetation` now allows MultiMesh
+  **only** when it instances an imported GLB mesh (never a `PrimitiveMesh`), and
+  asserts the GPU-instanced forest is present; still asserts zero `SphereMesh`.
+- Validation: static 103 · headless import/boot clean · 242/242 · export config
+  valid; confirmed via offscreen aerial + forest + entrance + village renders.
+  **NOT** ANDROID VERIFIED.
+
 ### Phase 2 M2.4-D.1 — Lusher countryside ground cover `NEEDS TESTING`
 
 Owner feedback: add much more grass and rocks for a natural, beautiful
