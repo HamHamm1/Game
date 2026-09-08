@@ -505,6 +505,38 @@ func _cluster(path: String, cx: float, cz: float, count: int, radius: float,
 		_prop(path, x, z, rng.randf_range(0.0, 360.0), rng.randf_range(smin, smax),
 			"", 0.0, y_off, lod, 0.0)
 
+## True if (x,z) falls inside any registered exclusion (a house pad, a lane, the
+## stream channel, or a placed prop) — so scattered ground cover never grows on a
+## path, in a building, or in the water.
+func _in_excl(x: float, z: float) -> bool:
+	var p := Vector2(x, z)
+	for r in _excl:
+		if r.has_point(p):
+			return true
+	return false
+
+## Fill the village-bounded rect [x0..x1, z0..z1] with `count` naturally jittered
+## copies of `path` (grounded, LOD-faded), skipping any that land on an exclusion.
+## This is how the lush countryside ground cover (grass tufts + field stones) gets
+## its density WITHOUT a uniform primitive field and WITHOUT overrunning paths,
+## houses or the stream. `collide`/`cap` add simple collision (used for stones).
+func _scatter_field(path: String, x0: float, z0: float, x1: float, z1: float,
+		count: int, smin: float, smax: float, lod: float, seed: int,
+		y_off: float = 0.0, collide: String = "", cap: float = 0.0) -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = seed
+	var placed := 0
+	var tries := 0
+	while placed < count and tries < count * 8:
+		tries += 1
+		var x := rng.randf_range(x0, x1)
+		var z := rng.randf_range(z0, z1)
+		if _in_excl(x, z):
+			continue
+		_prop(path, x, z, rng.randf_range(0.0, 360.0), rng.randf_range(smin, smax),
+			collide, cap, y_off, lod, 0.0)
+		placed += 1
+
 func _place_vegetation() -> void:
 	# ZONE-A — ENTRANCE: a hero cherry landmark + framing pines + welcome blossoms.
 	_prop(PropKit.SAKURA_LARGE, -7.5, 20.5, 20.0, 3.0, "post", 0.0, 0.0, 170.0, 3.0)
@@ -512,8 +544,8 @@ func _place_vegetation() -> void:
 	_prop(PropKit.PINE, -12.0, 18.0, 15.0, 3.3, "post", 0.0, 0.0, 160.0, 2.5)
 	_cluster(PropKit.FLOWERS, -4.5, 18.0, 2, 1.0, 0.32, 0.42, 45.0, 6001)
 	_cluster(PropKit.FLOWERS, 5.0, 18.6, 2, 1.0, 0.32, 0.42, 45.0, 6002)
-	_cluster(PropKit.GRASS_CLUMP, 2.6, 16.4, 3, 1.2, 0.26, 0.36, 42.0, 6003, -0.04)
-	_cluster(PropKit.GRASS_CLUMP, -2.6, 15.6, 3, 1.2, 0.26, 0.36, 42.0, 6004, -0.04)
+	_cluster(PropKit.GRASS_CLUMP, 2.6, 16.4, 3, 1.2, 0.26, 0.36, 42.0, 6003, -0.12)
+	_cluster(PropKit.GRASS_CLUMP, -2.6, 15.6, 3, 1.2, 0.26, 0.36, 42.0, 6004, -0.12)
 
 	# ZONE-STREAM — cherries by the water + river rocks lining the banks + tufts.
 	_prop(PropKit.SAKURA_LARGE, 11.0, 10.5, -25.0, 2.8, "post", 0.0, 0.0, 170.0, 3.0)
@@ -526,18 +558,18 @@ func _place_vegetation() -> void:
 	_rocks(PropKit.RIVER_ROCKS, -16.5, 15.6, 10.0, 1.1, "", 0.0, 2.1)
 	_rocks(PropKit.RIVER_ROCKS, 22.5, 6.0, -20.0, 1.2, "box", 0.3, 2.3)
 	_rocks(PropKit.RIVER_ROCKS, -22.0, 16.6, 45.0, 1.0, "", 0.0, 2.0)
-	_cluster(PropKit.GRASS_CLUMP, 12.0, 12.0, 4, 2.0, 0.24, 0.34, 45.0, 6011, -0.04)
-	_cluster(PropKit.GRASS_CLUMP, -12.0, 15.5, 4, 2.0, 0.24, 0.34, 45.0, 6012, -0.04)
+	_cluster(PropKit.GRASS_CLUMP, 12.0, 12.0, 4, 2.0, 0.24, 0.34, 45.0, 6011, -0.12)
+	_cluster(PropKit.GRASS_CLUMP, -12.0, 15.5, 4, 2.0, 0.24, 0.34, 45.0, 6012, -0.12)
 	_cluster(PropKit.FLOWERS, 7.5, 15.4, 2, 1.2, 0.30, 0.40, 42.0, 6013)
 
 	# ZONE-GARDENS — selective grass + flowers inside the fenced house yards.
 	_cluster(PropKit.FLOWERS, 24.0, 3.6, 3, 1.2, 0.30, 0.42, 42.0, 6021)   # east garden
-	_cluster(PropKit.GRASS_CLUMP, 17.5, 3.0, 3, 1.4, 0.24, 0.34, 42.0, 6022, -0.04)
+	_cluster(PropKit.GRASS_CLUMP, 17.5, 3.0, 3, 1.4, 0.24, 0.34, 42.0, 6022, -0.12)
 	_cluster(PropKit.FLOWERS, -20.0, 9.4, 3, 1.4, 0.30, 0.42, 42.0, 6023)  # west garden
-	_cluster(PropKit.GRASS_CLUMP, -18.5, 6.5, 3, 1.4, 0.24, 0.34, 42.0, 6024, -0.04)
+	_cluster(PropKit.GRASS_CLUMP, -18.5, 6.5, 3, 1.4, 0.24, 0.34, 42.0, 6024, -0.12)
 	_prop(PropKit.SAKURA_SMALL, 22.8, 6.2, 40.0, 1.4, "post", 0.0, 0.0, 150.0, 2.0)
 	_prop(PropKit.SAKURA_SMALL, -23.0, 10.2, -20.0, 1.4, "post", 0.0, 0.0, 150.0, 2.0)
-	_cluster(PropKit.GRASS_CLUMP, -3.5, 1.2, 3, 1.4, 0.24, 0.34, 42.0, 6025, -0.04)  # central yard
+	_cluster(PropKit.GRASS_CLUMP, -3.5, 1.2, 3, 1.4, 0.24, 0.34, 42.0, 6025, -0.12)  # central yard
 	_prop(PropKit.SAKURA_SMALL, -4.0, 4.2, 15.0, 1.4, "post", 0.0, 0.0, 150.0, 2.0)
 
 	# ZONE-D — MANOR FORECOURT: a big cherry landmark + flanking blossoms.
@@ -551,6 +583,28 @@ func _place_vegetation() -> void:
 			[-2.6, -19.0, 10.0], [1.8, -25.0, -20.0], [10.0, -3.2, 40.0],
 			[-13.0, -11.0, -30.0], [2.6, 17.4, 0.0], [-2.6, 17.4, 12.0]]:
 		_prop(PropKit.PATH_ROCKS, e[0], e[1], e[2], 0.85)
+
+	# ZONE-GROUND — LUSH COUNTRYSIDE COVER (kept AROUND the village, not the whole
+	# map): dense grass tufts + plenty of natural field stones, scattered with
+	# jitter over the reachable valley and automatically skipping houses, lanes,
+	# the stream and placed props (via _in_excl). Everything is a shared GLB
+	# instance with a tight LOD so the density stays cheap on mobile.
+	# Grass — denser in the near foreground the player first sees, then across the
+	# whole village floor + the far residential/manor strip.
+	_scatter_field(PropKit.GRASS_CLUMP, -18.0, 4.0, 20.0, 20.0, 40, 0.24, 0.40, 40.0, 7101, -0.12)
+	_scatter_field(PropKit.GRASS_CLUMP, -30.0, -20.0, 28.0, 5.0, 46, 0.22, 0.38, 40.0, 7102, -0.12)
+	_scatter_field(PropKit.GRASS_CLUMP, -30.0, -42.0, 28.0, -20.0, 34, 0.22, 0.36, 40.0, 7103, -0.12)
+	# Flowers — small colour accents sprinkled through the grass (kept sparse).
+	_scatter_field(PropKit.FLOWERS, -26.0, -38.0, 26.0, 19.0, 16, 0.26, 0.40, 40.0, 7110)
+	# Natural field stones — lots of them, mostly small + decorative, a few larger
+	# with simple box collision, all worked into the countryside floor.
+	_scatter_field(PropKit.RIVER_ROCKS, -28.0, -6.0, 26.0, 19.0, 12, 0.5, 0.9, 70.0, 7120)
+	_scatter_field(PropKit.RIVER_ROCKS, -30.0, -40.0, 28.0, -6.0, 12, 0.5, 1.0, 70.0, 7121)
+	_scatter_field(PropKit.PATH_ROCKS, -30.0, -40.0, 28.0, 19.0, 10, 0.55, 0.9, 60.0, 7122)
+	# A few larger river-boulder spreads as landmarks in the open ground.
+	_rocks(PropKit.RIVER_ROCKS, -14.0, -2.0, 25.0, 1.2, "box", 0.35, 2.3)
+	_rocks(PropKit.RIVER_ROCKS, 19.0, -16.0, -35.0, 1.15, "box", 0.35, 2.2)
+	_rocks(PropKit.RIVER_ROCKS, -9.0, -30.0, 60.0, 1.1, "box", 0.3, 2.1)
 
 	# ZONE-FOREST — real pines ringing the near/mid forest edge (LOD-faded); the
 	# distant horizon stays the cheap BACKGROUND house silhouettes + rising hills.

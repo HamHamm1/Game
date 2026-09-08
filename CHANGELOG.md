@@ -13,6 +13,29 @@ Status labels follow AI_RULES.md Rule 11:
 
 ## [Unreleased]
 
+### Phase 2 M2.4-D.1 — Lusher countryside ground cover `NEEDS TESTING`
+
+Owner feedback: add much more grass and rocks for a natural, beautiful
+countryside — with the detailed ground kept AROUND the village (the outer
+terrain can stay plain). Still only the seven supplied vegetation/rock GLBs; no
+new primitives. `hero_village.gd` only. **NOT** ANDROID VERIFIED.
+
+- **NEW `_scatter_field()` + `_in_excl()`** helpers: fill a village-bounded rect
+  with jittered, terrain-grounded, LOD-faded GLB copies, automatically skipping
+  any that land on a house, lane, the stream, or a placed prop.
+- **ZONE-GROUND** added to `_place_vegetation()`: three grass-clump fields
+  (~120 tufts) covering the reachable village floor (densest in the foreground
+  the player first sees), a sparse flower sprinkle, three field-stone scatters
+  (river + path rocks, ~34) plus three larger box-collided river-boulder
+  spreads. All bounded to the village core, so the surrounding terrain stays
+  bare as requested.
+- Grass base sunk to y=-0.12 so the GLB's soil base disc reads as ground, not a
+  saucer. Tight LOD (grass ~40 m, small stones ~60–70 m) keeps the extra density
+  cheap on mobile (shared instances + import LODs).
+- Validation: static 99 · headless import/boot clean · 241/241 · export config
+  valid; density confirmed via offscreen entrance / elevated / ground-level
+  renders. **NOT** ANDROID VERIFIED.
+
 ### Phase 2 M2.4-D — Vegetation rebuild: real GLBs only, no primitives `NEEDS TESTING`
 
 Device review of the M2.4-C dressing pass showed the vegetation still read as
