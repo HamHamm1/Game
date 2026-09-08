@@ -10,12 +10,13 @@ extends Node3D
 ##                believable size, staged around the hero pair. Some enterable,
 ##                some solid — all with mesh-derived compound box collision.
 ##
-## M2.4-D.2 — FLOATING SKY-TOWN: the ground is a finite island (TerrainField
-## drops it into open sky past its core radius), so there is no BACKGROUND
-## silhouette tier any more (a distant backdrop would float in the void) — the
-## horizon is open sky. A ring of invisible collision panels (`_island_barrier`)
-## sits on the cliff shoulder so the player stays on the plateau, and pines edge
-## the rim so the drop-off reads as a forested island edge.
+## M2.4-D.3 — SMALL LOCAL GROUND: the terrain is a compact, gentle, near-flat
+## patch covering only the playable village; beyond it is open sky (no island,
+## no cliff, no surrounding plane, no distant terrain, no BACKGROUND silhouette
+## tier). A ring of invisible collision panels (`_play_boundary`) at the ground
+## edge keeps the player in the local area, so the village reads as a small place
+## inside a much larger unseen world. All vegetation is the supplied GLBs, kept
+## inside the patch.
 ##
 ## EVERY hero + village house is a real GLB placed through one code path
 ## (`_glb_house`): grounded, uniformly scaled to a target width, with the
@@ -52,13 +53,15 @@ const INTERIOR := "res://src/world/locations/house_interior_wood.tscn"
 # M2.4-C — terrain area (metres) + the stream centreline (curved, threaded
 # through the open foreground between the spawn and the houses so it never
 # crosses a building pad). Water surface sits at TerrainField.WATER_Y.
-# M2.4-D.2 — FLOATING SKY-TOWN: the terrain is a finite island around the village
-# (TerrainField drops it into open sky past its core radius), so the bounds are
-# pulled in tight to the village — just past the cliff — and the horizon is sky,
-# not distant hills. Centred on the village centre (0,-14).
-const TERR_MIN := Vector2(-134.0, -148.0)
-const TERR_MAX := Vector2(134.0, 120.0)
-const TERR_RES := 3.0
+# M2.4-D.3 — SMALL LOCAL GROUND: the terrain is a compact, gentle, near-flat
+# patch covering ONLY the playable village (houses, paths, stream). No island,
+# no cliff, no surrounding plane, no distant terrain — the mesh just ends at the
+# village bounds and everything beyond is open sky. Bounds are pulled in tight
+# around the houses + stream (the stream flows off the east edge into the unseen
+# world). Centred ~ the village.
+const TERR_MIN := Vector2(-42.0, -54.0)
+const TERR_MAX := Vector2(44.0, 26.0)
+const TERR_RES := 2.5
 static var STREAM := PackedVector2Array([
 	Vector2(40.0, -12.0), Vector2(34.0, -6.0), Vector2(28.0, 1.0), Vector2(21.0, 7.0),
 	Vector2(12.0, 11.0), Vector2(1.0, 13.5), Vector2(-11.0, 14.5), Vector2(-18.0, 15.5),
@@ -96,7 +99,7 @@ func _ready() -> void:
 	_build_lanes()
 	_place_props()      # M2.4-C dressing: real GLB structure props staged by area
 	_place_vegetation() # M2.4-D: ONLY owner-supplied vegetation + rock GLBs
-	_island_barrier()   # M2.4-D.2: invisible rim wall so nobody walks off into the sky
+	_play_boundary()    # M2.4-D.3: invisible edge wall at the small ground's rim
 
 ## Clear the global ground provider when this region leaves the tree, so nothing
 ## keeps sampling this terrain after it is unloaded (and headless tests stay flat).
@@ -328,20 +331,18 @@ func _add_stream_exclusions() -> void:
 	for c in STREAM:
 		_excl.append(Rect2(c.x - r, c.y - r, r * 2.0, r * 2.0))
 
-# --- FLOATING-ISLAND EDGE BARRIER -------------------------------------------
+# --- PLAY-AREA BOUNDARY ------------------------------------------------------
 #
-# The village now sits on a finite island that falls into open sky (see
-# TerrainField). A ring of INVISIBLE collision panels just inside the cliff rim
-# keeps the player on the plateau — a natural island edge, not an arbitrary
-# mid-field wall. (The old BACKGROUND house-silhouette tier was removed: on a
-# sky-town the horizon is open sky, so distant backdrop houses would float in
-# the void.)
-func _island_barrier() -> void:
+# The village sits on a small local ground patch (see TerrainField); beyond it is
+# open sky. A ring of INVISIBLE collision panels at the edge of the patch keeps
+# the player inside the local area (so nobody walks off the ground into the
+# empty surrounding space). No visible geometry — just the boundary.
+func _play_boundary() -> void:
 	var c := _terrain.village_center()
-	var r := _terrain.island_core_radius() + 6.0   # just out on the cliff shoulder
+	var r := _terrain.play_radius()   # the edge of the walkable ground
 	var body := StaticBody3D.new()
-	body.name = "IslandEdge"
-	var segs := 72
+	body.name = "PlayBoundary"
+	var segs := 64
 	for i in segs:
 		var ang := TAU * float(i) / float(segs)
 		var p := c + Vector2(cos(ang), sin(ang)) * r
@@ -530,10 +531,16 @@ func _scatter_field(path: String, x0: float, z0: float, x1: float, z1: float,
 	rng.seed = seed
 	var placed := 0
 	var tries := 0
+	# Keep every scattered item inside the small ground patch (never out toward the
+	# open-sky edge).
+	var pc := _terrain.village_center()
+	var pr := _terrain.play_radius() - 1.5
 	while placed < count and tries < count * 8:
 		tries += 1
 		var x := rng.randf_range(x0, x1)
 		var z := rng.randf_range(z0, z1)
+		if Vector2(x, z).distance_to(pc) > pr:
+			continue
 		if _in_excl(x, z):
 			continue
 		_prop(path, x, z, rng.randf_range(0.0, 360.0), rng.randf_range(smin, smax),
@@ -606,33 +613,28 @@ func _place_vegetation() -> void:
 	_rocks(PropKit.RIVER_ROCKS, 30.0, 4.0, 15.0, 1.15, "box", 0.3, 2.2)
 	_rocks(PropKit.RIVER_ROCKS, -34.0, -10.0, -50.0, 1.1, "box", 0.3, 2.1)
 
-	# ZONE-FOREST — the big island top is FORESTED with the supplied tree + grass
-	# GLBs, GPU-instanced (GlbScatter chunked MultiMesh) so a phone can draw a
-	# large dense-looking woodland: only near chunks render, distant ones cull, and
-	# the grass-textured terrain greens everything in between. The hand-placed
-	# village core (inside VILLAGE_RADIUS) is kept clear of the auto-forest.
+	# ZONE-FOREST — LOCAL vegetation only, kept INSIDE the small ground patch (no
+	# forest filling the empty surrounding space). Supplied tree + grass GLBs,
+	# GPU-instanced (GlbScatter chunked MultiMesh, tight LOD) so it stays cheap on
+	# mobile. The grass-textured terrain greens the patch; nothing is placed beyond
+	# the play radius (so it can't spill into the open sky around the village).
 	var vc := _terrain.village_center()
-	var vr := _terrain.village_radius()
-	var core := _terrain.island_core_radius()
-	# Six framing pines (WITH trunk collision) right at the village edge.
+	var play := _terrain.play_radius()
+	# Framing pines (WITH trunk collision) at the village edge.
 	for f in [[-20.0, -6.0, 3.4], [22.0, -10.0, 3.6], [-26.0, -24.0, 3.8],
 			[26.0, -26.0, 3.8], [-16.0, 9.0, 3.0], [18.0, 12.0, 3.0]]:
-		_prop(PropKit.PINE, f[0], f[1], 0.0, f[2], "post", 0.0, 0.0, 160.0, 2.5)
-	var box := Rect2(vc - Vector2(core, core), Vector2(core * 2.0, core * 2.0))
-	# Pine woodland ringing the village out to the rim (decorative MultiMesh, no
-	# per-tree collision — the edge barrier keeps the player in).
+		_prop(PropKit.PINE, f[0], f[1], 0.0, f[2], "post", 0.0, 0.0, 140.0, 2.5)
+	var box := Rect2(vc - Vector2(play, play), Vector2(play * 2.0, play * 2.0))
+	# A light ring of pines just inside the ground edge to frame the village (no
+	# per-tree collision — the play boundary keeps the player in).
 	add_child(GlbScatter.scatter(PropKit.PINE, box.position.x, box.position.y,
-		box.end.x, box.end.y, 30.0, 3, 3.0, 4.8, 78.0, 5201, _excl,
-		vc, vr + 2.0, core - 3.0))
-	# Sakura sprinkled lightly through the woodland for colour.
-	add_child(GlbScatter.scatter(PropKit.SAKURA_SMALL, box.position.x, box.position.y,
-		box.end.x, box.end.y, 46.0, 1, 1.8, 2.8, 95.0, 5202, _excl,
-		vc, vr + 8.0, core - 8.0))
-	# Grass tufts across the WHOLE island top (village included), tight LOD so the
-	# heavy clumps only render near the player; the terrain texture covers the rest.
+		box.end.x, box.end.y, 26.0, 2, 3.0, 4.4, 90.0, 5201, _excl,
+		vc, play - 16.0, play - 1.5))
+	# Grass tufts across the patch (village included), tight LOD so the heavy
+	# clumps only render near the player; the terrain texture covers the rest.
 	add_child(GlbScatter.scatter(PropKit.GRASS_CLUMP, box.position.x, box.position.y,
 		box.end.x, box.end.y, 15.0, 4, 0.22, 0.42, 26.0, 5203, _excl,
-		vc, 0.0, core - 2.0, 0.12))
+		vc, 0.0, play - 1.5, 0.12))
 
 ## A river/path rock GLB spread grounded on the terrain (box collision optional).
 func _rocks(path: String, x: float, z: float, yaw: float, s: float,

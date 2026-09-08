@@ -18,15 +18,13 @@ extends RefCounted
 
 const WATER_Y := -0.55            # stream surface height (below banks, above bed)
 
-# M2.4-D.2 — FLOATING SKY-TOWN island. The ground is a finite plateau: gentle
-# roll out to ISLAND_CORE, then a steep cliff dropping ISLAND_DROP metres into
-# open sky by ISLAND_EDGE (no surrounding hills — the horizon is void/sky). The
-# terrain mesh bounds are set just past ISLAND_EDGE so the island ends and you
-# see sky beyond it.
-const ISLAND_CORE := 95.0         # radius (from village centre) of the walkable top (village + forest)
-const ISLAND_EDGE := 125.0        # radius by which the cliff has fully fallen away
-const ISLAND_DROP := 160.0        # a tall, dramatic floating-mountain cliff into the void
-const VILLAGE_RADIUS := 42.0      # inner radius kept for the hand-placed village; forest rings beyond
+# M2.4-D.3 — SMALL LOCAL GROUND. The terrain is a compact, gentle, near-flat
+# patch that covers ONLY the playable village (houses, paths, stream). There is
+# NO island, NO cliff, NO rising edge hills, NO surrounding plane — the mesh
+# simply ends at the village boundary and everything beyond is open sky, so the
+# village reads as a small local area inside a much larger unseen world. The
+# height stays low (never a raised platform).
+const PLAY_RADIUS := 40.0         # walkable village radius (from the village centre)
 
 var _pads: Array = []             # [{c:Vector2, r:float, blend:float, h:float}]
 var _stream: PackedVector2Array = PackedVector2Array()
@@ -74,16 +72,13 @@ func stream_points() -> PackedVector2Array:
 func stream_half_width() -> float:
 	return _stream_half
 
-## Village centre (island centre) and the walkable-top radius — for placing the
-## floating-island edge barrier + rim planting relative to the plateau.
+## Village centre and the compact walkable radius — for the play-area boundary
+## and for keeping the localized vegetation inside the small ground patch.
 func village_center() -> Vector2:
 	return _village_center
 
-func island_core_radius() -> float:
-	return ISLAND_CORE
-
-func village_radius() -> float:
-	return VILLAGE_RADIUS
+func play_radius() -> float:
+	return PLAY_RADIUS
 
 # --- internals --------------------------------------------------------------
 
@@ -93,14 +88,11 @@ func _base(x: float, z: float) -> float:
 	var roll := sin(x * 0.055) * cos(z * 0.048) * 0.5 \
 		+ sin((x - z) * 0.032) * 0.34 \
 		+ sin(x * 0.09 + z * 0.061) * 0.18
-	# Calm near the village, a little more rolling out under the forest (gentle,
-	# never big hills), so the big island top reads as walkable ground.
-	var amp := lerpf(0.45, 1.5, smoothstep(20.0, 90.0, d))
-	# Floating island: past the flat core the ground falls away in a steep cliff
-	# into open sky (replaces the old surrounding hills). Beyond ISLAND_EDGE the
-	# mesh simply ends, so the village reads as a town floating in the sky.
-	var drop := smoothstep(ISLAND_CORE, ISLAND_EDGE, d) * ISLAND_DROP
-	return roll * amp - drop
+	# Gentle, low, near-flat roll everywhere — no rising hills, no cliff, no drop.
+	# The ground stays low so it never reads as a raised island/platform; the mesh
+	# just ends at the compact village bounds and the rest is open sky.
+	var amp := lerpf(0.4, 0.6, smoothstep(6.0, 30.0, d))
+	return roll * amp
 
 func _carve_stream(x: float, z: float, h: float) -> float:
 	if _stream.size() < 2:

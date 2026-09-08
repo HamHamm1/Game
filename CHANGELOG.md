@@ -13,6 +13,40 @@ Status labels follow AI_RULES.md Rule 11:
 
 ## [Unreleased]
 
+### Phase 2 M2.4-D.3 — Small local ground (remove the terrain island) `NEEDS TESTING`
+
+Owner direction: the large raised island/platform was wrong and consumed the
+scene. Remove it completely and return to a SMALL, localized ground that covers
+only the playable village, with open empty space / sky beyond — the village
+should feel like a small local area inside a much larger unseen world, NOT a
+floating island. Keep houses A–H, collisions, interiors, the stream, bridge,
+paths and all supplied GLB vegetation/rocks/grass/flowers. **NOT** ANDROID
+VERIFIED.
+
+- **Terrain reverted to a compact patch** (`terrain_field.gd`): removed the
+  floating-island cliff/drop (`ISLAND_*`) AND the older rising edge hills. The
+  height is now just a gentle, low, near-flat roll (with the carved stream + the
+  level house pads unchanged), so it never reads as a raised platform. Exposes
+  `play_radius()` (compact walkable radius) instead of the island radii.
+- **Bounds pulled in tight** (`hero_village.gd`): terrain now spans only ~86×80 m
+  around the houses + stream (the stream still flows off the east edge into the
+  unseen world); beyond the mesh is open sky. No island, no cliff, no
+  surrounding plane, no distant terrain, no mountains, no background silhouette
+  tier — nothing is generated to fill the empty surrounding space.
+- **`_play_boundary()`** (renamed from `_island_barrier`): a ring of invisible
+  collision panels at the ground edge keeps the player in the local area (so
+  nobody walks off into the open sky). No visible geometry.
+- **Vegetation kept LOCAL**: the GPU-instanced forest no longer rings a big
+  island — pines + grass are confined inside the play radius (a light framing
+  ring of pines + grass tufts across the patch), and every hand-scattered
+  flower/rock is clamped inside the patch too. Still only the seven supplied GLBs
+  (`GlbScatter` MultiMesh instances the real meshes); no procedural/primitive
+  trees, bushes, grass or rocks anywhere (guarded by `_test_only_glb_vegetation`).
+- Validation: static 100 · headless import/boot clean · 242/242 · export config
+  valid; confirmed via offscreen aerial + entrance + edge + village renders (a
+  small flat village ground with open space beyond, no island). **NOT** ANDROID
+  VERIFIED.
+
 ### Phase 2 M2.4-D.2 — Big forested FLOATING SKY-ISLAND `NEEDS TESTING`
 
 Owner direction: make it a floating sky-town — ground only around the village —
