@@ -66,6 +66,32 @@ benches, fences, rocks, tree trunks); decorative props (tools, baskets, flowers,
 paving) have none. No dedicated sakura-tree asset was in this set — the pink
 flower shrub is used for blossom accents and the pine for trees.
 
+## Meshes — Vegetation & rocks (M2.4-D)
+
+Seven owner-provided Japanese-village vegetation and rock GLBs, imported to
+`godot/assets/meshes/veg/` (2K PBR, single material each, import LODs). These are
+now the **only** source of visible vegetation and rocks in `hero_village` — all
+previous procedural/primitive vegetation and rocks (VegetationField MultiMesh
+grass/fern/flower/shrub fields, BlockoutUtil sphere-blob trees, and the
+`SphereMesh` bank rocks) were removed. Instanced via `PropKit` (shared through
+the resource cache — no mesh/material duplication); original materials preserved.
+
+| File | Asset | In-engine use |
+|---|---|---|
+| `veg/sakura_large.glb` | Mature cherry (dense canopy) | Landmark cherries at the entrance, stream banks, manor forecourt (~3× → ~5.7 m) |
+| `veg/sakura_small.glb` | Young cherry (trunk + soil base) | Yard / forecourt accent cherries (~1.4–1.5×) |
+| `veg/pine.glb` | Japanese pine / cedar | Framing pines + mid-distance forest-edge ring (LOD-faded) |
+| `veg/grass_clump.glb` | Single grass tuft | Selective grass clusters along paths / yards / stream banks (small) |
+| `veg/flowers.glb` | Pink/white flowering plant | Small flower clusters in gardens, by the bench, at the entrance |
+| `veg/river_rocks.glb` | Flat spread of water-worn pebbles | Rock spreads lining the stream banks |
+| `veg/path_rocks.glb` | Flat angular flagstones | Stone edging beside the lanes |
+
+Source: **owner-provided** originals; owner holds rights to use in this game.
+Runtime: uniformly scaled to believable size, base grounded to the terrain via
+`PropKit`, trunk (`post`) collision on trees and simple `box` collision on the
+larger river-rock spreads only; grass, flowers, and flagstones are decorative
+(no collision). Large vegetation fades with a `visibility_range` LOD.
+
 ## Textures — Terrain (M2.4-C)
 
 Owner-provided ground textures for the hero-village terrain. Applied via a

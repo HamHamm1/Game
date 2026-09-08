@@ -56,6 +56,7 @@ func _run() -> void:
 	_test_grass_chunked()
 	_test_terrain()
 	_test_props()
+	_test_only_glb_vegetation()
 
 func _test_item_registry() -> void:
 	_check(ItemRegistry.has_definition(&"fish"), "ItemRegistry has fish")
@@ -673,6 +674,45 @@ func _test_props() -> void:
 	# Shared source: two instances of the same prop reference the same PackedScene.
 	_check(load(PropKit.BENCH) == load(PropKit.BENCH), "prop GLB is shared via the resource cache")
 	_check(PropKit.footprint(PropKit.BRIDGE, 2.6).x > 3.0, "prop footprint scales with the size")
+
+## M2.4-D — hero_village must dress its vegetation + rocks with ONLY the seven
+## owner-supplied GLBs. Guards the "randomly-scattered primitive placeholder"
+## regression: the booted region must contain NO SphereMesh (the old sphere-blob
+## trees + bank rocks) and NO MultiMeshInstance3D (the old VegetationField grass/
+## fern/flower/shrub fields), while the real vegetation GLBs are all present.
+func _test_only_glb_vegetation() -> void:
+	# Every approved vegetation/rock GLB imports and carries a real (imported,
+	# non-primitive) mesh.
+	var veg := [PropKit.SAKURA_LARGE, PropKit.SAKURA_SMALL, PropKit.GRASS_CLUMP,
+		PropKit.FLOWERS, PropKit.RIVER_ROCKS, PropKit.PINE, PropKit.PATH_ROCKS]
+	for path in veg:
+		var packed := load(path) as PackedScene
+		_check(packed != null, "veg GLB loads: %s" % path.get_file())
+		if packed != null:
+			var inst := packed.instantiate()
+			_check(_has_complex_mesh(inst), "veg GLB has an imported mesh: %s" % path.get_file())
+			inst.free()
+	var region := (load("res://src/world/regions/hero_village.tscn") as PackedScene).instantiate()
+	add_child(region)
+	var spheres := 0
+	var multimeshes := 0
+	for d in _descendants(region):
+		if d is MeshInstance3D and (d as MeshInstance3D).mesh is SphereMesh:
+			spheres += 1
+		if d is MultiMeshInstance3D:
+			multimeshes += 1
+	_check(spheres == 0, "no SphereMesh primitives (old blob trees / bank rocks) in the region")
+	_check(multimeshes == 0, "no MultiMeshInstance3D (old procedural vegetation field) in the region")
+	# The real vegetation is actually placed: plenty of imported meshes beyond the
+	# eight houses (trees, grass, flowers, rocks are all imported GLB instances).
+	var complex := 0
+	for d in _descendants(region):
+		if d is MeshInstance3D:
+			var m := (d as MeshInstance3D).mesh
+			if m != null and not (m is PrimitiveMesh):
+				complex += 1
+	_check(complex >= 30, "region stages many imported vegetation/prop GLB instances (>=30)")
+	region.free()
 
 ## True if the subtree holds a MeshInstance3D with a non-primitive (imported)
 ## mesh — i.e. a hero GLB, as opposed to the kit's BoxMesh/PrismMesh primitives.

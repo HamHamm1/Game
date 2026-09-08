@@ -26,6 +26,14 @@ extends Node3D
 ## foreground gardens, mounds for depth, and SELECTIVE dressing (fences,
 ## firewood, lanterns, pots — not prop spam). Uses M2.2 lighting + M2.3 weather
 ## unchanged (they attach at world_root); this region supplies geometry + a tag.
+##
+## M2.4-D vegetation rule: ALL visible plants and rocks are owner-supplied GLBs
+## (see PropKit's SAKURA_*/PINE/GRASS_CLUMP/FLOWERS/RIVER_ROCKS/PATH_ROCKS),
+## staged intentionally in _place_vegetation. NO procedural/primitive vegetation
+## or rocks are created here any more — no VegetationField MultiMesh grass, no
+## BlockoutUtil sphere-blob trees, no SphereMesh bank rocks. The broad lawn is
+## the textured terrain itself; the BACKGROUND house silhouettes remain as the
+## cheap distant horizon.
 
 const HOUSE_A := "res://assets/meshes/houses/house_a.glb"
 const HOUSE_B := "res://assets/meshes/houses/house_b.glb"
@@ -79,8 +87,8 @@ func _ready() -> void:
 	_build_stream()
 	_build_background()
 	_build_lanes()
-	_place_props()      # M2.4-C dressing: real GLB props staged by area
-	_build_vegetation()
+	_place_props()      # M2.4-C dressing: real GLB structure props staged by area
+	_place_vegetation() # M2.4-D: ONLY owner-supplied vegetation + rock GLBs
 
 ## Clear the global ground provider when this region leaves the tree, so nothing
 ## keeps sampling this terrain after it is unloaded (and headless tests stay flat).
@@ -241,20 +249,16 @@ func _place_glb_houses() -> void:
 	for e in HOUSE_LAYOUT:
 		_glb_house(e[0], e[1], e[2], INTERIOR, e[3])
 
-func _ground_pos(x: float, z: float, lift: float = 0.0) -> Vector3:
-	return Vector3(x, _g(x, z) + lift, z)
-
 # --- STREAM (M2.4-C) --------------------------------------------------------
 
 ## A curved stream following STREAM: a water ribbon at WATER_Y (mobile water
-## shader), bank rocks + shoreline reeds, and stepping stones across the crossing.
-## Adds channel exclusions so vegetation never grows in the water.
+## shader) + channel exclusions so nothing sits in the water. The banks are
+## dressed with the real river-rock GLB in _place_vegetation (ZONE-STREAM), and
+## the crossing is the real bridge (placed in _place_props) — no procedural bank
+## rocks or reeds any more.
 func _build_stream() -> void:
 	_build_water_ribbon()
 	_add_stream_exclusions()
-	_build_shoreline()
-	# The crossing is now the real bridge (placed in _place_props), not stepping
-	# stones — see _place_props()/ZONE 2.
 
 func _water_material() -> ShaderMaterial:
 	var m := ShaderMaterial.new()
@@ -315,51 +319,6 @@ func _add_stream_exclusions() -> void:
 	var r := _terrain.stream_half_width() + 0.6
 	for c in STREAM:
 		_excl.append(Rect2(c.x - r, c.y - r, r * 2.0, r * 2.0))
-
-## Bank rocks (wet near the water, drier higher) + shoreline reeds/wet grass.
-func _build_shoreline() -> void:
-	var half := _terrain.stream_half_width()
-	var rng := RandomNumberGenerator.new()
-	rng.seed = 8801
-	for i in STREAM.size():
-		var c := STREAM[i]
-		var nrm := Vector2(-_stream_tangent(i).y, _stream_tangent(i).x)
-		for sgn: float in [-1.0, 1.0]:
-			# a wet stone at the waterline + a drier rock a little up the bank
-			var wet_p := c + nrm * (sgn * (half + rng.randf_range(-0.2, 0.4)))
-			_bank_rock(wet_p, rng.randf_range(0.5, 0.95), true)
-			if rng.randf() < 0.6:
-				var dry_p := c + nrm * (sgn * (half + rng.randf_range(1.4, 2.4)))
-				_bank_rock(dry_p, rng.randf_range(0.4, 0.7), false)
-			# reeds / wet grass just beyond the waterline (deterministic field)
-			var reed_c := c + nrm * (sgn * (half + 1.3))
-			add_child(VegetationField.scatter(&"grass", &"reed",
-				Vector3(reed_c.x, 0.0, reed_c.y), 2.0, 2.0, 26, 5100 + i * 7 + int(sgn),
-				1.1, 2.0, 55.0, _excl))
-			add_child(VegetationField.scatter(&"shrub", &"shrub",
-				Vector3(reed_c.x, 0.0, reed_c.y), 2.2, 2.2, 5, 5300 + i * 7 + int(sgn),
-				0.8, 1.2, 70.0, _excl))
-
-## A river rock: a flattened low-poly sphere grounded on the terrain, wet (sheened,
-## dark, near the water) or dry. Larger ones get a simple box collider.
-func _bank_rock(p: Vector2, scale: float, wet: bool) -> void:
-	var mi := MeshInstance3D.new()
-	var sm := SphereMesh.new()
-	sm.radius = scale
-	sm.height = scale * 1.3
-	sm.radial_segments = 7
-	sm.rings = 4
-	mi.mesh = sm
-	mi.material_override = MaterialLibrary.get_mat(&"wet_stone" if wet else &"river_rock")
-	var y := _g(p.x, p.y)
-	mi.position = Vector3(p.x, y + scale * 0.25, p.y)
-	mi.scale = Vector3(1.15, 0.7, 1.15)
-	add_child(mi)
-	if scale > 0.7:
-		var body := _col(Vector3(scale * 2.0, scale * 1.0, scale * 2.0),
-			Vector3(p.x, y + scale * 0.35, p.y))
-		add_child(body)
-	_excl.append(Rect2(p.x - scale, p.y - scale, scale * 2.0, scale * 2.0))
 
 # --- BACKGROUND tier (cheap, unreachable, on the mounds) --------------------
 
@@ -464,10 +423,7 @@ func _place_props() -> void:
 	_prop(PropKit.SIGNPOST, 2.6, 18.2, -20.0, 0.85, "post", 0.0, 0.0, 0.0, 1.0)
 	_lamp(-2.2, 17.4)
 	_lamp(3.0, 16.2)
-	_prop(PropKit.PINE_TREE, -7.0, 20.0, 15.0, 3.4, "post", 0.0, 0.0, 150.0, 2.5)
-	_prop(PropKit.PINE_TREE, 7.5, 19.5, -30.0, 3.8, "post", 0.0, 0.0, 150.0, 2.5)
-	_prop(PropKit.FLOWER_SHRUB, -4.5, 17.8, 0.0, 0.6, "", 0.0, 0.0, 0.0, 1.0)
-	_prop(PropKit.FLOWER_SHRUB, 5.2, 18.6, 40.0, 0.55, "", 0.0, 0.0, 0.0, 1.0)
+	# (Entrance trees + blossoms are vegetation — see _place_vegetation ZONE-A.)
 
 	# ZONE 2 — STREAM / BRIDGE ---------------------------------------------
 	# Bridge across the crossing (span along Z, the path direction).
@@ -475,21 +431,13 @@ func _place_props() -> void:
 	_prop(PropKit.BENCH, 6.0, 15.4, 200.0, 0.85, "box", 0.5, 0.0, 0.0, 1.6)
 	_prop(PropKit.BENCH, -6.2, 15.8, 150.0, 0.85, "box", 0.5, 0.0, 0.0, 1.6)
 	_lamp(2.0, 15.6)
-	# River rocks + blossoms along the banks.
-	_prop(PropKit.ROCK_CLUSTER, 9.0, 12.0, 20.0, 1.2, "box", 0.5, 0.0, 0.0, 2.2)
-	_prop(PropKit.ROCK_CLUSTER, -9.5, 15.5, -40.0, 1.3, "box", 0.5, 0.0, 0.0, 2.4)
-	_prop(PropKit.ROCK_CLUSTER, 15.0, 9.5, 60.0, 0.85, "", 0.0, 0.0, 0.0, 1.5)
-	_prop(PropKit.ROCK_CLUSTER, -16.0, 15.2, 10.0, 0.9, "", 0.0, 0.0, 0.0, 1.5)
-	_prop(PropKit.ROCK_CLUSTER, 22.0, 6.5, -20.0, 1.1, "box", 0.4, 0.0, 0.0, 2.0)
-	_prop(PropKit.FLOWER_SHRUB, 7.5, 12.6, 0.0, 0.55, "", 0.0, 0.0, 0.0, 1.0)
-	_prop(PropKit.FLOWER_SHRUB, -8.0, 16.2, 80.0, 0.6, "", 0.0, 0.0, 0.0, 1.0)
+	# (River rocks + bankside blossoms are vegetation — see _place_vegetation.)
 
 	# ZONE 3 — RESIDENTIAL LANE + GARDENS (around the houses) --------------
 	# House E (east, ~ x23,z-1): garden with fence, planters, tools.
 	_fence(PropKit.FENCE_LOW, 18.0, 4.0, 26.0, 4.0, 0.85)
 	_prop(PropKit.PLANTER, 19.0, 3.0, 0.0, 0.35)
 	_prop(PropKit.PLANTER, 20.2, 3.0, 0.0, 0.35)
-	_prop(PropKit.FLOWER_SHRUB, 24.0, 3.4, 0.0, 0.6, "", 0.0, 0.0, 0.0, 1.0)
 	_prop(PropKit.FARM_TOOLS, 21.5, 3.2, 30.0, 0.30)
 	_prop(PropKit.DRYING_RACK, 26.5, -1.0, -80.0, 1.0, "box", 0.0, 0.0, 0.0, 2.4)
 
@@ -508,7 +456,6 @@ func _place_props() -> void:
 	_prop(PropKit.FIREWOOD_RACK, -18.5, -12.0, -30.0, 1.0, "box", 0.0, 0.0, 0.0, 2.4)
 	_prop(PropKit.DRYING_RACK, -21.0, 3.5, 15.0, 1.0, "box", 0.0, 0.0, 0.0, 2.4)
 	_prop(PropKit.PLANTER, -24.0, 8.8, 0.0, 0.35)
-	_prop(PropKit.FLOWER_SHRUB, -20.0, 9.2, 0.0, 0.6, "", 0.0, 0.0, 0.0, 1.0)
 	_prop(PropKit.FARM_TOOLS, -19.5, 5.0, -20.0, 0.30)
 
 	# Houses G/H (north-west, ~ x21/-23, z-23..-28): farm props.
@@ -529,73 +476,102 @@ func _place_props() -> void:
 	_prop(PropKit.STONE_PAVING, -3.0, -30.0, 0.0, 1.2)
 	_lamp(-5.5, -29.0)
 	_lamp(5.5, -29.0)
-	_prop(PropKit.FLOWER_SHRUB, -7.0, -28.0, 0.0, 0.6, "", 0.0, 0.0, 0.0, 1.0)
-	_prop(PropKit.FLOWER_SHRUB, 7.0, -28.0, 0.0, 0.6, "", 0.0, 0.0, 0.0, 1.0)
+	# (Forecourt cherry + blossoms are vegetation — see _place_vegetation ZONE-D.)
 
-	# ZONE 6 — FOREST EDGE: real pines ringing the near/mid forest edge
-	# (LOD-faded), blending into the cheap distant blockout conifers.
+# --- Vegetation (M2.4-D) ----------------------------------------------------
+#
+# EVERY visible plant and rock in the region is one of SEVEN owner-supplied GLBs
+# (PropKit.SAKURA_*/PINE/GRASS_CLUMP/FLOWERS/RIVER_ROCKS/PATH_ROCKS). There is NO
+# procedural/primitive vegetation, no MultiMesh grass field, no sphere-blob trees
+# or rocks any more — the broad lawn is the textured terrain itself; plants are
+# placed intentionally as landmarks, framing and selective accents. Each is a
+# shared PropKit instance (no mesh/material duplication), grounded to the terrain
+# and given trunk/box collision only where a body would actually block it. Big
+# vegetation fades with a visibility_range LOD; import LODs keep distant copies
+# cheap.
+
+## A small natural cluster of `path` around (cx,cz): `count` copies within
+## `radius`, jittered in position/scale/yaw off `seed`. For selective grass +
+## flower tufts (never a uniform field). `y_off` lets a base disc sink slightly.
+func _cluster(path: String, cx: float, cz: float, count: int, radius: float,
+		smin: float, smax: float, lod: float, seed: int, y_off: float = 0.0) -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = seed
+	for i in count:
+		var a := rng.randf() * TAU
+		var r := radius * sqrt(rng.randf())
+		var x := cx + cos(a) * r
+		var z := cz + sin(a) * r
+		_prop(path, x, z, rng.randf_range(0.0, 360.0), rng.randf_range(smin, smax),
+			"", 0.0, y_off, lod, 0.0)
+
+func _place_vegetation() -> void:
+	# ZONE-A — ENTRANCE: a hero cherry landmark + framing pines + welcome blossoms.
+	_prop(PropKit.SAKURA_LARGE, -7.5, 20.5, 20.0, 3.0, "post", 0.0, 0.0, 170.0, 3.0)
+	_prop(PropKit.PINE, 9.5, 20.5, -30.0, 3.6, "post", 0.0, 0.0, 160.0, 2.5)
+	_prop(PropKit.PINE, -12.0, 18.0, 15.0, 3.3, "post", 0.0, 0.0, 160.0, 2.5)
+	_cluster(PropKit.FLOWERS, -4.5, 18.0, 2, 1.0, 0.32, 0.42, 45.0, 6001)
+	_cluster(PropKit.FLOWERS, 5.0, 18.6, 2, 1.0, 0.32, 0.42, 45.0, 6002)
+	_cluster(PropKit.GRASS_CLUMP, 2.6, 16.4, 3, 1.2, 0.26, 0.36, 42.0, 6003, -0.04)
+	_cluster(PropKit.GRASS_CLUMP, -2.6, 15.6, 3, 1.2, 0.26, 0.36, 42.0, 6004, -0.04)
+
+	# ZONE-STREAM — cherries by the water + river rocks lining the banks + tufts.
+	_prop(PropKit.SAKURA_LARGE, 11.0, 10.5, -25.0, 2.8, "post", 0.0, 0.0, 170.0, 3.0)
+	_prop(PropKit.SAKURA_LARGE, -11.5, 15.0, 30.0, 2.7, "post", 0.0, 0.0, 170.0, 3.0)
+	_prop(PropKit.SAKURA_SMALL, 6.5, 16.6, 60.0, 1.5, "post", 0.0, 0.0, 150.0, 2.0)
+	# River-rock GLB spreads set along the banks (following the stream centreline).
+	_rocks(PropKit.RIVER_ROCKS, 8.5, 12.2, 20.0, 1.3, "box", 0.35, 2.4)
+	_rocks(PropKit.RIVER_ROCKS, -8.5, 14.6, -40.0, 1.35, "box", 0.35, 2.5)
+	_rocks(PropKit.RIVER_ROCKS, 15.0, 9.2, 60.0, 1.0, "", 0.0, 2.0)
+	_rocks(PropKit.RIVER_ROCKS, -16.5, 15.6, 10.0, 1.1, "", 0.0, 2.1)
+	_rocks(PropKit.RIVER_ROCKS, 22.5, 6.0, -20.0, 1.2, "box", 0.3, 2.3)
+	_rocks(PropKit.RIVER_ROCKS, -22.0, 16.6, 45.0, 1.0, "", 0.0, 2.0)
+	_cluster(PropKit.GRASS_CLUMP, 12.0, 12.0, 4, 2.0, 0.24, 0.34, 45.0, 6011, -0.04)
+	_cluster(PropKit.GRASS_CLUMP, -12.0, 15.5, 4, 2.0, 0.24, 0.34, 45.0, 6012, -0.04)
+	_cluster(PropKit.FLOWERS, 7.5, 15.4, 2, 1.2, 0.30, 0.40, 42.0, 6013)
+
+	# ZONE-GARDENS — selective grass + flowers inside the fenced house yards.
+	_cluster(PropKit.FLOWERS, 24.0, 3.6, 3, 1.2, 0.30, 0.42, 42.0, 6021)   # east garden
+	_cluster(PropKit.GRASS_CLUMP, 17.5, 3.0, 3, 1.4, 0.24, 0.34, 42.0, 6022, -0.04)
+	_cluster(PropKit.FLOWERS, -20.0, 9.4, 3, 1.4, 0.30, 0.42, 42.0, 6023)  # west garden
+	_cluster(PropKit.GRASS_CLUMP, -18.5, 6.5, 3, 1.4, 0.24, 0.34, 42.0, 6024, -0.04)
+	_prop(PropKit.SAKURA_SMALL, 22.8, 6.2, 40.0, 1.4, "post", 0.0, 0.0, 150.0, 2.0)
+	_prop(PropKit.SAKURA_SMALL, -23.0, 10.2, -20.0, 1.4, "post", 0.0, 0.0, 150.0, 2.0)
+	_cluster(PropKit.GRASS_CLUMP, -3.5, 1.2, 3, 1.4, 0.24, 0.34, 42.0, 6025, -0.04)  # central yard
+	_prop(PropKit.SAKURA_SMALL, -4.0, 4.2, 15.0, 1.4, "post", 0.0, 0.0, 150.0, 2.0)
+
+	# ZONE-D — MANOR FORECOURT: a big cherry landmark + flanking blossoms.
+	_prop(PropKit.SAKURA_LARGE, 5.5, -34.0, -10.0, 3.0, "post", 0.0, 0.0, 170.0, 3.0)
+	_prop(PropKit.SAKURA_SMALL, -6.0, -33.0, 25.0, 1.5, "post", 0.0, 0.0, 150.0, 2.0)
+	_cluster(PropKit.FLOWERS, -7.0, -28.0, 2, 1.2, 0.30, 0.42, 42.0, 6031)
+	_cluster(PropKit.FLOWERS, 7.0, -28.0, 2, 1.2, 0.30, 0.42, 42.0, 6032)
+
+	# ZONE-PATHS — flat flagstone edging set beside the lanes (decorative, no coll).
+	for e in [[2.4, -1.0, 0.0], [-2.6, -7.0, 20.0], [2.0, -13.0, -15.0],
+			[-2.6, -19.0, 10.0], [1.8, -25.0, -20.0], [10.0, -3.2, 40.0],
+			[-13.0, -11.0, -30.0], [2.6, 17.4, 0.0], [-2.6, 17.4, 12.0]]:
+		_prop(PropKit.PATH_ROCKS, e[0], e[1], e[2], 0.85)
+
+	# ZONE-FOREST — real pines ringing the near/mid forest edge (LOD-faded); the
+	# distant horizon stays the cheap BACKGROUND house silhouettes + rising hills.
+	var flank := [[-20.0, -6.0, 3.4], [22.0, -10.0, 3.6], [-26.0, -24.0, 3.8],
+		[26.0, -26.0, 3.8], [-16.0, 9.0, 3.0], [18.0, 12.0, 3.0]]
+	for f in flank:
+		_prop(PropKit.PINE, f[0], f[1], 0.0, f[2], "post", 0.0, 0.0, 160.0, 2.5)
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 4471
 	var vc := Vector2(0.0, -14.0)
-	for i in 14:
-		var ang := TAU * float(i) / 14.0 + rng.randf_range(-0.06, 0.06)
-		var rad := rng.randf_range(40.0, 62.0)
+	for i in 18:
+		var ang := TAU * float(i) / 18.0 + rng.randf_range(-0.05, 0.05)
+		var rad := rng.randf_range(44.0, 66.0)
 		var x := vc.x + cos(ang) * rad
 		var z := vc.y + sin(ang) * rad
-		if z > 12.0 and absf(x) < 12.0:
+		if z > 12.0 and absf(x) < 14.0:
 			continue   # keep the entrance/foreground open
-		_prop(PropKit.PINE_TREE, x, z, rng.randf_range(0.0, 360.0),
-			rng.randf_range(3.2, 4.4), "post", 0.0, 0.0, 150.0, 2.5)
+		_prop(PropKit.PINE, x, z, rng.randf_range(0.0, 360.0),
+			rng.randf_range(3.2, 4.4), "post", 0.0, 0.0, 175.0, 2.5)
 
-# --- Vegetation -------------------------------------------------------------
-
-func _veg(species: StringName, mat: StringName, center: Vector3, hx: float, hz: float,
-		base: int, seed: int, smin: float, smax: float, end_dist: float) -> void:
-	add_child(VegetationField.scatter(species, mat, center, hx, hz, base, seed, smin, smax,
-		end_dist, _excl))
-
-func _build_vegetation() -> void:
-	# Broad grass lawn across the reachable valley — CHUNKED into tiles with
-	# overlapping fade so the cover stays continuous around the player and never
-	# pops on the sides while walking (the previous single-field pop-in bug).
-	# Exclusions carve houses, lanes + dressing out of it.
-	add_child(VegetationField.scatter_tiled(&"grass", &"grass_blade",
-		-46.0, -52.0, 46.0, 20.0, 12.0, 0.42, 3001, 0.8, 1.35, 80.0, _excl))
-	# Framing + hillside trees (varied silhouette/scale) for the mountain feel,
-	# each grounded to the terrain.
-	var trees := [
-		[-20.0, -6.0, 1.6, 0], [20.0, 0.0, 1.7, 2], [-15.0, 9.0, 1.2, 1],
-		[16.0, -24.0, 1.8, 0], [-23.0, -20.0, 2.0, 1], [24.0, -12.0, 1.9, 1],
-		[-28.0, -30.0, 2.4, 1], [28.0, -30.0, 2.4, 1], [-9.0, 13.0, 1.3, 2],
-		[10.0, 14.0, 1.4, 0],
-	]
-	for t in trees:
-		BlockoutUtil.add_tree(self, _ground_pos(t[0], t[1]), t[2], t[3])
-	# Forest edge: denser conifers on the rising rear + flank terrain, grounded.
-	for i in 11:
-		var x := lerpf(-42.0, 42.0, float(i) / 10.0)
-		BlockoutUtil.add_tree(self, _ground_pos(x, -66.0 - float(i % 3) * 3.0), 2.6, 1)
-	for i in 6:
-		var z := lerpf(-44.0, 4.0, float(i) / 5.0)
-		BlockoutUtil.add_tree(self, _ground_pos(-50.0, z), 2.4, 1)
-		BlockoutUtil.add_tree(self, _ground_pos(50.0, z), 2.4, 1)
-	# Distant forest silhouettes on the surrounding hills — big conifers ringing
-	# the valley so the horizon reads as forest/hills, not a bright empty void.
-	var vc := Vector2(0.0, -14.0)
-	var rng := RandomNumberGenerator.new()
-	rng.seed = 9137
-	for i in 40:
-		var ang := TAU * float(i) / 40.0
-		var rad := rng.randf_range(82.0, 116.0)
-		var x := vc.x + cos(ang) * rad
-		var z := vc.y + sin(ang) * rad
-		if x < TERR_MIN.x + 6.0 or x > TERR_MAX.x - 6.0 or z < TERR_MIN.y + 6.0 or z > TERR_MAX.y - 6.0:
-			continue
-		BlockoutUtil.add_tree(self, _ground_pos(x, z), rng.randf_range(3.0, 4.6), 1, 600.0)
-	# Foreground garden detail near the lanes: ferns, blooms, rocks, shrubs.
-	_veg(&"fern", &"fern", Vector3(4.5, 0.0, 6.0), 3.5, 4.0, 30, 3002, 0.8, 1.2, 55.0)
-	_veg(&"flower", &"flower_vcol", Vector3(-5.5, 0.0, 4.0), 3.5, 3.0, 34, 3003, 0.8, 1.2, 40.0)
-	_veg(&"flower", &"flower_vcol", Vector3(6.0, 0.0, -20.0), 3.0, 3.0, 22, 3006, 0.8, 1.2, 40.0)
-	_veg(&"rock", &"rock", Vector3(-4.0, 0.0, 9.0), 4.0, 3.0, 12, 3004, 0.7, 1.6, 95.0)
-	_veg(&"shrub", &"shrub", Vector3(6.0, 0.0, -7.0), 4.5, 3.5, 14, 3005, 0.8, 1.2, 80.0)
-	_veg(&"shrub", &"shrub", Vector3(-16.0, 0.0, -16.0), 3.5, 3.5, 10, 3007, 0.8, 1.2, 80.0)
+## A river/path rock GLB spread grounded on the terrain (box collision optional).
+func _rocks(path: String, x: float, z: float, yaw: float, s: float,
+		collide: String, cap: float, excl: float) -> void:
+	_prop(path, x, z, yaw, s, collide, cap, 0.0, 110.0, excl)

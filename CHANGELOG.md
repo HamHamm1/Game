@@ -13,6 +13,61 @@ Status labels follow AI_RULES.md Rule 11:
 
 ## [Unreleased]
 
+### Phase 2 M2.4-D — Vegetation rebuild: real GLBs only, no primitives `NEEDS TESTING`
+
+Device review of the M2.4-C dressing pass showed the vegetation still read as
+randomly scattered and still contained ugly procedural/primitive greenery and
+rocks. This pass **removes ALL procedural/primitive vegetation and rocks** from
+`hero_village` and re-stages the region using **only seven owner-supplied
+vegetation/rock GLBs**, placed intentionally. Houses A–H, terrain, stream,
+paths, collisions, interiors and every gameplay system are untouched.
+**NOT** ANDROID VERIFIED.
+
+- **REMOVED (procedural/primitive placeholders), from `hero_village.gd`:**
+  - the whole `VegetationField` MultiMesh usage — the tiled `grass_blade` lawn,
+    the shoreline `reed`/`shrub` fields, and the foreground `fern`/`flower`/
+    `rock`/`shrub` scatter (`_build_vegetation`, `_veg` deleted);
+  - every `BlockoutUtil.add_tree` — the sphere-blob "framing / hillside / forest
+    edge / distant" primitive trees;
+  - `_build_shoreline` + `_bank_rock` — the flattened `SphereMesh` bank rocks and
+    their wet/dry stone materials;
+  - the old `PropKit.PINE_TREE` / `ROCK_CLUSTER` / `FLOWER_SHRUB` (previous-batch
+    prop GLBs) usages for trees/rocks/blossoms.
+  (`VegetationField`, `BlockoutUtil.add_tree`, and the old prop consts remain in
+  the codebase — they are still used by `blockout_town` and the unit tests — but
+  `hero_village` no longer calls any of them.)
+- **NEW assets** `assets/meshes/veg/{sakura_large,sakura_small,pine,grass_clump,
+  flowers,river_rocks,path_rocks}.glb` (2K PBR + import LODs), each identified by
+  offscreen render. Named in `PropKit` as `SAKURA_LARGE/SAKURA_SMALL/PINE/
+  GRASS_CLUMP/FLOWERS/RIVER_ROCKS/PATH_ROCKS`. Recorded in `ASSET_LICENSES.md`.
+- **NEW `hero_village.gd` — `_place_vegetation()`** stages the seven GLBs as an
+  intentional composition (houses → yards → paths → stream → bridge → vegetation
+  framing), all grounded via the terrain:
+  - **Sakura** large as landmark cherries (entrance, both stream banks, manor
+    forecourt) + small cherries as yard/forecourt accents;
+  - **Pine** as flank framing + a mid-distance forest-edge ring (18, LOD-faded),
+    leaving the entrance/foreground open; the far horizon stays the cheap
+    BACKGROUND house silhouettes + rising terrain;
+  - **Grass clumps** and **flowers** as *selective* small clusters (`_cluster`
+    helper — a few jittered copies) along paths, in the fenced gardens, on the
+    stream banks and by the bench — never a uniform field (the broad lawn is the
+    textured terrain itself);
+  - **River rocks** lining the stream banks and **path rocks** edging the lanes.
+- **Collision**: `post` (trunk) collision on trees, simple `box` on the larger
+  river-rock spreads; grass, flowers and flagstones are decorative (none).
+  Big vegetation fades with a `visibility_range` LOD; import LODs keep distant
+  copies cheap.
+- **Tests** 224 → 241: new `_test_only_glb_vegetation` boots `hero_village` and
+  asserts **zero `SphereMesh`** (old blob trees / bank rocks) and **zero
+  `MultiMeshInstance3D`** (old vegetation fields) in the region, that all seven
+  veg GLBs import with real meshes, and that many imported GLB instances are
+  actually staged. Guards the "primitive placeholder / random scatter"
+  regression.
+- **Validation**: static 99 · headless import/boot clean · 241/241 · export
+  config valid. Composition confirmed via six offscreen first-person viewpoints
+  (entrance, bridge, east garden, manor, elevated overview, west lane). **NOT**
+  ANDROID VERIFIED — awaiting the on-device APK test.
+
 ### Phase 2 M2.4-C.2 — Village dressing pass (16 GLB props)
 
 Turns the terrain/stream scene into a lived-in village with 16 owner-provided

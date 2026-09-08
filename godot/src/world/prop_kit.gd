@@ -26,6 +26,17 @@ const PINE_TREE := "res://assets/meshes/props/prop14.glb"     # pine / cedar tre
 const ROCK_CLUSTER := "res://assets/meshes/props/prop15.glb"  # river-stone pile
 const FLOWER_SHRUB := "res://assets/meshes/props/prop16.glb"  # pink flowering shrub
 
+# M2.4-D — the ONLY approved vegetation + rock GLBs (owner-supplied). All visible
+# greenery and stone in hero_village comes from these; no procedural/primitive
+# vegetation or rocks are used anywhere in the region any more.
+const SAKURA_LARGE := "res://assets/meshes/veg/sakura_large.glb"  # mature cherry, dense canopy
+const SAKURA_SMALL := "res://assets/meshes/veg/sakura_small.glb"  # young cherry (trunk + soil base)
+const GRASS_CLUMP := "res://assets/meshes/veg/grass_clump.glb"    # single grass tuft
+const FLOWERS := "res://assets/meshes/veg/flowers.glb"            # pink/white flowering plant
+const RIVER_ROCKS := "res://assets/meshes/veg/river_rocks.glb"    # flat spread of water-worn pebbles
+const PINE := "res://assets/meshes/veg/pine.glb"                  # Japanese pine / cedar
+const PATH_ROCKS := "res://assets/meshes/veg/path_rocks.glb"      # flat angular flagstone edging
+
 static var _aabb_cache: Dictionary = {}   # path -> AABB (raw, unscaled)
 
 ## Instantiate `path` uniformly scaled by `s`, centred on XZ with its base at
