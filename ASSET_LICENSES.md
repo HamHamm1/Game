@@ -97,6 +97,27 @@ M2.4-D.2: the same GLB meshes also fill the big floating-island top as a forest
 one imported mesh + material per species (no duplication) and culls distant
 chunks for mobile. Still the owner-supplied GLBs only; no primitive placeholders.
 
+## Textures — Terrain ground set (M2.4-D.4)
+
+Eight owner-provided ground textures used by the hero-village terrain, blended by
+natural zones in `src/world/shaders/terrain_splat.gdshader` (per-vertex weights
+baked by `TerrainBuilder` from `hero_village._zone_weights`). All owner-provided;
+owner holds rights to use in this game.
+
+| Asset | Path | Zone use |
+|---|---|---|
+| Short grass | `godot/assets/textures/terrain/grd_grass.png` | default open ground |
+| Dry soil | `godot/assets/textures/terrain/grd_dry_soil.png` | maintained/worn house yards |
+| Gravel mix | `godot/assets/textures/terrain/grd_gravel.png` | worn walking paths |
+| Moist soil | `godot/assets/textures/terrain/grd_moist_soil.png` | wet ground just off the stream |
+| Farming soil | `godot/assets/textures/terrain/grd_farming_soil.png` | cultivated garden plots |
+| Fallen leaves | `godot/assets/textures/terrain/grd_leaves.png` | forest-edge leaf litter |
+| River rock | `godot/assets/textures/terrain/grd_river_rock.png` | the stream channel / waterline |
+| Path-edge rock | `godot/assets/textures/terrain/grd_path_rock.png` | irregular path edging |
+
+(The earlier single `ground_grass.png` + normal are superseded by this 8-texture
+splat and are no longer referenced by the terrain material.)
+
 ## Textures — Terrain (M2.4-C)
 
 Owner-provided ground textures for the hero-village terrain. Applied via a

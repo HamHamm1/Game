@@ -13,6 +13,46 @@ Status labels follow AI_RULES.md Rule 11:
 
 ## [Unreleased]
 
+### Phase 2 M2.4-D.4 — Art-directed re-stage + 8-texture ground `NEEDS TESTING`
+
+Full visual re-stage of `hero_village` against the owner's *Japanese Village
+Scene Guide* (used as a composition reference, not copied). Only the owner's
+supplied assets; no procedural/primitive vegetation, bushes, trees, grass or
+rocks (guarded by `_test_only_glb_vegetation`). Houses A–H, interiors, entry,
+player/collision, save/load, Time/Weather/Lighting untouched. **NOT** ANDROID
+VERIFIED.
+
+- **NEW 8-texture ground** — imported the eight owner ground textures to
+  `assets/textures/terrain/grd_*.png`; **NEW
+  `src/world/shaders/terrain_splat.gdshader`** blends them by per-vertex zone
+  weights. `TerrainBuilder` now bakes those weights into `ARRAY_COLOR` +
+  `ARRAY_CUSTOM0` from a caller `weight_fn`, and `hero_village._zone_weights`
+  derives natural zones (grass default, gravel paths, wet river/moist banks,
+  cultivated garden soil, worn dry yards, forest-edge leaf litter, path-edge
+  rock) with value-noise so boundaries melt (no square patches / checkerboard).
+- **Paths are the gravel zone now**, not grey slabs: `_build_lanes` only
+  registers exclusions along the lane centrelines (`LANES`); the old
+  `visual_box_mat` path tiles and the grey `STONE_PAVING` props were removed.
+  Path-edge rocks edge the routes irregularly.
+- **Composition re-stage** (`_place_vegetation`): large sakura used generously as
+  asymmetric landmarks (entrance foreground pair, both riverbanks, manor, and a
+  background pair); small sakura in varied yard/garden clusters; a **background
+  silhouette of large pines** massed behind the houses; **small pines** (the pine
+  GLB at reduced scale, `_small_pines`) in loose 2–4 clusters filling
+  midground/background gaps; river rocks grouped along the stream with heavier
+  concentrations at the bridge approaches; flowers in small clusters (not a
+  field); short-grass tufts sparse-to-medium (GlbScatter MultiMesh, tight LOD +
+  fade — no pop-in) with the ground texture showing through. Clear
+  foreground/midground/background depth; walking routes kept clear via
+  exclusions.
+- **Tests** 242 → 244: terrain test now asserts the 8-texture splat
+  `ShaderMaterial` (all 8 params bound) and the baked `COLOR`+`CUSTOM0` zone
+  weights; veg regression still forbids `SphereMesh`/primitive-mesh MultiMesh.
+- Validation: static 98 · headless import/boot clean · 244/244 · export config
+  valid; composition checked against the guide via six offscreen renders
+  (entrance, bridge, village-center, riverbank, top-down, back-view). **NOT**
+  ANDROID VERIFIED.
+
 ### Phase 2 M2.4-D.3 — Small local ground (remove the terrain island) `NEEDS TESTING`
 
 Owner direction: the large raised island/platform was wrong and consumed the

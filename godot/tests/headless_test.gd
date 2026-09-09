@@ -632,10 +632,21 @@ func _test_terrain() -> void:
 	_check(mesh != null, "terrain builder produces a visual mesh")
 	_check(heightmap, "terrain has a HeightMapShape3D collider")
 	if mesh != null:
-		var sm := mesh.material_override as StandardMaterial3D
 		# The ground must be TEXTURED, never a bare white/near-white albedo (the
-		# device "white ground" regression).
-		_check(sm != null and sm.albedo_texture != null, "terrain ground is textured (not a flat white material)")
+		# device "white ground" regression). It is now an 8-texture splat
+		# ShaderMaterial (terrain_splat) — check the shader + a bound texture param.
+		var sm := mesh.material_override as ShaderMaterial
+		var eight := 0
+		if sm != null and sm.shader != null:
+			for pname in ["tex_grass", "tex_dry", "tex_gravel", "tex_moist",
+					"tex_farming", "tex_leaves", "tex_river", "tex_path"]:
+				if (sm.get_shader_parameter(pname) as Texture2D) != null:
+					eight += 1
+		_check(eight == 8, "terrain uses all 8 ground textures (splat material, not flat white)")
+		# The mesh carries the 8 per-vertex zone weights (COLOR + CUSTOM0).
+		var fmt := (mesh.mesh as ArrayMesh).surface_get_format(0)
+		_check((fmt & Mesh.ARRAY_FORMAT_COLOR) != 0, "terrain bakes zone weights in vertex COLOR")
+		_check((fmt & Mesh.ARRAY_FORMAT_CUSTOM0) != 0, "terrain bakes zone weights in vertex CUSTOM0")
 		# Triangles must present their front face UPWARD, or the terrain is
 		# back-face culled and the player sees the sky through it (the real cause of
 		# the device "white ground"). Godot front faces are CLOCKWISE, so a

@@ -82,15 +82,36 @@ const HOUSE_LAYOUT := [
 
 var _excl: Array[Rect2] = []
 var _terrain: TerrainField
+var _house_centers: Array[Vector2] = []
+
+# M2.4-D.4 — path centrelines (also drive the terrain gravel zone + path-edge
+# rocks + vegetation exclusions) and cultivated garden discs (farming-soil zone).
+static var LANES := [
+	{"pts": [Vector2(0, 17.6), Vector2(0, 13.0), Vector2(0.5, 9.4), Vector2(-1.5, 4.0),
+		Vector2(1.0, -1.0), Vector2(-1.2, -7.0), Vector2(0.8, -13.0), Vector2(1.6, -19.0),
+		Vector2(-0.6, -25.0), Vector2(-4.0, -32.0)], "w": 2.6},
+	{"pts": [Vector2(1.0, -1.0), Vector2(7.0, -2.0), Vector2(13.0, -3.5)], "w": 2.0},
+	{"pts": [Vector2(-1.2, -7.0), Vector2(-9.0, -9.0), Vector2(-17.0, -12.0)], "w": 2.0},
+	{"pts": [Vector2(-0.6, -25.0), Vector2(-6.0, -29.0)], "w": 2.0},
+]
+static var GARDENS := [
+	{"c": Vector2(22.0, 4.0), "r": 4.2},
+	{"c": Vector2(-21.0, 8.0), "r": 4.6},
+	{"c": Vector2(-3.5, 2.6), "r": 3.4},
+]
 
 func _ready() -> void:
 	# Terrain first: configure the height field with a flat, levelled pad under
 	# each house (so every approved house stays grounded) + the carved stream,
 	# then register it as the ground provider so the chunked vegetation follows.
 	_terrain = TerrainField.new()
-	_terrain.configure(_house_pads(), STREAM)
+	var pads := _house_pads()
+	for p in pads:
+		_house_centers.append(p["center"])
+	_terrain.configure(pads, STREAM)
 	GroundSampler.set_height_provider(_terrain.height_at)
-	add_child(TerrainBuilder.build(_terrain, TERR_MIN.x, TERR_MIN.y, TERR_MAX.x, TERR_MAX.y, TERR_RES))
+	add_child(TerrainBuilder.build(_terrain, TERR_MIN.x, TERR_MIN.y, TERR_MAX.x, TERR_MAX.y,
+		TERR_RES, _zone_weights))
 
 	# Player starts to the south, looking north across the stream to the village.
 	BlockoutUtil.add_spawn(self, "PlayerSpawn", Vector3(0.0, _g(0.0, 17.0) + 0.2, 17.0))
@@ -110,6 +131,78 @@ func _exit_tree() -> void:
 ## Terrain height at world XZ (convenience for grounding props/paths/dressing).
 func _g(x: float, z: float) -> float:
 	return _terrain.height_at(x, z) if _terrain != null else 0.0
+
+# --- 8-texture ground zones (M2.4-D.4) --------------------------------------
+#
+# Per-vertex weights for the eight ground textures, blended by terrain_splat.
+# Slots: 0 grass · 1 dry soil · 2 gravel · 3 moist soil · 4 farming soil ·
+#        5 fallen leaves · 6 river rock · 7 path-edge rock. Natural material
+# zones (worn paths, wet riverbanks, cultivated gardens, maintained yards,
+# forest-edge leaf litter) melt together; a little value noise breaks the
+# boundaries so there are no square patches. Returns raw weights (the shader
+# normalizes).
+func _dist_to_lanes(x: float, z: float) -> Dictionary:
+	var best := 1.0e9
+	var wid := 2.4
+	var p := Vector2(x, z)
+	for lane in LANES:
+		var pts: Array = lane["pts"]
+		for i in pts.size() - 1:
+			var d := _seg_dist(p, pts[i], pts[i + 1])
+			if d < best:
+				best = d
+				wid = float(lane["w"])
+	return {"d": best, "w": wid}
+
+func _seg_dist(p: Vector2, a: Vector2, b: Vector2) -> float:
+	var ab := b - a
+	var l2 := ab.length_squared()
+	if l2 < 0.0001:
+		return p.distance_to(a)
+	return p.distance_to(a + ab * clampf((p - a).dot(ab) / l2, 0.0, 1.0))
+
+func _zone_weights(x: float, z: float) -> PackedFloat32Array:
+	var p := Vector2(x, z)
+	# deterministic value noise to soften every boundary
+	var n := 0.5 + 0.5 * sin(x * 0.7 + z * 0.9) * cos(x * 0.5 - z * 0.6)
+	var half := _terrain.stream_half_width()
+	var ds := _terrain.stream_distance(x, z)
+	var lane := _dist_to_lanes(x, z)
+	var dp: float = lane["d"]
+	var pw: float = float(lane["w"]) * 0.5
+
+	var w := PackedFloat32Array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
+	# 6 river rock — in/at the channel; 3 moist soil — the wet bank just beyond.
+	var river := smoothstep(half + 1.4 + n * 0.6, half - 0.4, ds)
+	var moist := clampf(smoothstep(half + 5.0, half + 0.8, ds) - river, 0.0, 1.0)
+	# 2 gravel — worn path; 7 path-edge rock — a thin irregular band along it.
+	var gravel := smoothstep(pw + 0.5 + n * 0.4, pw - 0.5, dp)
+	var pathrock := clampf(smoothstep(pw + 1.5 + n * 0.6, pw + 0.3, dp) - gravel, 0.0, 1.0) * 0.7
+	# 4 farming soil — cultivated garden discs.
+	var farm := 0.0
+	for gd in GARDENS:
+		farm = maxf(farm, smoothstep(float(gd["r"]) + 1.2, float(gd["r"]) - 0.8, p.distance_to(gd["c"])))
+	# 1 dry soil — maintained/worn ground around the houses (yards).
+	var dry := 0.0
+	for c in _house_centers:
+		dry = maxf(dry, smoothstep(9.0, 3.0, p.distance_to(c)))
+	dry *= 0.75 * (0.7 + 0.6 * n)
+	# 5 fallen leaves — the outer forest-edge ring (under the pines).
+	var dc := p.distance_to(_terrain.village_center())
+	var leaves := smoothstep(24.0, 34.0, dc) * (0.5 + 0.5 * n)
+
+	w[6] = river * 1.4
+	w[3] = moist
+	w[2] = gravel * 1.4
+	w[7] = pathrock
+	w[4] = farm
+	w[1] = dry
+	w[5] = leaves * 0.7
+	# 0 grass — fills whatever the zones above leave, so most open ground reads as
+	# short grass with soil showing through (never a bare single fill).
+	var taken := w[1] + w[2] + w[3] + w[4] + w[5] + w[6] + w[7]
+	w[0] = maxf(0.12, 1.1 - taken) * (0.75 + 0.5 * n)
+	return w
 
 ## Compute a flat levelling pad {center, radius} under each house from its real
 ## footprint, so the terrain is level where houses stand (no tilt/sink/float).
@@ -360,24 +453,20 @@ func _play_boundary() -> void:
 # --- Lanes ------------------------------------------------------------------
 
 func _build_lanes() -> void:
-	# A rural circulation network conforming to the terrain: from the entrance to
-	# the stream crossing (the stepping stones bridge the channel), on through the
-	# village with branches to the house clusters and up to the manor. Curved,
-	# never a straight ribbon; stones are visual-only and grounded to the terrain.
-	_lane([Vector2(0, 17.6), Vector2(0, 16.0)], 2.6)                                  # entrance -> crossing
-	_lane([Vector2(0.5, 9.4), Vector2(-1.5, 4.0), Vector2(1.0, -1.0), Vector2(-1.2, -7.0),
-		Vector2(0.8, -13.0), Vector2(1.6, -19.0), Vector2(-0.6, -25.0), Vector2(-4.0, -32.0)], 2.6)  # crossing -> manor
-	_lane([Vector2(1.0, -1.0), Vector2(7.0, -2.0), Vector2(13.0, -3.5)], 2.0)         # branch east (House E)
-	_lane([Vector2(-1.2, -7.0), Vector2(-9.0, -9.0), Vector2(-17.0, -12.0)], 2.0)     # branch west (Houses D/F)
-	_lane([Vector2(-0.6, -25.0), Vector2(-6.0, -29.0)], 2.0)                          # manor forecourt
-
-func _lane(pts: Array, w: float) -> void:
-	for p in pts:
-		var xz := p as Vector2
-		add_child(BlockoutUtil.visual_box_mat(
-			Vector3(w, 0.06, w), Vector3(xz.x, _g(xz.x, xz.y) + 0.04, xz.y),
-			MaterialLibrary.get_mat(&"path")))
-		_excl.append(Rect2(xz.x - w * 0.5, xz.y - w * 0.5, w, w))
+	# The paths are now the terrain's GRAVEL texture zone (see _zone_weights /
+	# LANES) with path-edge rocks along them — no raised grey slabs. This pass only
+	# registers the vegetation exclusions along every lane so grass/flowers never
+	# grow in the middle of a walking route (the route stays readable + clear).
+	for lane in LANES:
+		var pts: Array = lane["pts"]
+		var w: float = float(lane["w"])
+		for i in pts.size() - 1:
+			var a: Vector2 = pts[i]
+			var b: Vector2 = pts[i + 1]
+			var steps := maxi(int(a.distance_to(b) / (w * 0.5)), 1)
+			for s in steps + 1:
+				var c := a.lerp(b, float(s) / float(steps))
+				_excl.append(Rect2(c.x - w * 0.5, c.y - w * 0.5, w, w))
 
 # --- M2.4-C dressing props (real GLB assets, staged by area) ----------------
 #
@@ -468,16 +557,12 @@ func _place_props() -> void:
 	_prop(PropKit.FIREWOOD_RACK, -26.0, -30.0, 50.0, 1.0, "box", 0.0, 0.0, 0.0, 2.4)
 	_prop(PropKit.BASKETS, 20.0, -25.0, 10.0, 0.55)
 
-	# Lane lanterns + stone paving at intersections + a fork signpost.
+	# Lane lanterns + a fork signpost (the path itself is the terrain gravel zone).
 	_lamp(-1.0, -6.0)
 	_lamp(1.0, -18.0)
-	_prop(PropKit.STONE_PAVING, 1.0, -1.0, 0.0, 1.15)
-	_prop(PropKit.STONE_PAVING, -1.2, -7.0, 20.0, 1.15)
-	_prop(PropKit.STONE_PAVING, 0.8, -13.0, -15.0, 1.15)
 	_prop(PropKit.SIGNPOST, 2.4, -1.6, 30.0, 0.85, "post", 0.0, 0.0, 0.0, 1.0)
 
 	# ZONE 4 — MANOR FORECOURT (~ x0,z-35): a small civic space.
-	_prop(PropKit.STONE_PAVING, -3.0, -30.0, 0.0, 1.2)
 	_lamp(-5.5, -29.0)
 	_lamp(5.5, -29.0)
 	# (Forecourt cherry + blossoms are vegetation — see _place_vegetation ZONE-D.)
@@ -508,6 +593,21 @@ func _cluster(path: String, cx: float, cz: float, count: int, radius: float,
 		var z := cz + sin(a) * r
 		_prop(path, x, z, rng.randf_range(0.0, 360.0), rng.randf_range(smin, smax),
 			"", 0.0, y_off, lod, 0.0)
+
+## A loose cluster of SMALL pines (the pine GLB at reduced scale) around (cx,cz):
+## irregular spacing/scale/rotation, trunk collision, kept off exclusions.
+func _small_pines(cx: float, cz: float, count: int, radius: float, seed: int) -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = seed
+	for i in count:
+		var a := rng.randf() * TAU
+		var r := radius * sqrt(rng.randf())
+		var x := cx + cos(a) * r
+		var z := cz + sin(a) * r
+		if _in_excl(x, z):
+			continue
+		_prop(PropKit.PINE, x, z, rng.randf_range(0.0, 360.0),
+			rng.randf_range(1.5, 2.4), "post", 0.0, 0.0, 120.0, 1.6)
 
 ## True if (x,z) falls inside any registered exclusion (a house pad, a lane, the
 ## stream channel, or a placed prop) — so scattered ground cover never grows on a
@@ -568,6 +668,11 @@ func _place_vegetation() -> void:
 	_rocks(PropKit.RIVER_ROCKS, -16.5, 15.6, 10.0, 1.1, "", 0.0, 2.1)
 	_rocks(PropKit.RIVER_ROCKS, 22.5, 6.0, -20.0, 1.2, "box", 0.3, 2.3)
 	_rocks(PropKit.RIVER_ROCKS, -22.0, 16.6, 45.0, 1.0, "", 0.0, 2.0)
+	# Heavier concentration flanking the bridge approaches (a focal point).
+	_rocks(PropKit.RIVER_ROCKS, 3.2, 12.0, 10.0, 1.25, "box", 0.35, 2.3)
+	_rocks(PropKit.RIVER_ROCKS, -3.4, 15.4, -30.0, 1.2, "box", 0.35, 2.2)
+	_rocks(PropKit.RIVER_ROCKS, 2.2, 16.2, 70.0, 0.85, "", 0.0, 1.6)
+	_rocks(PropKit.RIVER_ROCKS, -2.0, 11.6, 120.0, 0.9, "", 0.0, 1.7)
 	_cluster(PropKit.GRASS_CLUMP, 12.0, 12.0, 4, 2.0, 0.24, 0.34, 45.0, 6011, -0.12)
 	_cluster(PropKit.GRASS_CLUMP, -12.0, 15.5, 4, 2.0, 0.24, 0.34, 45.0, 6012, -0.12)
 	_cluster(PropKit.FLOWERS, 7.5, 15.4, 2, 1.2, 0.30, 0.40, 42.0, 6013)
@@ -594,24 +699,28 @@ func _place_vegetation() -> void:
 			[-13.0, -11.0, -30.0], [2.6, 17.4, 0.0], [-2.6, 17.4, 12.0]]:
 		_prop(PropKit.PATH_ROCKS, e[0], e[1], e[2], 0.85)
 
-	# ZONE-GROUND — LUSH COUNTRYSIDE COVER (kept AROUND the village, not the whole
-	# map): dense grass tufts + plenty of natural field stones, scattered with
-	# jitter over the reachable valley and automatically skipping houses, lanes,
-	# the stream and placed props (via _in_excl). Everything is a shared GLB
-	# instance with a tight LOD so the density stays cheap on mobile.
-	# Flowers — colour accents sprinkled through the grass.
-	_scatter_field(PropKit.FLOWERS, -40.0, -50.0, 40.0, 22.0, 34, 0.26, 0.42, 40.0, 7110)
-	# Natural field stones — LOTS, mostly small + decorative, worked across the
-	# whole island floor, a few larger with simple box collision.
-	_scatter_field(PropKit.RIVER_ROCKS, -46.0, -60.0, 46.0, 34.0, 34, 0.45, 0.9, 65.0, 7120)
-	_scatter_field(PropKit.PATH_ROCKS, -46.0, -60.0, 46.0, 34.0, 26, 0.5, 0.95, 60.0, 7122)
-	_scatter_field(PropKit.RIVER_ROCKS, -20.0, -4.0, 24.0, 20.0, 14, 0.5, 0.9, 65.0, 7121)
-	# A few larger river-boulder spreads as landmarks in the open ground.
-	_rocks(PropKit.RIVER_ROCKS, -14.0, -2.0, 25.0, 1.2, "box", 0.35, 2.3)
-	_rocks(PropKit.RIVER_ROCKS, 19.0, -16.0, -35.0, 1.15, "box", 0.35, 2.2)
-	_rocks(PropKit.RIVER_ROCKS, -9.0, -30.0, 60.0, 1.1, "box", 0.3, 2.1)
-	_rocks(PropKit.RIVER_ROCKS, 30.0, 4.0, 15.0, 1.15, "box", 0.3, 2.2)
-	_rocks(PropKit.RIVER_ROCKS, -34.0, -10.0, -50.0, 1.1, "box", 0.3, 2.1)
+	# ZONE-BACKGROUND — a believable village silhouette from LARGE pines massed
+	# behind the houses (north edge), asymmetric, varied scale — depth, not a wall.
+	# Large sakura are woven in so the far skyline shows blossom too.
+	for bp in [[-30.0, -46.0, 4.6], [-22.0, -49.0, 4.2], [-13.0, -47.0, 4.8],
+			[6.0, -48.0, 4.4], [16.0, -46.0, 4.9], [27.0, -47.0, 4.3], [33.0, -40.0, 4.0]]:
+		_prop(PropKit.PINE, bp[0], bp[1], randf() * 360.0, bp[2], "post", 0.0, 0.0, 150.0, 2.5)
+	_prop(PropKit.SAKURA_LARGE, -34.0, -30.0, -20.0, 3.1, "post", 0.0, 0.0, 170.0, 3.0)
+	_prop(PropKit.SAKURA_LARGE, 33.0, -22.0, 40.0, 3.0, "post", 0.0, 0.0, 170.0, 3.0)
+	# Extra foreground large sakura framing the entrance view (asymmetric pair).
+	_prop(PropKit.SAKURA_LARGE, 14.0, 22.0, -35.0, 3.2, "post", 0.0, 0.0, 170.0, 3.0)
+
+	# SMALL PINES — the pine GLB at a smaller scale, in loose 2–4 clusters filling
+	# midground/background gaps (varied spacing/rotation, clear of paths/houses).
+	_small_pines(-33.0, 2.0, 3, 5.0, 8401)
+	_small_pines(29.0, -8.0, 3, 5.5, 8402)
+	_small_pines(-30.0, -40.0, 4, 6.0, 8403)
+	_small_pines(24.0, -38.0, 3, 5.0, 8404)
+	_small_pines(-18.0, 16.0, 2, 4.0, 8405)
+
+	# GROUND FLOWERS — a few extra small natural clusters (not a uniform field);
+	# most flowers are the hand-placed clusters by houses/paths/river/sakura above.
+	_scatter_field(PropKit.FLOWERS, -34.0, -44.0, 34.0, 20.0, 14, 0.26, 0.42, 40.0, 7110)
 
 	# ZONE-FOREST — LOCAL vegetation only, kept INSIDE the small ground patch (no
 	# forest filling the empty surrounding space). Supplied tree + grass GLBs,
@@ -633,7 +742,7 @@ func _place_vegetation() -> void:
 	# Grass tufts across the patch (village included), tight LOD so the heavy
 	# clumps only render near the player; the terrain texture covers the rest.
 	add_child(GlbScatter.scatter(PropKit.GRASS_CLUMP, box.position.x, box.position.y,
-		box.end.x, box.end.y, 15.0, 4, 0.22, 0.42, 26.0, 5203, _excl,
+		box.end.x, box.end.y, 16.0, 3, 0.22, 0.42, 26.0, 5203, _excl,
 		vc, 0.0, play - 1.5, 0.12))
 
 ## A river/path rock GLB spread grounded on the terrain (box collision optional).
