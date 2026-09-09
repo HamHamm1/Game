@@ -58,6 +58,7 @@ func _run() -> void:
 	_test_props()
 	_test_only_glb_vegetation()
 	_test_npc_prototype()
+	_test_npc_navigation()
 
 func _test_item_registry() -> void:
 	_check(ItemRegistry.has_definition(&"fish"), "ItemRegistry has fish")
@@ -769,6 +770,8 @@ func _test_npc_prototype() -> void:
 	_check(it != null, "NPC has an Interactable")
 	_check(it != null and it.get_interaction_verb(null) == "TALK", "NPC interaction verb is TALK")
 	_check(npc.has_animation(), "NPC reports usable skeleton + animation")
+	# Navigation agent present (roaming is nav-driven, not teleport).
+	_check(_first_of(npc, "NavigationAgent3D") != null, "NPC has a NavigationAgent3D")
 	# Feet grounded: the mesh sits at ~y=0 in the NPC's local space.
 	var min_y := 1.0e9
 	for mi in _nodes_of(npc, "MeshInstance3D"):
@@ -785,6 +788,48 @@ func _test_npc_prototype() -> void:
 		if dsc is NpcPrototype:
 			npcs += 1
 	_check(npcs == 1, "hero_village stages exactly one NPC prototype")
+	region.free()
+
+## M2.5.1 — village NPC navigation: the region builds a reusable NavigationRegion3D
+## whose walkable navmesh EXCLUDES houses, the stream and the play edge (so the NPC
+## never routes into a building or water), and the placed NPC gets the autonomous
+## roaming brain. Guards the "walk through House A–H / into the stream" hazards.
+func _test_npc_navigation() -> void:
+	var region := (load("res://src/world/regions/hero_village.tscn") as PackedScene).instantiate()
+	add_child(region)
+	var nav: NpcNavigation = null
+	var npc: NpcPrototype = null
+	for d in _descendants(region):
+		if d is NpcNavigation:
+			nav = d
+		if d is NpcPrototype:
+			npc = d
+	_check(nav != null, "region builds an NpcNavigation service")
+	if nav != null:
+		_check(nav.has_region(), "navigation has a baked walkable navmesh (polygons > 0)")
+		# The NPC's own spot + an open yard are walkable; houses / stream / far edge are not.
+		_check(nav.is_walkable(4.6, 4.2), "NPC yard is walkable")
+		var hc: Vector3 = region._house_center(region.HOUSE_LAYOUT[0][0],
+			region.HOUSE_LAYOUT[0][1], region.HOUSE_LAYOUT[0][2])
+		_check(not nav.is_walkable(hc.x, hc.z), "House A interior is NOT walkable (no nav inside houses)")
+		_check(not nav.is_walkable(0.0, 13.5), "the stream channel is NOT walkable")
+		_check(not nav.is_walkable(0.0, 200.0), "far outside the play area is NOT walkable")
+		# Destinations are always valid walkable points.
+		var rng := RandomNumberGenerator.new()
+		rng.seed = 12345
+		var ok := true
+		for _i in 20:
+			var dest := nav.random_destination(rng)
+			if not nav.is_walkable(dest.x, dest.z):
+				ok = false
+		_check(ok, "random_destination always returns a walkable point")
+	_check(npc != null and _first_of(npc, "NavigationAgent3D") != null, "staged NPC has a nav agent")
+	var has_brain := false
+	if npc != null:
+		for c in npc.get_children():
+			if c is NpcRoaming:
+				has_brain = true
+	_check(has_brain, "staged NPC has an autonomous roaming brain")
 	region.free()
 
 ## First descendant (or self) whose class matches `type_name` (built-in or script class).

@@ -25,8 +25,8 @@ func get_interaction_priority() -> int:
 func interact(player: Player) -> void:
 	if npc == null:
 		return
-	npc.set_state(NpcPrototype.State.TALK)
-	if player != null:
-		npc.look_at_player(player.global_position)
-	npc.relationship["met"] = true
-	npc.talked.emit(npc)   # future: the dialogue system opens a conversation here
+	# Talking wins: this stops movement, cancels the roaming destination, holds the
+	# NPC in place and faces the player. A future dialogue system opens on `talked`
+	# and calls npc.end_talk() when the conversation finishes.
+	var pos := player.global_position if player != null else npc.global_position
+	npc.begin_talk(pos)

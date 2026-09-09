@@ -13,6 +13,53 @@ Status labels follow AI_RULES.md Rule 11:
 
 ## [Unreleased]
 
+### Phase 2 M2.5.1 — NPC autonomous roaming + rest + safe navigation `NEEDS TESTING`
+
+Make the NPC a believable villager: it wanders safe village spaces, pauses/rests,
+and stops to talk — never walking through houses or into the stream. Uses the
+existing NPC + scene; no models/environment changed; existing player/camera/
+interaction/entry-exit/weather/lighting/terrain/vegetation untouched. No dialogue
+AI/API. **NOT** ANDROID VERIFIED.
+
+- **NEW `src/npc/npc_navigation.gd` (`NpcNavigation`)** — a reusable village
+  navigation service (supports future NPCs). Builds ONE `NavigationRegion3D` with
+  a terrain-conforming grid navmesh whose walkable area EXCLUDES the stream, every
+  house footprint (its level pad — so **no walkable surface is created inside a
+  building**; the real doorways stay physically reachable by the player), the
+  play-area edge, and every solid prop (its `PropCollision` box footprint,
+  rotation-aware, padded by the agent radius). Region-agnostic (terrain/stream/
+  pads/blockers/anchors are passed in). Exposes `is_walkable()` + a
+  `random_destination()` that seeds from safe anchors with jitter (varied routes).
+- **NEW `src/npc/npc_roaming.gd` (`NpcRoaming`)** — the thin, replaceable decision
+  brain: IDLE → ROAMING → arrive → short idle (3–10 s) or a longer rest (15–40 s,
+  ~28%) → next destination; gentle glances while resting; paces via a countdown
+  timer (no per-frame nav rebuilds/raycasts — Android-cheap). Talking pauses it;
+  it resumes only after a brief idle post-conversation (never walks off instantly).
+- **`NpcPrototype` extended** into the NPC body + movement: a `NavigationAgent3D`
+  drives it along the path, easing speed near the target and stopping cleanly;
+  `move_and_slide` keeps it grounded on the terrain (never floats/sinks) and is
+  the physics safety net against clipping any wall/rock; smooth yaw toward heading
+  or the player; IDLE↔WALK animation from the existing `Casual_Walk` clip. New
+  state machine `State {IDLE, ROAMING, RESTING, TALKING, + reserved WORKING…
+  SPECIAL_EVENT}` and API: `go_to`, `halt`, `begin_talk`/`end_talk`,
+  `look_at_player`, `reached_destination`/`talk_started`/`talk_ended` signals.
+- **Talk priority**: interacting calls `begin_talk` — instantly stops movement,
+  cancels the roaming destination, holds in place and faces the player;
+  `end_talk` returns to IDLE (a future dialogue system calls it; with none, it
+  auto-ends after `talk_hold_seconds`). The NPC cannot wander off mid-conversation
+  (`go_to` is ignored while TALKING).
+- **`hero_village`** builds the navigation after the environment and places the
+  one NPC with the roaming brain; gathers solid-prop blockers from their
+  `PropCollision` bodies. Nothing else re-arranged.
+- **Tests** 254 → 264: `_test_npc_navigation` (navmesh built; NPC yard walkable;
+  House A interior / stream / far-edge NOT walkable; `random_destination` always
+  walkable; staged NPC has a nav agent + roaming brain) + NPC nav-agent check.
+  A separate headless behaviour sim confirmed: moves along paths (no teleport,
+  max step 0.68 m), grounded (0.015 m offset), 0 house/stream intrusions, and 0 m
+  drift when talking begins.
+- Validation: static 107 · headless import/boot clean · 264/264 · behaviour sim
+  PASS. **NOT** ANDROID VERIFIED.
+
 ### Phase 2 M2.5 — First NPC prototype (import + integration only) `NEEDS TESTING`
 
 Import & integrate the first high-fidelity NPC (owner-provided Meshy character)

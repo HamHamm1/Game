@@ -84,6 +84,7 @@ const HOUSE_LAYOUT := [
 var _excl: Array[Rect2] = []
 var _terrain: TerrainField
 var _house_centers: Array[Vector2] = []
+var _nav: NpcNavigation
 
 # M2.4-D.4 — path centrelines (also drive the terrain gravel zone + path-edge
 # rocks + vegetation exclusions) and cultivated garden discs (farming-soil zone).
@@ -120,9 +121,10 @@ func _ready() -> void:
 	_build_stream()
 	_build_lanes()
 	_place_props()      # M2.4-C dressing: real GLB structure props staged by area
-	_place_npc()        # M2.5: one high-fidelity NPC prototype (import + integrate)
 	_place_vegetation() # M2.4-D: ONLY owner-supplied vegetation + rock GLBs
 	_play_boundary()    # M2.4-D.3: invisible edge wall at the small ground's rim
+	_build_navigation() # M2.5.1: village navmesh from terrain + collider footprints
+	_place_npc()        # M2.5: one high-fidelity NPC prototype (now autonomous)
 
 ## Clear the global ground provider when this region leaves the tree, so nothing
 ## keeps sampling this terrain after it is unloaded (and headless tests stay flat).
@@ -571,10 +573,73 @@ func _place_props() -> void:
 
 # --- NPC prototype (M2.5) ---------------------------------------------------
 
-## Place ONE high-fidelity NPC prototype near the central yard/path (off the main
-## walking route, not blocking any house entrance), grounded on the terrain. The
-## environment is not rearranged for it. Registers a small vegetation exclusion so
-## grass/flowers don't grow through the character.
+# --- NPC navigation + placement (M2.5 / M2.5.1) -----------------------------
+
+## Safe destination anchors the roaming brain seeds from (open village spaces:
+## House A yard, central yard, path bends, stream-side, bridge approach, garden
+## edges). Each is jittered + validated walkable at runtime, so routes vary.
+static var NPC_ANCHORS := [
+	Vector2(4.5, 4.0), Vector2(0.0, 1.0), Vector2(-6.0, 7.0), Vector2(9.0, 5.0),
+	Vector2(-13.0, 3.0), Vector2(2.0, -8.0), Vector2(-2.0, -18.0), Vector2(12.0, -2.0),
+	Vector2(-16.0, -6.0), Vector2(0.0, 12.0),
+]
+
+## Build the reusable village NavigationService from the existing terrain + real
+## collider footprints (houses via their level pads, solid props via their
+## PropCollision bodies), the stream, and the play-area disc. Nothing inside a
+## house becomes walkable; the NPC's physics capsule is the second safety net.
+func _build_navigation() -> void:
+	_nav = NpcNavigation.new()
+	_nav.name = "NpcNavigation"
+	add_child(_nav)
+	_nav.configure(_g, _terrain.stream_distance, _terrain.stream_half_width(),
+		_terrain.village_center(), _terrain.play_radius(),
+		_house_pads(), _gather_nav_blockers(), NPC_ANCHORS)
+	_nav.build()
+
+## Solid-prop footprints (bridge deck, sheds, racks, benches, fences, big rocks,
+## tree trunks, signposts) as XZ rects, from their PropKit "PropCollision" bodies,
+## expanded by the agent radius so the NPC routes around them.
+func _gather_nav_blockers() -> Array:
+	var out: Array = []
+	for body in _find_all_named(self, "PropCollision"):
+		var b := body as StaticBody3D
+		if b == null:
+			continue
+		for cs in b.get_children():
+			if cs is CollisionShape3D and (cs as CollisionShape3D).shape is BoxShape3D:
+				out.append(_box_world_rect(cs as CollisionShape3D, 0.4))
+	return out
+
+## World-space XZ Rect2 of a box collider (accounts for rotation), padded by the
+## agent radius so the NPC routes cleanly around the prop.
+func _box_world_rect(cs: CollisionShape3D, pad: float) -> Rect2:
+	var half := ((cs.shape as BoxShape3D).size) * 0.5
+	var xf := cs.global_transform
+	var min_x := INF
+	var max_x := -INF
+	var min_z := INF
+	var max_z := -INF
+	for sx: float in [-1.0, 1.0]:
+		for sy: float in [-1.0, 1.0]:
+			for sz: float in [-1.0, 1.0]:
+				var p := xf * Vector3(half.x * sx, half.y * sy, half.z * sz)
+				min_x = minf(min_x, p.x); max_x = maxf(max_x, p.x)
+				min_z = minf(min_z, p.z); max_z = maxf(max_z, p.z)
+	return Rect2(min_x - pad, min_z - pad, (max_x - min_x) + pad * 2.0, (max_z - min_z) + pad * 2.0)
+
+func _find_all_named(n: Node, nm: String) -> Array:
+	var out: Array = []
+	if n.name == nm:
+		out.append(n)
+	for c in n.get_children():
+		out.append_array(_find_all_named(c, nm))
+	return out
+
+## Place ONE high-fidelity NPC prototype in the central yard (off the main path,
+## not blocking any house entrance), grounded on the terrain, and give it the
+## autonomous roaming brain wired to the village navigation. The environment is
+## not rearranged for it.
 func _place_npc() -> void:
 	var packed := load(NPC_PROTO) as PackedScene
 	if packed == null:
@@ -584,8 +649,13 @@ func _place_npc() -> void:
 	var z := 4.2
 	npc.display_name = "Haruki"
 	npc.position = Vector3(x, _g(x, z), z)
-	npc.rotation_degrees = Vector3(0.0, 200.0, 0.0)   # face roughly toward the bridge/entrance
+	npc.rotation_degrees = Vector3(0.0, 200.0, 0.0)
 	add_child(npc)
+	var brain := NpcRoaming.new()
+	brain.name = "NpcRoaming"
+	npc.add_child(brain)
+	if _nav != null:
+		brain.setup(_nav, 91771)
 	_excl.append(Rect2(x - 1.3, z - 1.3, 2.6, 2.6))
 
 # --- Vegetation (M2.4-D) ----------------------------------------------------
