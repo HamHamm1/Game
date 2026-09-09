@@ -649,7 +649,7 @@ func _place_npc() -> void:
 	var z := 4.2
 	npc.display_name = "Haruki"
 	npc.position = Vector3(x, _g(x, z), z)
-	npc.rotation_degrees = Vector3(0.0, 200.0, 0.0)
+	npc.rotation_degrees = Vector3(0.0, 0.0, 0.0)   # front (+Z) toward the entrance/bridge
 	add_child(npc)
 	var brain := NpcRoaming.new()
 	brain.name = "NpcRoaming"

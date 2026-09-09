@@ -772,6 +772,23 @@ func _test_npc_prototype() -> void:
 	_check(npc.has_animation(), "NPC reports usable skeleton + animation")
 	# Navigation agent present (roaming is nav-driven, not teleport).
 	_check(_first_of(npc, "NavigationAgent3D") != null, "NPC has a NavigationAgent3D")
+	# Orientation fix: the GLB sits under a ModelRoot container that carries the
+	# forward correction (0° — the model faces +Z), and the visible front points
+	# along the heading for EVERY movement direction (never backward/sideways).
+	var mroot: Node = null
+	for c in npc.get_children():
+		if c.name == "ModelRoot":
+			mroot = c
+	_check(mroot is Node3D, "NPC model sits under a ModelRoot container")
+	_check(absf(npc.model_yaw_deg) < 0.001, "model forward correction is 0° (model faces +Z, verified)")
+	var facing_ok := true
+	for dir in [Vector3(0, 0, -1), Vector3(0, 0, 1), Vector3(1, 0, 0), Vector3(-1, 0, 0),
+			Vector3(1, 0, 1).normalized(), Vector3(-1, 0, -1).normalized()]:
+		npc.rotation.y = npc.heading_yaw(dir)
+		if npc.model_forward().dot(dir) < 0.99:
+			facing_ok = false
+	_check(facing_ok, "NPC visible front faces the movement direction (N/S/E/W/diagonal)")
+	npc.rotation.y = 0.0
 	# Feet grounded: the mesh sits at ~y=0 in the NPC's local space.
 	var min_y := 1.0e9
 	for mi in _nodes_of(npc, "MeshInstance3D"):

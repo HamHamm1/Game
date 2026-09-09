@@ -27,8 +27,11 @@ enum State { IDLE, ROAMING, RESTING, TALKING, WORKING, EATING, SHOPPING, GOING_H
 @export var display_name: String = "Villager"
 @export var interact_verb: String = "TALK"
 @export var walk_speed: float = 1.35
-## Model forward-axis offset (radians) so heading/LookAt face the right way.
-@export var facing_offset: float = PI
+## Visual-model forward correction, applied to the ModelRoot container (NOT to the
+## navigation/character yaw). The imported GLB's front was verified (offscreen
+## render) to face +Z — the same forward the movement yaw uses — so the correction
+## is 0°. If a future model faced -Z you'd set 180 here and nothing else changes.
+@export var model_yaw_deg: float = 0.0
 ## Auto-end a conversation after this many seconds when NO dialogue system is
 ## driving it (0 = never auto-end; a future dialogue system calls end_talk()).
 @export var talk_hold_seconds: float = 6.0
@@ -41,6 +44,7 @@ const GRAVITY := 18.0
 const TURN_RATE := 6.5
 const SLOW_RADIUS := 2.2      # start easing speed within this distance of the target
 
+var _model_root: Node3D
 var _model: Node3D
 var _skeleton: Skeleton3D
 var _anim: AnimationPlayer
@@ -66,8 +70,15 @@ func _build_model() -> void:
 	if packed == null:
 		push_error("NpcPrototype: could not load %s" % MODEL)
 		return
+	# CharacterBody3D → ModelRoot (holds the forward correction) → GLB. The GLB is
+	# used unmodified; only this container carries the yaw correction, so the
+	# navigation/character forward stays a clean +Z.
+	_model_root = Node3D.new()
+	_model_root.name = "ModelRoot"
+	_model_root.rotation.y = deg_to_rad(model_yaw_deg)
+	add_child(_model_root)
 	_model = packed.instantiate() as Node3D
-	add_child(_model)
+	_model_root.add_child(_model)
 	_skeleton = _find_type(_model, "Skeleton3D") as Skeleton3D
 	_anim = _find_type(_model, "AnimationPlayer") as AnimationPlayer
 	if _anim != null:
@@ -158,6 +169,20 @@ func end_talk() -> void:
 	_talk_timer = 0.0
 	talk_ended.emit(self)
 
+## Yaw that makes the body's forward (+Z) — and thus the model's visible front —
+## point along `dir` (XZ). No offset: the model faces +Z, the same as the body.
+func heading_yaw(dir: Vector3) -> float:
+	return atan2(dir.x, dir.z)
+
+## World-space horizontal direction the VISIBLE model faces (body forward through
+## the ModelRoot correction). Used to verify front == movement/look direction.
+func model_forward() -> Vector3:
+	var b := global_transform.basis
+	if _model_root != null:
+		b = b * _model_root.transform.basis
+	var f := b * Vector3(0.0, 0.0, 1.0)
+	return Vector3(f.x, 0.0, f.z).normalized()
+
 ## Face a world position (yaw only, smoothed). clear_look() releases it.
 func look_at_player(world_pos: Vector3) -> void:
 	_face_target = world_pos
@@ -185,7 +210,7 @@ func _physics_process(delta: float) -> void:
 				var dir := to.normalized()
 				velocity.x = dir.x * spd
 				velocity.z = dir.z * spd
-				_desired_yaw = atan2(dir.x, dir.z) + facing_offset
+				_desired_yaw = heading_yaw(dir)
 				moving = true
 	if not moving:
 		velocity.x = 0.0
@@ -198,7 +223,7 @@ func _physics_process(delta: float) -> void:
 		var f := _face_target - global_position
 		f.y = 0.0
 		if f.length_squared() > 0.0025:
-			_desired_yaw = atan2(f.x, f.z) + facing_offset
+			_desired_yaw = heading_yaw(f)
 	rotation.y = lerp_angle(rotation.y, _desired_yaw, clampf(delta * TURN_RATE, 0.0, 1.0))
 
 	_apply_anim(moving)

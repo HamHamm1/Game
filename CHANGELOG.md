@@ -13,6 +13,39 @@ Status labels follow AI_RULES.md Rule 11:
 
 ## [Unreleased]
 
+### Phase 2 M2.5.1-fix — NPC forward-axis / facing correction `NEEDS TESTING`
+
+The NPC visibly walked backwards and turned its back to the player on TALK: the
+visual model's forward axis was opposite the character/navigation forward. Fixed
+at the model-container level; the GLB, navigation, movement direction and
+pathfinding are all unchanged. **NOT** ANDROID VERIFIED.
+
+- **Inspected the GLB** (offscreen renders of the raw model, no rotation): the
+  character's FRONT (face/chest) is on **+Z**, its back on −Z — i.e. the model
+  already faces +Z, the same forward the movement yaw produces.
+- **Root cause**: `NpcPrototype` applied a bogus `facing_offset = PI` to the
+  CharacterBody3D yaw, rotating the whole body 180° so the (+Z-facing) model
+  pointed away from its heading and away from the player.
+- **Fix (model-container level, not navigation)**: the GLB is now parented under a
+  new **`ModelRoot`** node (`CharacterBody3D → ModelRoot → GLB`) that carries the
+  visual forward correction — verified **0°** because the model faces +Z. The
+  body/nav yaw is now plain `heading_yaw(dir) = atan2(dir.x, dir.z)` (forward =
+  +Z) for both walking and LookAt, with **no** offset. `facing_offset` is
+  removed; a `model_yaw_deg` export (default 0) lives on `ModelRoot` for any
+  future model whose front differs. The NPC's initial placement yaw is now 0°
+  (front toward the entrance) instead of an arbitrary 200°.
+- **Result**: the visible front now points along the movement direction in every
+  direction (N/S/E/W/diagonal) — no backward/sideways walk, no skating — and on
+  TALK the NPC turns its FRONT toward the player from any approach side. The
+  Casual_Walk animation now reads as walking forward. Navigation, collision,
+  pathfinding, destination selection, grounding, the state machine and talk
+  behaviour are all unchanged. The GLB itself is untouched.
+- **Tests** 264 → 267: `_test_npc_prototype` now asserts the `ModelRoot`
+  container + `model_yaw_deg == 0` + `model_forward()` aligns with the heading for
+  N/S/E/W/diagonal.
+- Validation: static 107 · headless import/boot clean · 267/267 · runtime facing
+  sim (roam + TALK from 4 sides). **NOT** ANDROID VERIFIED.
+
 ### Phase 2 M2.5.1 — NPC autonomous roaming + rest + safe navigation `NEEDS TESTING`
 
 Make the NPC a believable villager: it wanders safe village spaces, pauses/rests,
