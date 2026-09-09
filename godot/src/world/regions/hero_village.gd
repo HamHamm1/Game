@@ -46,6 +46,7 @@ const HOUSE_3 := "res://assets/meshes/houses/village_house3.glb"
 const HOUSE_4 := "res://assets/meshes/houses/village_house4.glb"
 const HOUSE_7 := "res://assets/meshes/houses/village_house7.glb"
 const INTERIOR := "res://src/world/locations/house_interior_wood.tscn"
+const NPC_PROTO := "res://src/npc/npc_prototype.tscn"   # M2.5 first NPC prototype
 
 ## Lighting-profile tag read by RegionLightingController (M2.2). Residential.
 @export var lighting_category: StringName = &"residential"
@@ -119,6 +120,7 @@ func _ready() -> void:
 	_build_stream()
 	_build_lanes()
 	_place_props()      # M2.4-C dressing: real GLB structure props staged by area
+	_place_npc()        # M2.5: one high-fidelity NPC prototype (import + integrate)
 	_place_vegetation() # M2.4-D: ONLY owner-supplied vegetation + rock GLBs
 	_play_boundary()    # M2.4-D.3: invisible edge wall at the small ground's rim
 
@@ -566,6 +568,25 @@ func _place_props() -> void:
 	_lamp(-5.5, -29.0)
 	_lamp(5.5, -29.0)
 	# (Forecourt cherry + blossoms are vegetation — see _place_vegetation ZONE-D.)
+
+# --- NPC prototype (M2.5) ---------------------------------------------------
+
+## Place ONE high-fidelity NPC prototype near the central yard/path (off the main
+## walking route, not blocking any house entrance), grounded on the terrain. The
+## environment is not rearranged for it. Registers a small vegetation exclusion so
+## grass/flowers don't grow through the character.
+func _place_npc() -> void:
+	var packed := load(NPC_PROTO) as PackedScene
+	if packed == null:
+		return
+	var npc := packed.instantiate() as NpcPrototype
+	var x := 4.6
+	var z := 4.2
+	npc.display_name = "Haruki"
+	npc.position = Vector3(x, _g(x, z), z)
+	npc.rotation_degrees = Vector3(0.0, 200.0, 0.0)   # face roughly toward the bridge/entrance
+	add_child(npc)
+	_excl.append(Rect2(x - 1.3, z - 1.3, 2.6, 2.6))
 
 # --- Vegetation (M2.4-D) ----------------------------------------------------
 #

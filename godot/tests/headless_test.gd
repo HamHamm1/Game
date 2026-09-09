@@ -57,6 +57,7 @@ func _run() -> void:
 	_test_terrain()
 	_test_props()
 	_test_only_glb_vegetation()
+	_test_npc_prototype()
 
 func _test_item_registry() -> void:
 	_check(ItemRegistry.has_definition(&"fish"), "ItemRegistry has fish")
@@ -733,6 +734,68 @@ func _test_only_glb_vegetation() -> void:
 				complex += 1
 	_check(complex >= 30, "region stages many imported vegetation/prop GLB instances (>=30)")
 	region.free()
+
+## M2.5 — first NPC prototype: the owner-provided rigged GLB imports with a real
+## skeleton + animation (honest capability), and the prototype scene wraps that
+## unmodified mesh with capsule body collision (never the render mesh), a TALK
+## Interactable, feet grounded at y=0, and is placed exactly once in the village.
+func _test_npc_prototype() -> void:
+	# The rigged source model actually carries a skeleton + a usable animation.
+	var rigged := (load("res://assets/npc/villager_walk.glb") as PackedScene).instantiate()
+	var sk := _first_of(rigged, "Skeleton3D") as Skeleton3D
+	var ap := _first_of(rigged, "AnimationPlayer") as AnimationPlayer
+	_check(sk != null and sk.get_bone_count() > 0, "NPC rigged GLB has a skeleton with bones")
+	_check(ap != null and ap.get_animation_list().size() > 0, "NPC rigged GLB has at least one animation")
+	rigged.free()
+
+	var npc := (load("res://src/npc/npc_prototype.tscn") as PackedScene).instantiate() as NpcPrototype
+	add_child(npc)
+	# Render mesh is the imported (non-primitive) GLB mesh, unmodified.
+	_check(_has_complex_mesh(npc), "NPC scene shows the imported GLB mesh")
+	# Simple capsule body collision — NOT the render mesh.
+	var caps := 0
+	for cs in _nodes_of(npc, "CollisionShape3D"):
+		if (cs as CollisionShape3D).shape is CapsuleShape3D:
+			caps += 1
+	_check(caps >= 1, "NPC has a capsule body collider")
+	for mi in _nodes_of(npc, "MeshInstance3D"):
+		_check(_nodes_of(mi, "StaticBody3D").is_empty(), "NPC render mesh is not used as collision")
+	# TALK interactable hook (no dialogue yet).
+	var it: NpcInteractable = null
+	for c in npc.get_children():
+		if c is NpcInteractable:
+			it = c
+			break
+	_check(it != null, "NPC has an Interactable")
+	_check(it != null and it.get_interaction_verb(null) == "TALK", "NPC interaction verb is TALK")
+	_check(npc.has_animation(), "NPC reports usable skeleton + animation")
+	# Feet grounded: the mesh sits at ~y=0 in the NPC's local space.
+	var min_y := 1.0e9
+	for mi in _nodes_of(npc, "MeshInstance3D"):
+		var a: AABB = (mi as MeshInstance3D).transform * (mi as MeshInstance3D).get_aabb()
+		min_y = minf(min_y, a.position.y)
+	_check(absf(min_y) < 0.08, "NPC feet sit at y=0 (grounded)")
+	npc.free()
+
+	# Exactly one NPC is staged in the village.
+	var region := (load("res://src/world/regions/hero_village.tscn") as PackedScene).instantiate()
+	add_child(region)
+	var npcs := 0
+	for dsc in _descendants(region):
+		if dsc is NpcPrototype:
+			npcs += 1
+	_check(npcs == 1, "hero_village stages exactly one NPC prototype")
+	region.free()
+
+## First descendant (or self) whose class matches `type_name` (built-in or script class).
+func _first_of(n: Node, type_name: String) -> Node:
+	if n.is_class(type_name):
+		return n
+	for c in n.get_children():
+		var r := _first_of(c, type_name)
+		if r != null:
+			return r
+	return null
 
 ## True if the subtree holds a MeshInstance3D with a non-primitive (imported)
 ## mesh — i.e. a hero GLB, as opposed to the kit's BoxMesh/PrismMesh primitives.

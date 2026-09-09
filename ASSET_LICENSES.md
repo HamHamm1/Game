@@ -66,6 +66,23 @@ benches, fences, rocks, tree trunks); decorative props (tools, baskets, flowers,
 paving) have none. No dedicated sakura-tree asset was in this set — the pink
 flower shrub is used for blossom accents and the pine for trees.
 
+## Meshes — NPC prototype (M2.5)
+
+First high-fidelity NPC character, owner-provided (Meshy AI), imported unmodified.
+Two variants of the SAME character:
+
+| Asset | Path | Contents | In-engine use |
+|---|---|---|---|
+| Villager (base) | `godot/assets/npc/villager.glb` | 1 mesh · 29,521 tris · **no skeleton / no animation** · full PBR (4 × 2048² : albedo, normal, roughness, metallic) · centred origin, ~1.9 m | canonical full-fidelity static model (kept for a static/high-detail NPC option) |
+| Villager (rigged) | `godot/assets/npc/villager_walk.glb` | 1 skinned mesh · 26,769 tris · **Skeleton3D, 24 bones** · **1 animation** (`Casual_Walk`) · albedo 2048² only · feet at origin, **1.7 m** | the placed NPC prototype (`src/npc/npc_prototype.tscn`) — real rig + walk animation |
+
+Source: **owner-provided** Meshy AI original; owner holds rights to use in this
+game. Runtime: used unmodified; the render mesh is never used as a collider (a
+simple upright CapsuleShape3D is added instead). Mobile-suitable (26–30k tris,
+24-bone skeleton, single 2K material). The biped export zip also contains
+**Running** and **Walking** animation GLBs (same 24-bone rig) — **not yet
+imported** to keep the APK within budget; ready to add for a Walk/Run state set.
+
 ## Meshes — Vegetation & rocks (M2.4-D)
 
 Seven owner-provided Japanese-village vegetation and rock GLBs, imported to

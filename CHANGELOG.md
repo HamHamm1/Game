@@ -13,6 +13,44 @@ Status labels follow AI_RULES.md Rule 11:
 
 ## [Unreleased]
 
+### Phase 2 M2.5 — First NPC prototype (import + integration only) `NEEDS TESTING`
+
+Import & integrate the first high-fidelity NPC (owner-provided Meshy character)
+UNMODIFIED. No dialogue AI/API yet — only the scene + hooks the future systems
+plug into. All existing architecture, terrain, vegetation, textures, weather,
+lighting, player movement and building entry/exit are untouched. **NOT** ANDROID
+VERIFIED.
+
+- **Inspected** the GLB(s): base `villager.glb` = 1 mesh, 29,521 tris, full PBR
+  (4 × 2048²), **no skeleton / no animation**, ~1.9 m. The biped zip = the SAME
+  character rigged: `villager_walk.glb` = 1 skinned mesh, 26,769 tris,
+  **Skeleton3D (24 bones)** + a **`Casual_Walk`** animation, albedo 2048², feet
+  at origin, **1.7 m** (Running/Walking anim GLBs also in the zip, not imported).
+  Both imported to `assets/npc/`; recorded in `ASSET_LICENSES.md`. Mobile-suitable.
+- **NEW `src/npc/npc_prototype.gd` (`NpcPrototype`, CharacterBody3D)** — wraps the
+  rigged model unmodified: instances the GLB (real 24-bone skeleton + walk
+  animation), adds a simple upright **CapsuleShape3D** body collider (the render
+  mesh is never a collider), grounds the feet at y=0 (no scaling — model is
+  1.7 m), and exposes the API the future systems drive: `State` {IDLE, WALK,
+  TALK} + `set_state`, `look_at_player`/`clear_look` (yaw-smooth LookAtPlayer),
+  `has_animation`, and `schedule`/`relationship` stubs. IDLE stands in the model's
+  (natural) bind pose since the model ships no idle clip; WALK plays `Casual_Walk`.
+- **NEW `src/npc/npc_interactable.gd` (`NpcInteractable`)** — the standard
+  `Interactable` contract: a **TALK** verb + "Talk to <name>" prompt; `interact`
+  turns the NPC to the player and emits `talked` (the seam the future dialogue
+  system connects to — no dialogue logic yet).
+- **NEW `src/npc/npc_prototype.tscn`** placed **once** in `hero_village`
+  (`_place_npc`) in the central yard beside House A, off the main path (not
+  blocking any entrance), grounded on the terrain, with a small vegetation
+  exclusion. Environment not rearranged.
+- **Tests** 244 → 254: `_test_npc_prototype` asserts the rigged GLB has a
+  bones-bearing skeleton + an animation, the scene shows the imported mesh with a
+  capsule collider (render mesh never a collider), a TALK Interactable,
+  `has_animation()`, feet at y=0, and exactly one NPC staged in the village.
+- Validation: static 104 · headless import/boot clean · 254/254 · Android export
+  config valid; NPC placement + rig/animation confirmed via offscreen renders
+  (idle, front, mid-walk deformation, in-context). **NOT** ANDROID VERIFIED.
+
 ### Phase 2 M2.4-D.4 — Art-directed re-stage + 8-texture ground `NEEDS TESTING`
 
 Full visual re-stage of `hero_village` against the owner's *Japanese Village

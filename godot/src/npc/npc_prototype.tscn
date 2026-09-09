@@ -1,0 +1,7 @@
+[gd_scene load_steps=2 format=3 uid="uid://bnpcproto01"]
+
+[ext_resource type="Script" path="res://src/npc/npc_prototype.gd" id="1"]
+
+[node name="NpcPrototype" type="CharacterBody3D"]
+script = ExtResource("1")
+display_name = "Haruki"
